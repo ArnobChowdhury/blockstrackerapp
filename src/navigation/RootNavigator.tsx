@@ -1,6 +1,11 @@
 import React from 'react';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  BottomTabBarProps,
+} from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {BottomNavigation} from 'react-native-paper';
+import {CommonActions} from '@react-navigation/native'; // Import Route type if needed elsewhere
 
 export type RootTabParamList = {
   Today: undefined;
@@ -12,7 +17,6 @@ import ActiveScreen from '../screens/ActiveScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-// Define the icon rendering functions outside the component's render path
 const renderTodayIcon = ({color, size}: {color: string; size: number}) => (
   <MaterialCommunityIcons name="calendar-today" color={color} size={size} />
 );
@@ -21,21 +25,75 @@ const renderActiveIcon = ({color, size}: {color: string; size: number}) => (
   <MaterialCommunityIcons name="format-list-checks" color={color} size={size} />
 );
 
+const navigationTabBar = (
+  {navigation, state, descriptors, insets}: BottomTabBarProps, // <--- Apply the type here
+) => (
+  <BottomNavigation.Bar
+    navigationState={state}
+    safeAreaInsets={insets}
+    onTabPress={({route, preventDefault}) => {
+      // Now TypeScript knows state.routes is an array of Route objects
+      const navigationRoute = state.routes.find(r => r.key === route.key); // No more error for 'r'
+
+      if (!navigationRoute) {
+        return;
+      }
+
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: navigationRoute.key,
+        canPreventDefault: true,
+      });
+
+      if (event.defaultPrevented) {
+        preventDefault();
+      } else {
+        navigation.dispatch({
+          ...CommonActions.navigate(
+            navigationRoute.name,
+            navigationRoute.params,
+          ),
+          target: state.key,
+        });
+      }
+    }}
+    renderIcon={({route, focused, color}) => {
+      const {options} = descriptors[route.key];
+      if (options.tabBarIcon) {
+        return options.tabBarIcon({focused, color, size: 24});
+      }
+      return null;
+    }}
+    getLabelText={({route}) => {
+      const descriptor = descriptors[route.key];
+      const {options} = descriptor;
+
+      const label =
+        options.tabBarLabel !== undefined
+          ? options.tabBarLabel
+          : options.title !== undefined
+          ? options.title
+          : descriptor.route.name;
+
+      return typeof label === 'string' ? label : '';
+    }}
+  />
+);
+
 const RootNavigator = () => {
   return (
-    // Use Tab.Navigator instead of Stack.Navigator
     <Tab.Navigator
       initialRouteName="Today"
       screenOptions={{
-        tabBarActiveTintColor: '#6200ee', // Color for active tab
-        tabBarInactiveTintColor: 'gray', // Color for inactive tabs
-      }}>
+        headerShown: false,
+      }}
+      tabBar={navigationTabBar}>
       <Tab.Screen
         name="Today"
         component={TodayScreen}
         options={{
-          title: 'Today', // Header title
-          tabBarLabel: 'Today', // Text label for the tab
+          title: 'Today',
+          tabBarLabel: 'Today',
           tabBarIcon: renderTodayIcon,
         }}
       />

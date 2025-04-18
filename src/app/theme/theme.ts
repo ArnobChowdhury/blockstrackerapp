@@ -41,6 +41,17 @@ export const theme: MD3Theme = {
     ...DefaultTheme.colors,
     primary: '#007A9F',
     secondary: '#11C498',
+
+    // influences bottom navigation bar
+    secondaryContainer: '#11C498',
+    onSecondaryContainer: '#ffffff',
+
     surface: '#FFFFFF',
+    elevation: {
+      ...DefaultTheme.colors.elevation,
+      level2: '#eaeaea',
+    },
+    onSurface: '#333333',
+    onSurfaceVariant: '#444444',
   },
 };
