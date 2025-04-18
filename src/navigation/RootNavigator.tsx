@@ -10,10 +10,12 @@ import {CommonActions} from '@react-navigation/native'; // Import Route type if 
 export type RootTabParamList = {
   Today: undefined;
   Active: undefined;
+  AddTask: undefined;
 };
 
 import TodayScreen from '../screens/TodayScreen';
 import ActiveScreen from '../screens/ActiveScreen';
+import AddTaskScreen from '../screens/AddTaskScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -23,6 +25,10 @@ const renderTodayIcon = ({color, size}: {color: string; size: number}) => (
 
 const renderActiveIcon = ({color, size}: {color: string; size: number}) => (
   <MaterialCommunityIcons name="format-list-checks" color={color} size={size} />
+);
+
+const addTaskIcon = ({color, size}: {color: string; size: number}) => (
+  <MaterialCommunityIcons name="plus" color={color} size={size} />
 );
 
 const navigationTabBar = (
@@ -95,6 +101,15 @@ const RootNavigator = () => {
           title: 'Today',
           tabBarLabel: 'Today',
           tabBarIcon: renderTodayIcon,
+        }}
+      />
+      <Tab.Screen
+        name="AddTask"
+        component={AddTaskScreen}
+        options={{
+          title: 'Add Task',
+          tabBarLabel: 'Add Task',
+          tabBarIcon: addTaskIcon,
         }}
       />
       <Tab.Screen
