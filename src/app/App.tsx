@@ -10,21 +10,13 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {PaperProvider} from 'react-native-paper';
 import {NavigationContainer} from '@react-navigation/native';
 import RootNavigator from '../navigation/RootNavigator'; // Adjusted path
-
-// Removed unused imports like ScrollView, StatusBar, StyleSheet, Text, View, Colors, etc.
-// Removed Section component definition
-// Removed styles object
+import {theme} from './theme/theme';
 
 function App(): React.JSX.Element {
-  // Removed isDarkMode and backgroundStyle as they are no longer directly used here
-  // Removed safePadding
-
   return (
     <SafeAreaProvider>
-      <PaperProvider>
-        {/* NavigationContainer wraps the navigator */}
+      <PaperProvider theme={theme}>
         <NavigationContainer>
-          {/* RootNavigator renders the screens based on navigation state */}
           <RootNavigator />
         </NavigationContainer>
       </PaperProvider>

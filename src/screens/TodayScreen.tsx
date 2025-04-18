@@ -1,19 +1,22 @@
 import React from 'react';
-import {View, Text, StyleSheet, Button} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {Text, Button} from 'react-native-paper';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack'; // Import props type
-import type {RootTabParamList} from '../navigation/RootNavigator'; // Import param list type
+import type {RootTabParamList} from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'Today'>;
 
 const TodayScreen = ({navigation}: Props) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Today Screen</Text>
-      <Text>Displays tasks scheduled for today.</Text>
+      <Text variant="headlineMedium">Today Screen</Text>
+      <Text variant="bodyLarge">Displays tasks scheduled for today.</Text>
       <Button
-        title="Go to Active Tasks"
+        mode="contained"
         onPress={() => navigation.navigate('Active')}
-      />
+        style={styles.button}>
+        Go to Active Tasks
+      </Button>
     </View>
   );
 };
@@ -26,9 +29,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   text: {
-    fontSize: 24,
-    fontWeight: 'bold',
     marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  button: {
+    marginTop: 10,
   },
 });
 

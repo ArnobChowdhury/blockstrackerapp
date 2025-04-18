@@ -27,7 +27,6 @@ const RootNavigator = () => {
     <Tab.Navigator
       initialRouteName="Today"
       screenOptions={{
-        // Default options for all tabs
         tabBarActiveTintColor: '#6200ee', // Color for active tab
         tabBarInactiveTintColor: 'gray', // Color for inactive tabs
       }}>
