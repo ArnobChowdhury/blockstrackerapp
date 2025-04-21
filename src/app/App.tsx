@@ -6,6 +6,8 @@
  */
 
 import React from 'react';
+import {StatusBar} from 'react-native';
+
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {PaperProvider} from 'react-native-paper';
 import {NavigationContainer} from '@react-navigation/native';
@@ -16,6 +18,11 @@ function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={theme.colors.surface} // Match status bar background to screen background
+        />
+
         <NavigationContainer>
           <RootNavigator />
         </NavigationContainer>

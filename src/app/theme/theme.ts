@@ -41,17 +41,21 @@ export const theme: MD3Theme = {
     ...DefaultTheme.colors,
     primary: '#007A9F',
     secondary: '#11C498',
+    primaryContainer: '#007A9F',
+    onPrimaryContainer: '#ffffff',
 
     // influences bottom navigation bar
     secondaryContainer: '#11C498',
     onSecondaryContainer: '#ffffff',
 
     surface: '#FFFFFF',
+    onSurface: '#333333',
+    surfaceVariant: '#007A9F40',
+    onSurfaceVariant: '#444444',
+
     elevation: {
       ...DefaultTheme.colors.elevation,
       level2: '#eaeaea',
     },
-    onSurface: '#333333',
-    onSurfaceVariant: '#444444',
   },
 };
