@@ -4,16 +4,11 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootTabParamList} from '../navigation/RootNavigator';
-import {TextInput, Text, Chip, Checkbox} from 'react-native-paper';
+import {TextInput, Text, Chip, Checkbox, Button} from 'react-native-paper';
 import {TaskScheduleTypeEnum, TimeOfDay} from '../types';
+import {capitalize} from '../shared/utils';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'AddTask'>;
-
-// Helper function to capitalize
-const capitalize = (s: string) => {
-  if (typeof s !== 'string') return '';
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-};
 
 const AddTaskScreen = ({}: Props) => {
   const [taskName, setTaskName] = useState('');
@@ -109,6 +104,13 @@ const AddTaskScreen = ({}: Props) => {
           </Text>
         </View>
       )}
+      <Button
+        mode="contained"
+        onPress={() => {
+          console.log('pressed');
+        }}>
+        Add
+      </Button>
     </SafeAreaView>
   );
 };
@@ -117,6 +119,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 10,
   },
   textInput: {
     marginBottom: 20,
