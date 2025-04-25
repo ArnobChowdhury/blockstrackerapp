@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {TaskRepository} from '../services/database/repository';
 
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootTabParamList} from '../navigation/RootNavigator';
@@ -36,6 +37,18 @@ const AddTaskScreen = ({}: Props) => {
   const [shouldBeScored, setShouldBeScored] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // For Add Task button loading state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+
+  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setTaskRepository(new TaskRepository(db));
+    } else {
+      setTaskRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
 
   const handleFrequencySelect = useCallback(
     (frequency: TaskScheduleTypeEnum) => {
@@ -69,59 +82,36 @@ const AddTaskScreen = ({}: Props) => {
   }, []);
 
   const handleAddTask = async () => {
-    // 1. Validation
     const trimmedTaskName = taskName.trim();
     if (!trimmedTaskName) {
       Alert.alert('Missing Information', 'Please enter a Task Name.');
       return;
     }
 
-    if (!db || isDbLoading || dbError) {
+    if (!taskRepository) {
       Alert.alert(
         'Database Error',
-        'The database is not ready. Please wait or restart the app if the problem persists.',
+        'The database repository is not ready. Please wait or restart the app.',
       );
       return;
     }
 
     setIsSaving(true);
 
-    const now = new Date().toISOString(); // Consistent timestamp format
     const trimmedDescription = taskDescription.trim();
-
     const isScorableType =
       selectedScheduleType === TaskScheduleTypeEnum.Daily ||
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
     const finalShouldBeScored = isScorableType ? (shouldBeScored ? 1 : 0) : 0;
 
-    const sql = `
-      INSERT INTO tasks (
-        title,
-        description,
-        schedule,
-        time_of_day,
-        should_be_scored,
-        created_at,
-        modified_at
-        -- Relying on defaults for: is_active, priority, completion_status
-        -- Not inserting: due_date, score, repetitive_task_template_id, space_id (add later if needed)
-      ) VALUES (?, ?, ?, ?, ?, ?, ?);
-    `;
-
-    const params = [
-      trimmedTaskName,
-      trimmedDescription || null,
-      selectedScheduleType,
-      selectedTimeOfDay,
-      finalShouldBeScored,
-      now,
-      now,
-    ];
-
     try {
-      console.log('[DB] Attempting to INSERT Task:', {sql, params});
-      const result = await db.execute(sql, params);
-      console.log('[DB] Task INSERT successful:', result);
+      await taskRepository.addTask({
+        title: trimmedTaskName,
+        description: trimmedDescription,
+        schedule: selectedScheduleType,
+        timeOfDay: selectedTimeOfDay,
+        shouldBeScored: finalShouldBeScored,
+      });
 
       setSnackbarVisible(true);
       resetForm();
