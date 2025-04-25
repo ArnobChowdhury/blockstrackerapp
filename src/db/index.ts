@@ -1,10 +1,10 @@
 // src/db/index.ts
-import {open, type QuickSQLiteConnection} from 'react-native-quick-sqlite';
+import {open, type NitroSQLiteConnection} from 'react-native-nitro-sqlite';
 import {runMigrations} from './migrations'; // Import the function we just created
 
 const DB_NAME = 'blockstracker.sqlite';
 
-export const db: QuickSQLiteConnection = open({
+export const db: NitroSQLiteConnection = open({
   name: DB_NAME,
   // location: 'default', // Optional: specify location ('default', 'Library', 'Documents')
 });

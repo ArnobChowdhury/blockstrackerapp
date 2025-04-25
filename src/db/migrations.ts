@@ -1,4 +1,4 @@
-import type {QuickSQLiteConnection} from 'react-native-quick-sqlite';
+import type {NitroSQLiteConnection} from 'react-native-nitro-sqlite';
 import {V1_SCHEMA} from './schema';
 
 const LATEST_SCHEMA_VERSION = 1;
@@ -12,12 +12,12 @@ const MIGRATIONS: {[key: number]: string} = {
  * @param db The QuickSQLiteConnection instance.
  */
 export const runMigrations = async (
-  db: QuickSQLiteConnection,
+  db: NitroSQLiteConnection,
 ): Promise<void> => {
   try {
     console.log('[DB] Starting database migrations...');
 
-    let currentVersionResult = await db.execute('PRAGMA user_version;');
+    let currentVersionResult = db.execute('PRAGMA user_version;');
 
     console.log(
       '[DB] Current schema version result:',
@@ -94,7 +94,7 @@ export const runMigrations = async (
     console.error('[DB] Database migration failed:', error);
 
     try {
-      await db.execute('ROLLBACK;');
+      db.execute('ROLLBACK;');
       console.log('[DB] Migration transaction rolled back.');
     } catch (rollbackError) {
       console.error(

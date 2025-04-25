@@ -1,10 +1,10 @@
 // src/hooks/useDatabase.ts
 import {useState, useEffect} from 'react';
 import {db, initializeDatabase, isDatabaseInitialized} from '../../db'; // Adjust path
-import type {QuickSQLiteConnection} from 'react-native-quick-sqlite';
+import type {NitroSQLiteConnection} from 'react-native-nitro-sqlite';
 
 interface DatabaseHookResult {
-  db: QuickSQLiteConnection;
+  db: NitroSQLiteConnection;
   isLoading: boolean; // Indicates if initialization is in progress
   error: Error | null; // Stores any initialization error
 }

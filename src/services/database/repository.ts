@@ -1,4 +1,4 @@
-import {QuickSQLiteConnection} from 'react-native-quick-sqlite';
+import {NitroSQLiteConnection} from 'react-native-nitro-sqlite';
 import {TaskScheduleTypeEnum, TimeOfDay} from '../../types'; // Assuming Task type definition
 
 interface NewTaskData {
@@ -10,9 +10,9 @@ interface NewTaskData {
 }
 
 export class TaskRepository {
-  private db: QuickSQLiteConnection;
+  private db: NitroSQLiteConnection;
 
-  constructor(database: QuickSQLiteConnection) {
+  constructor(database: NitroSQLiteConnection) {
     this.db = database;
   }
 
@@ -36,7 +36,7 @@ export class TaskRepository {
 
     console.log('[DB Repo] Attempting to INSERT Task:', {sql, params});
     try {
-      const result = this.db.execute(sql, params);
+      const result = await this.db.executeAsync(sql, params);
       console.log('[DB Repo] Task INSERT successful:', result);
       return result;
     } catch (error: any) {
