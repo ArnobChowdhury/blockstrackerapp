@@ -11,3 +11,15 @@ export enum TimeOfDay {
   Evening = 'evening',
   Night = 'night',
 }
+
+export interface Task {
+  id: number;
+  title: string;
+  isActive: boolean;
+  description: string | null;
+  schedule: TaskScheduleTypeEnum;
+  timeOfDay: TimeOfDay | null;
+  shouldBeScored: boolean;
+  createdAt: string;
+  modifiedAt: string;
+}

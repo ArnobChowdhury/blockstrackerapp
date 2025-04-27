@@ -12,9 +12,15 @@ import {initializeDatabase} from '../db'; // Adjust path if needed
 
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {PaperProvider} from 'react-native-paper';
-import {NavigationContainer} from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme as ReactNavigationDefaultTheme,
+} from '@react-navigation/native';
 import RootNavigator from '../navigation/RootNavigator'; // Adjusted path
 import {theme} from './theme/theme';
+import {enableSimpleNullHandling} from 'react-native-nitro-sqlite';
+
+enableSimpleNullHandling();
 
 function App(): React.JSX.Element {
   const [isDbInitialized, setIsDBInitialized] = useState(false);
@@ -49,7 +55,15 @@ function App(): React.JSX.Element {
           backgroundColor={theme.colors.surface} // Match status bar background to screen background
         />
 
-        <NavigationContainer>
+        <NavigationContainer
+          theme={{
+            ...ReactNavigationDefaultTheme,
+            colors: {
+              ...ReactNavigationDefaultTheme.colors,
+              background: theme.colors.surface,
+            },
+            dark: true,
+          }}>
           <RootNavigator />
         </NavigationContainer>
       </PaperProvider>

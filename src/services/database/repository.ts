@@ -1,21 +1,10 @@
 import {NitroSQLiteConnection, QueryResult} from 'react-native-nitro-sqlite';
 import {TaskScheduleTypeEnum, TimeOfDay} from '../../types';
-
-export interface Task {
-  id: number;
-  title: string;
-  isActive: boolean;
-  description: string | null;
-  schedule: TaskScheduleTypeEnum;
-  timeOfDay: TimeOfDay | null;
-  shouldBeScored: boolean;
-  createdAt: string;
-  modifiedAt: string;
-}
+import type {Task} from '../../types';
 
 interface NewTaskData {
   title: string;
-  description: string | null;
+  description?: string;
   schedule: TaskScheduleTypeEnum;
   timeOfDay: TimeOfDay | null;
   shouldBeScored: number;

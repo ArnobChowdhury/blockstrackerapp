@@ -240,10 +240,8 @@ const AddTaskScreen = ({}: Props) => {
       <Snackbar
         visible={snackbarVisible}
         onDismiss={onDismissSnackBar}
-        action={{
-          label: 'Undo',
-          onPress: onDismissSnackBar,
-        }}>
+        duration={3000}
+        onIconPress={onDismissSnackBar}>
         Task added successfully!
       </Snackbar>
     </SafeAreaView>
