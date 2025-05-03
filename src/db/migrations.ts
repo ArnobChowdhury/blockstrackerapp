@@ -1,5 +1,5 @@
-import type {NitroSQLiteConnection} from 'react-native-nitro-sqlite';
-import {V1_SCHEMA} from './schema';
+import type { NitroSQLiteConnection } from 'react-native-nitro-sqlite';
+import { V1_SCHEMA } from './schema';
 
 const LATEST_SCHEMA_VERSION = 1;
 

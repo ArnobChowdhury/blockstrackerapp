@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useLayoutEffect} from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,22 +6,22 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
-import {Text, Checkbox, IconButton, List, Divider} from 'react-native-paper';
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {useFocusEffect} from '@react-navigation/native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import type {ActiveStackParamList} from '../navigation/RootNavigator';
-import {TaskRepository} from '../services/database/repository';
-import {useDatabase} from '../shared/hooks/useDatabase';
-import type {Task} from '../types';
+import { Text, Checkbox, IconButton, List, Divider } from 'react-native-paper';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import type { ActiveStackParamList } from '../navigation/RootNavigator';
+import { TaskRepository } from '../services/database/repository';
+import { useDatabase } from '../shared/hooks/useDatabase';
+import type { Task } from '../types';
 
 const taskSeparator = () => <Divider />;
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveTaskList'>;
 
-const ActiveTaskListScreen = ({route, navigation}: Props) => {
-  const {category} = route.params;
-  const {db, isLoading: isDbLoading, error: dbError} = useDatabase();
+const ActiveTaskListScreen = ({ route, navigation }: Props) => {
+  const { category } = route.params;
+  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
@@ -112,7 +112,7 @@ const ActiveTaskListScreen = ({route, navigation}: Props) => {
     [category],
   );
 
-  const renderTaskItem = ({item}: {item: Task}) => (
+  const renderTaskItem = ({ item }: {item: Task}) => (
     <List.Item
       title={item.title}
       titleNumberOfLines={2}

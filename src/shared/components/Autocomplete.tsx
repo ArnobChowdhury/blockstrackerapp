@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from 'react';
-import {View, StyleSheet, FlatList} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList } from 'react-native';
 import {
   TextInput,
   List,
@@ -28,7 +28,7 @@ const ALL_ITEMS = [
   'Strawberry',
 ];
 
-const AutocompleteInput = ({label, onSelect, ...textInputProps}) => {
+const AutocompleteInput = ({ label, onSelect, ...textInputProps }) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,7 +80,7 @@ const AutocompleteInput = ({label, onSelect, ...textInputProps}) => {
         <Surface
           style={[
             styles.suggestionsContainer,
-            {backgroundColor: theme.colors.elevation.level2},
+            { backgroundColor: theme.colors.elevation.level2 },
           ]}>
           {loading ? (
             <ActivityIndicator animating={true} style={styles.loader} />
@@ -88,7 +88,7 @@ const AutocompleteInput = ({label, onSelect, ...textInputProps}) => {
             <FlatList
               data={suggestions}
               keyExtractor={item => item}
-              renderItem={({item}) => (
+              renderItem={({ item }) => (
                 <List.Item
                   title={item}
                   onPress={() => handleSelectSuggestion(item)}
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     elevation: 4, // Add shadow (Android)
     shadowColor: '#000', // iOS shadow
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     zIndex: 2, // Ensure suggestions are above the input

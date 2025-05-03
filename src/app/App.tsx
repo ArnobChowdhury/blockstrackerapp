@@ -5,20 +5,20 @@
  * @format
  */
 
-import React, {useEffect, useState} from 'react';
-import {StatusBar} from 'react-native';
-import {Text} from 'react-native-paper';
-import {initializeDatabase} from '../db'; // Adjust path if needed
+import React, { useEffect, useState } from 'react';
+import { StatusBar } from 'react-native';
+import { Text } from 'react-native-paper';
+import { initializeDatabase } from '../db'; // Adjust path if needed
 
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {PaperProvider} from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PaperProvider } from 'react-native-paper';
 import {
   NavigationContainer,
   DefaultTheme as ReactNavigationDefaultTheme,
 } from '@react-navigation/native';
 import RootNavigator from '../navigation/RootNavigator'; // Adjusted path
-import {theme} from './theme/theme';
-import {enableSimpleNullHandling} from 'react-native-nitro-sqlite';
+import { theme } from './theme/theme';
+import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 
 enableSimpleNullHandling();
 

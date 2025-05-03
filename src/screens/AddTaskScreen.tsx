@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,11 +6,11 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {TaskRepository} from '../services/database/repository';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { TaskRepository } from '../services/database/repository';
 
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import type {RootTabParamList} from '../navigation/RootNavigator';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootTabParamList } from '../navigation/RootNavigator';
 import {
   TextInput,
   Text,
@@ -19,14 +19,14 @@ import {
   Button,
   Snackbar,
 } from 'react-native-paper';
-import {TaskScheduleTypeEnum, TimeOfDay} from '../types';
-import {capitalize} from '../shared/utils';
-import {useDatabase} from '../shared/hooks/useDatabase';
+import { TaskScheduleTypeEnum, TimeOfDay } from '../types';
+import { capitalize } from '../shared/utils';
+import { useDatabase } from '../shared/hooks/useDatabase';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'AddTask'>;
 
 const AddTaskScreen = ({}: Props) => {
-  const {db, isLoading: isDbLoading, error: dbError} = useDatabase();
+  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [selectedScheduleType, setSelectedScheduleType] =

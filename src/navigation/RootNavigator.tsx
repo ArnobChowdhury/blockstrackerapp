@@ -3,16 +3,16 @@ import {
   createBottomTabNavigator,
   BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {BottomNavigation} from 'react-native-paper';
-import {CommonActions} from '@react-navigation/native';
+import { BottomNavigation } from 'react-native-paper';
+import { CommonActions } from '@react-navigation/native';
 
 import TodayScreen from '../screens/TodayScreen';
 import AddTaskScreen from '../screens/AddTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
-import {TaskScheduleTypeEnum} from '../types';
+import { TaskScheduleTypeEnum } from '../types';
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
@@ -37,20 +37,20 @@ const ActiveStackNavigator = () => {
       <Stack.Screen
         name="ActiveCategoryList"
         component={ActiveCategoryListScreen}
-        options={{headerShown: false}}
+        options={{ headerShown: false }}
       />
       <Stack.Screen name="ActiveTaskList" component={ActiveTaskListScreen} />
     </Stack.Navigator>
   );
 };
 
-const renderTodayIcon = ({color, size}: {color: string; size: number}) => (
+const renderTodayIcon = ({ color, size }: {color: string; size: number}) => (
   <MaterialCommunityIcons name="calendar-today" color={color} size={size} />
 );
-const renderActiveIcon = ({color, size}: {color: string; size: number}) => (
+const renderActiveIcon = ({ color, size }: {color: string; size: number}) => (
   <MaterialCommunityIcons name="format-list-checks" color={color} size={size} />
 );
-const addTaskIcon = ({color, size}: {color: string; size: number}) => (
+const addTaskIcon = ({ color, size }: {color: string; size: number}) => (
   <MaterialCommunityIcons name="plus" color={color} size={size} />
 );
 
@@ -63,7 +63,7 @@ const navigationTabBar = ({
   <BottomNavigation.Bar
     navigationState={state}
     safeAreaInsets={insets}
-    onTabPress={({route, preventDefault}) => {
+    onTabPress={({ route, preventDefault }) => {
       const navigationRoute = state.routes.find(r => r.key === route.key);
       if (!navigationRoute) {
         return;
@@ -85,16 +85,16 @@ const navigationTabBar = ({
         });
       }
     }}
-    renderIcon={({route, focused, color}) => {
-      const {options} = descriptors[route.key];
+    renderIcon={({ route, focused, color }) => {
+      const { options } = descriptors[route.key];
       if (options.tabBarIcon) {
-        return options.tabBarIcon({focused, color, size: 24});
+        return options.tabBarIcon({ focused, color, size: 24 });
       }
       return null;
     }}
-    getLabelText={({route}) => {
+    getLabelText={({ route }) => {
       const descriptor = descriptors[route.key];
-      const {options} = descriptor;
+      const { options } = descriptor;
       const label =
         options.tabBarLabel !== undefined
           ? options.tabBarLabel

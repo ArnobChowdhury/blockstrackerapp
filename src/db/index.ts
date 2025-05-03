@@ -1,6 +1,6 @@
 // src/db/index.ts
-import {open, type NitroSQLiteConnection} from 'react-native-nitro-sqlite';
-import {runMigrations} from './migrations'; // Import the function we just created
+import { open, type NitroSQLiteConnection } from 'react-native-nitro-sqlite';
+import { runMigrations } from './migrations'; // Import the function we just created
 
 const DB_NAME = 'blockstracker.sqlite';
 

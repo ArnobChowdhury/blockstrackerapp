@@ -1,7 +1,7 @@
 // src/hooks/useDatabase.ts
-import {useState, useEffect} from 'react';
-import {db, initializeDatabase, isDatabaseInitialized} from '../../db'; // Adjust path
-import type {NitroSQLiteConnection} from 'react-native-nitro-sqlite';
+import { useState, useEffect } from 'react';
+import { db, initializeDatabase, isDatabaseInitialized } from '../../db'; // Adjust path
+import type { NitroSQLiteConnection } from 'react-native-nitro-sqlite';
 
 interface DatabaseHookResult {
   db: NitroSQLiteConnection;
@@ -60,5 +60,5 @@ export const useDatabase = (): DatabaseHookResult => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return {db, isLoading, error};
+  return { db, isLoading, error };
 };

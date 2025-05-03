@@ -1,6 +1,6 @@
-import {NitroSQLiteConnection, QueryResult} from 'react-native-nitro-sqlite';
-import {TaskScheduleTypeEnum, TimeOfDay} from '../../types';
-import type {Task} from '../../types';
+import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
+import { TaskScheduleTypeEnum, TimeOfDay } from '../../types';
+import type { Task } from '../../types';
 
 interface NewTaskData {
   title: string;
@@ -35,7 +35,7 @@ export class TaskRepository {
       now,
     ];
 
-    console.log('[DB Repo] Attempting to INSERT Task:', {sql, params});
+    console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
 
     try {
       const result: QueryResult = await this.db.executeAsync(sql, params);
@@ -60,7 +60,7 @@ export class TaskRepository {
     `;
     const params: any[] = [TaskScheduleTypeEnum.Unscheduled];
 
-    console.log('[DB Repo] Attempting to SELECT all active tasks:', {sql});
+    console.log('[DB Repo] Attempting to SELECT all active tasks:', { sql });
     try {
       const resultSet: QueryResult = await this.db.executeAsync(sql, params);
       console.log(

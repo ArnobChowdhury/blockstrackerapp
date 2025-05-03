@@ -9,6 +9,11 @@ module.exports = {
         allowAsProps: true, // Allow components passed as props (Render Props pattern)
       },
     ],
+    // Add this rule for spacing inside curly braces
+    'object-curly-spacing': [
+      'warn', // Or 'error'
+      'always', // Enforces spacing, e.g., { Component } instead of {Component}
+    ],
     // You can add other custom rules below
   },
 };
