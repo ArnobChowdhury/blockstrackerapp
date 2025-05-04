@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import { Text } from 'react-native-paper';
 import { initializeDatabase } from '../db'; // Adjust path if needed
+import 'react-native-gesture-handler';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
@@ -19,8 +20,10 @@ import {
 import RootNavigator from '../navigation/RootNavigator'; // Adjusted path
 import { theme } from './theme/theme';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
+import { en, registerTranslation } from 'react-native-paper-dates';
 
 enableSimpleNullHandling();
+registerTranslation('en', en);
 
 function App(): React.JSX.Element {
   const [isDbInitialized, setIsDBInitialized] = useState(false);

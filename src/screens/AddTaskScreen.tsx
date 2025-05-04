@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,10 +18,13 @@ import {
   Checkbox,
   Button,
   Snackbar,
+  Divider,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay } from '../types';
 import { capitalize } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
+import { DatePickerModal } from 'react-native-paper-dates';
+import dayjs from 'dayjs';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'AddTask'>;
 
@@ -38,6 +41,9 @@ const AddTaskScreen = ({}: Props) => {
   const [isSaving, setIsSaving] = useState(false); // For Add Task button loading state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
 
+  const [selectedDateVisible, setSelectedDateVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>();
+
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
@@ -53,6 +59,10 @@ const AddTaskScreen = ({}: Props) => {
   const handleFrequencySelect = useCallback(
     (frequency: TaskScheduleTypeEnum) => {
       setSelectedScheduleType(frequency);
+
+      if (frequency === TaskScheduleTypeEnum.Once) {
+        setSelectedDateVisible(true);
+      }
 
       if (
         frequency !== TaskScheduleTypeEnum.Daily &&
@@ -126,6 +136,21 @@ const AddTaskScreen = ({}: Props) => {
     }
   };
 
+  const onConfirmSelectedDate = useCallback(
+    (params: { date: Date | undefined }) => {
+      setSelectedDateVisible(false);
+      setSelectedDate(params.date);
+    },
+    [setSelectedDateVisible, setSelectedDate],
+  );
+
+  const sDate = useMemo(() => {
+    if (selectedDate) {
+      const d = dayjs(selectedDate);
+      return `${d.date()} ${d.format('MMMM')}`;
+    }
+  }, [selectedDate]);
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -190,6 +215,15 @@ const AddTaskScreen = ({}: Props) => {
           ))}
         </View>
 
+        {selectedScheduleType === TaskScheduleTypeEnum.Once && selectedDate && (
+          <>
+            <Chip icon={'calendar-outline'} style={styles.marginBottom}>
+              {sDate}
+            </Chip>
+            <Divider style={styles.marginTop} />
+          </>
+        )}
+
         <Text variant="titleMedium" style={styles.inputHeader}>
           Time of day
         </Text>
@@ -244,11 +278,24 @@ const AddTaskScreen = ({}: Props) => {
         onIconPress={onDismissSnackBar}>
         Task added successfully!
       </Snackbar>
+
+      <DatePickerModal
+        locale="en"
+        mode="single"
+        visible={selectedDateVisible}
+        onDismiss={() => setSelectedDateVisible(false)}
+        date={selectedDate}
+        onConfirm={onConfirmSelectedDate}
+        label="Task Date"
+        calendarIcon="calendar-outline"
+        saveLabel="Select Date"
+        animationType="slide"
+        validRange={{ startDate: new Date() }}
+      />
     </SafeAreaView>
   );
 };
 
-// --- Styles ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -294,6 +341,12 @@ const styles = StyleSheet.create({
   chip: {
     marginRight: 8,
     marginBottom: 8,
+  },
+  marginBottom: {
+    marginBottom: 8,
+  },
+  marginTop: {
+    marginTop: 8,
   },
   checkboxContainer: {
     flexDirection: 'row',
