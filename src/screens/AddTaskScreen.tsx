@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TaskRepository } from '../services/database/repository';
+import AutocompleteInput from '../shared/components/Autocomplete';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootTabParamList } from '../navigation/RootNavigator';
@@ -198,7 +199,7 @@ const AddTaskScreen = ({}: Props) => {
         />
 
         <Text variant="titleMedium" style={styles.inputHeader}>
-          Schedule
+          Schedule*
         </Text>
         <View style={styles.chipContainer}>
           {Object.values(TaskScheduleTypeEnum).map((option, index) => (
@@ -246,7 +247,7 @@ const AddTaskScreen = ({}: Props) => {
           selectedScheduleType ===
             TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
           <View style={styles.checkboxContainer}>
-            <Checkbox.Android // Use Checkbox.Android or Checkbox.IOS explicitly if needed
+            <Checkbox.Android
               status={shouldBeScored ? 'checked' : 'unchecked'}
               onPress={handleShouldBeScored}
               disabled={isSaving}
@@ -260,6 +261,10 @@ const AddTaskScreen = ({}: Props) => {
             </Text>
           </View>
         )}
+        <AutocompleteInput
+          label="Select or Create a space for the task (Optional)"
+          onSelect={() => {}}
+        />
       </ScrollView>
 
       <Button

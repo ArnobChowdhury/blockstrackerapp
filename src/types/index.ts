@@ -23,3 +23,10 @@ export interface Task {
   createdAt: string;
   modifiedAt: string;
 }
+
+export interface Space {
+  id: number;
+  name: string;
+  createdAt: string;
+  modifiedAt: string;
+}
