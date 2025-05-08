@@ -7,7 +7,10 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TaskRepository } from '../services/database/repository';
+import {
+  TaskRepository,
+  SpaceRepository,
+} from '../services/database/repository';
 import AutocompleteInput from '../shared/components/Autocomplete';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,6 +25,7 @@ import {
   Divider,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay } from '../types';
+import type { Space } from '../types';
 import { capitalize } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { DatePickerModal } from 'react-native-paper-dates';
@@ -41,17 +45,32 @@ const AddTaskScreen = ({}: Props) => {
   const [shouldBeScored, setShouldBeScored] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // For Add Task button loading state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const [selectedDateVisible, setSelectedDateVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
 
+  const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
+
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
+  const [spaceRepository, setSpaceRepository] =
+    useState<SpaceRepository | null>(null);
+
+  const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
       setTaskRepository(new TaskRepository(db));
+    } else {
+      setTaskRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setSpaceRepository(new SpaceRepository(db));
     } else {
       setTaskRepository(null);
     }
@@ -89,6 +108,12 @@ const AddTaskScreen = ({}: Props) => {
     setSelectedScheduleType(TaskScheduleTypeEnum.Unscheduled);
     setSelectedTimeOfDay(null);
     setShouldBeScored(false);
+    setSelectedDateVisible(false);
+    setSelectedDate(undefined);
+    setSelectedSpace(null);
+    setSpaceQuery('');
+    setIsSaving(false);
+
     console.log('[Form] Reset complete');
   }, []);
 
@@ -120,10 +145,13 @@ const AddTaskScreen = ({}: Props) => {
         title: trimmedTaskName,
         description: trimmedDescription,
         schedule: selectedScheduleType,
+        dueDate: selectedDate,
         timeOfDay: selectedTimeOfDay,
         shouldBeScored: finalShouldBeScored,
+        space: selectedSpace,
       });
 
+      setSnackbarMessage('Task added successfully!');
       setSnackbarVisible(true);
       resetForm();
     } catch (error: any) {
@@ -152,6 +180,83 @@ const AddTaskScreen = ({}: Props) => {
     }
   }, [selectedDate]);
 
+  const onDismissSnackBar = () => {
+    setSnackbarVisible(false);
+    setSnackbarMessage('');
+  };
+
+  const [spaceQuery, setSpaceQuery] = useState('');
+  const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
+  // const [errorLoadingSpace, setErrorLoadingSpace] = useState();
+  const [isSpaceOnFocus, setIsSpaceOnFocus] = useState(false);
+
+  const handleSpaceOnFocus = () => {
+    setIsSpaceOnFocus(true);
+  };
+
+  const handleSpaceOnBlur = () => {
+    setIsSpaceOnFocus(false);
+  };
+
+  const handleLoadSpace = useCallback(async () => {
+    if (!spaceRepository) {
+      return;
+    }
+
+    setIsLoadingSpaces(true);
+
+    try {
+      const spaces = await spaceRepository.getAllSpaces();
+      setAllSpaces(spaces);
+    } catch (error: any) {
+      setSnackbarVisible(true);
+      setSnackbarMessage(
+        `Failed to load spaces: ${error.message || 'Unknown error'}`,
+      );
+
+      console.error('[DB] Failed to fetch spaces:', error);
+    } finally {
+      setIsLoadingSpaces(false);
+    }
+  }, [spaceRepository]);
+
+  const handleAddSpace = useCallback(
+    async (spaceName: string) => {
+      if (!spaceRepository) {
+        return;
+      }
+
+      try {
+        await spaceRepository.addSpace(spaceName);
+        handleLoadSpace();
+      } catch (error: any) {
+        Alert.alert(
+          'Database Error',
+          `Failed to create space "${spaceName}": ${
+            error.message || 'Unknown error'
+          }`,
+        );
+        console.error('[DB] Failed to add space:', error);
+      }
+    },
+    [spaceRepository, handleLoadSpace],
+  );
+
+  const handleSpaceSelect = useCallback(
+    (spaceId: number | null) => {
+      if (!spaceId) {
+        setSelectedSpace(null);
+        return;
+      }
+
+      const foundSpace = allSpaces.find(space => space.id === spaceId);
+      if (foundSpace) {
+        setSelectedSpace(foundSpace);
+      }
+    },
+    [setSelectedSpace, allSpaces],
+  );
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -171,9 +276,7 @@ const AddTaskScreen = ({}: Props) => {
     );
   }
 
-  const onDismissSnackBar = () => {
-    setSnackbarVisible(false);
-  };
+  const addTaskDisabled = !taskName || !selectedScheduleType || isSpaceOnFocus;
 
   return (
     <SafeAreaView
@@ -255,15 +358,23 @@ const AddTaskScreen = ({}: Props) => {
             <Text
               variant="bodyMedium"
               onPress={isSaving ? undefined : handleShouldBeScored}
-              style={isSaving ? styles.disabledText : null} // Optional: Style disabled text
-            >
+              style={isSaving ? styles.disabledText : null}>
               Should be scored
             </Text>
           </View>
         )}
         <AutocompleteInput
           label="Select or Create a space for the task (Optional)"
-          onSelect={() => {}}
+          query={spaceQuery}
+          setQuery={setSpaceQuery}
+          onSelect={handleSpaceSelect}
+          options={allSpaces}
+          loading={isLoadingSpaces}
+          onLoadSuggestions={handleLoadSpace}
+          onAddOption={handleAddSpace}
+          selectedOption={selectedSpace}
+          onFocus={handleSpaceOnFocus}
+          onBlur={handleSpaceOnBlur}
         />
       </ScrollView>
 
@@ -272,7 +383,7 @@ const AddTaskScreen = ({}: Props) => {
         onPress={handleAddTask}
         style={styles.addButton}
         loading={isSaving}
-        disabled={isSaving || isDbLoading}
+        disabled={isSaving || isDbLoading || addTaskDisabled}
         icon="plus-circle-outline">
         {isSaving ? 'Adding Task...' : 'Add Task'}
       </Button>
@@ -281,7 +392,7 @@ const AddTaskScreen = ({}: Props) => {
         onDismiss={onDismissSnackBar}
         duration={3000}
         onIconPress={onDismissSnackBar}>
-        Task added successfully!
+        {snackbarMessage}
       </Snackbar>
 
       <DatePickerModal

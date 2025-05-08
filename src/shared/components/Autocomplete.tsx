@@ -5,28 +5,10 @@ import {
   List,
   Surface,
   ActivityIndicator,
-  Text,
   useTheme,
   Portal,
+  Checkbox,
 } from 'react-native-paper';
-
-const ALL_ITEMS = [
-  'Apple',
-  'Banana',
-  'Blueberry',
-  'Cherry',
-  'Cranberry',
-  'Grape',
-  'Kiwi',
-  'Lemon',
-  'Lime',
-  'Mango',
-  'Orange',
-  'Peach',
-  'Pear',
-  'Pineapple',
-  'Strawberry',
-];
 
 interface Layout {
   x: number;
@@ -35,22 +17,39 @@ interface Layout {
   height: number;
 }
 
-interface Suggestion {
-  id: number | string;
+interface Option {
+  id: number;
   name: string;
 }
 
 interface AutocompleteInputProps {
   label: string;
-  value?: string;
-  suggestions: Suggestion[];
-  onSelect: (item: string) => void;
+  query: string;
+  setQuery: (query: string) => void;
+  options: Option[];
+  onSelect: (optionId: number | null) => void;
+  loading: boolean;
+  onLoadSuggestions: () => void;
+  onAddOption: (name: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  selectedOption: Option | null;
 }
 
-const AutocompleteInput = ({ label, onSelect }: AutocompleteInputProps) => {
-  const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+const AutocompleteInput = ({
+  label,
+  query,
+  setQuery,
+  options,
+  loading,
+  onSelect,
+  onLoadSuggestions,
+  onAddOption,
+  selectedOption,
+  onFocus,
+  onBlur,
+}: AutocompleteInputProps) => {
+  const [suggestions, setSuggestions] = useState<Option[]>(options);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textInputRef = useRef<View>(null);
   const [inputLayout, setInputLayout] = useState<Layout | null>(null);
@@ -58,11 +57,8 @@ const AutocompleteInput = ({ label, onSelect }: AutocompleteInputProps) => {
   const theme = useTheme();
 
   const measureInput = useCallback(() => {
-    console.log('measuring input');
     if (textInputRef.current) {
-      console.log('textInputRef.current', textInputRef.current);
       const nodeHandle = findNodeHandle(textInputRef.current);
-      console.log('nodeHandle', nodeHandle);
       if (nodeHandle) {
         textInputRef.current.measureInWindow(
           (x: number, y: number, width: number, height: number) => {
@@ -95,48 +91,58 @@ const AutocompleteInput = ({ label, onSelect }: AutocompleteInputProps) => {
 
   useEffect(() => {
     if (query.length > 0) {
-      setLoading(true);
-      setShowSuggestions(true);
+      if (!selectedOption || selectedOption.name !== query) {
+        setShowSuggestions(true);
+      }
       const timeoutId = setTimeout(() => {
-        const filtered = ALL_ITEMS.filter(item =>
-          item.toLowerCase().includes(query.toLowerCase()),
+        const filtered = options.filter(item =>
+          item.name.toLowerCase().includes(query.toLowerCase()),
         );
 
-        const notExactMatch = filtered.indexOf(query) === -1;
-        console.log('exactMatch', notExactMatch);
-
-        if (notExactMatch) {
-          filtered.unshift(`Add ${query}`);
-        }
-
         setSuggestions(filtered);
-        setLoading(false);
       }, 300);
 
       return () => clearTimeout(timeoutId);
     } else {
-      setSuggestions(ALL_ITEMS);
-      // setShowSuggestions(false);
-      setLoading(false);
+      setSuggestions(options);
     }
-  }, [query]);
+  }, [query, options, selectedOption]);
 
-  const handleSelectSuggestion = (item: string) => {
-    setQuery(item);
+  const handleSelectSuggestion = (item: Option) => {
+    setQuery(item.name);
     setSuggestions([]);
     setShowSuggestions(false);
+
     if (onSelect) {
-      onSelect(item);
+      onSelect(item.id);
     }
   };
 
   const handleFocus = () => {
     measureInput();
     setShowSuggestions(true);
+    onLoadSuggestions();
 
     if (query.length === 0) {
-      setSuggestions(ALL_ITEMS);
+      setSuggestions(options);
     }
+
+    onFocus && onFocus();
+  };
+
+  const notExactMatch =
+    suggestions.findIndex(item => item.name === query) === -1;
+
+  const handleBlur = () => {
+    setTimeout(() => setShowSuggestions(false), 150);
+    if (!selectedOption || selectedOption.name !== query) {
+      setQuery('');
+      setSuggestions(options);
+      if (onSelect) {
+        onSelect(null);
+      }
+    }
+    onBlur && onBlur();
   };
 
   return (
@@ -146,7 +152,7 @@ const AutocompleteInput = ({ label, onSelect }: AutocompleteInputProps) => {
           label={label}
           value={query}
           onChangeText={setQuery}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onBlur={handleBlur}
           onFocus={handleFocus}
         />
       </View>
@@ -164,20 +170,48 @@ const AutocompleteInput = ({ label, onSelect }: AutocompleteInputProps) => {
             ]}>
             {loading ? (
               <ActivityIndicator animating={true} style={styles.loader} />
-            ) : suggestions.length > 0 ? (
-              <FlatList
-                data={suggestions}
-                keyExtractor={item => item}
-                renderItem={({ item }) => (
+            ) : (
+              <>
+                {notExactMatch && query && (
                   <List.Item
-                    title={item}
-                    onPress={() => handleSelectSuggestion(item)}
+                    title={`Create "${query}"`}
+                    onPress={() => onAddOption(query)}
+                    left={props => <List.Icon {...props} icon="plus" />}
                   />
                 )}
-                keyboardShouldPersistTaps="handled"
-              />
-            ) : (
-              <Text style={styles.noResults}>No results found</Text>
+                {suggestions.length > 0 && (
+                  <FlatList
+                    data={suggestions}
+                    keyExtractor={item => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <List.Item
+                        title={item.name}
+                        onPress={() => handleSelectSuggestion(item)}
+                        style={
+                          selectedOption?.id === item.id
+                            ? {
+                                backgroundColor: theme.colors.secondary,
+                              }
+                            : null
+                        }
+                        left={() => (
+                          <View style={{ marginLeft: 10 }}>
+                            <Checkbox
+                              status={
+                                selectedOption?.id === item.id
+                                  ? 'checked'
+                                  : 'unchecked'
+                              }
+                              onPress={() => handleSelectSuggestion(item)}
+                            />
+                          </View>
+                        )}
+                      />
+                    )}
+                    keyboardShouldPersistTaps="handled"
+                  />
+                )}
+              </>
             )}
           </Surface>
         </Portal>

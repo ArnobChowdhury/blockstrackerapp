@@ -1,13 +1,15 @@
 import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
 import { TaskScheduleTypeEnum, TimeOfDay } from '../../types';
-import type { Task } from '../../types';
+import type { Task, Space } from '../../types';
 
 interface NewTaskData {
   title: string;
   description?: string;
   schedule: TaskScheduleTypeEnum;
+  dueDate?: Date;
   timeOfDay: TimeOfDay | null;
   shouldBeScored: number;
+  space: Space | null;
 }
 
 export class TaskRepository {
@@ -21,18 +23,21 @@ export class TaskRepository {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO tasks (
-        title, description, schedule, time_of_day, should_be_scored, created_at, modified_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?);
+        title, description, schedule, due_date, time_of_day,
+        should_be_scored, created_at, modified_at, space_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     const params = [
       taskData.title,
       taskData.description,
       taskData.schedule,
+      taskData.dueDate?.toISOString(),
       taskData.timeOfDay,
       taskData.shouldBeScored,
       now,
       now,
+      taskData.space ? taskData.space.id : null,
     ];
 
     console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
@@ -96,6 +101,79 @@ export class TaskRepository {
       console.error('[DB Repo] Failed to SELECT tasks:', error);
       throw new Error(
         `Failed to retrieve tasks: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+}
+
+export class SpaceRepository {
+  private db: NitroSQLiteConnection;
+
+  constructor(database: NitroSQLiteConnection) {
+    this.db = database;
+  }
+
+  async getAllSpaces(): Promise<Space[]> {
+    const sql = `
+      SELECT id, name, created_at, modified_at FROM spaces;
+    `;
+
+    console.log('[DB Repo] Attempting to SELECT all spaces:', { sql });
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql);
+      console.log(
+        '[DB Repo] SELECT successful, rows found:',
+        resultSet.rows?.length,
+      );
+
+      const spaces: Space[] = [];
+
+      if (resultSet.rows) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const space = resultSet.rows.item(i);
+          if (space) {
+            const transformedSpace: Space = {
+              id: space.id as number,
+              name: space.name as string,
+              createdAt: space.created_at as string,
+              modifiedAt: space.modified_at as string,
+            };
+
+            spaces.push(transformedSpace);
+          }
+        }
+      }
+
+      return spaces;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to SELECT spaces:', error);
+      throw new Error(
+        `Failed to retrieve spaces: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  async addSpace(name: string): Promise<QueryResult> {
+    const now = new Date().toISOString();
+    const sql = `
+      INSERT INTO spaces (
+        name, created_at, modified_at
+      ) VALUES (?, ?, ?);
+    `;
+
+    const params = [name, now, now];
+
+    console.log('[DB Repo] Attempting to INSERT Space:', { sql, params });
+
+    try {
+      const result: QueryResult = await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Space INSERT successful:', result);
+
+      return result;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to INSERT space:', error);
+      throw new Error(
+        `Failed to save the space: ${error.message || 'Unknown error'}`,
       );
     }
   }
