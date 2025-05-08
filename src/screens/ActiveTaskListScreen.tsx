@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useLayoutEffect,
+} from 'react';
 import {
   StyleSheet,
   View,
@@ -112,7 +117,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     [category],
   );
 
-  const renderTaskItem = ({ item }: {item: Task}) => (
+  const renderTaskItem = ({ item }: { item: Task }) => (
     <List.Item
       title={item.title}
       titleNumberOfLines={2}
@@ -121,7 +126,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
       style={styles.listItem}
       left={props => (
         <View {...props} style={styles.checkboxContainer}>
-          <Checkbox.Android
+          <Checkbox
             status={'unchecked'}
             onPress={() => handleCheckTask(item.id)}
           />

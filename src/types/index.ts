@@ -30,3 +30,13 @@ export interface Space {
   createdAt: string;
   modifiedAt: string;
 }
+
+export enum DaysInAWeek {
+  Sunday = 'sunday',
+  Monday = 'monday',
+  Tuesday = 'tuesday',
+  Wednesday = 'wednesday',
+  Thursday = 'thursday',
+  Friday = 'friday',
+  Saturday = 'saturday',
+}

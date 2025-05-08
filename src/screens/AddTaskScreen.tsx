@@ -12,6 +12,7 @@ import {
   SpaceRepository,
 } from '../services/database/repository';
 import AutocompleteInput from '../shared/components/Autocomplete';
+import { useFocusEffect } from '@react-navigation/native';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootTabParamList } from '../navigation/RootNavigator';
@@ -24,7 +25,7 @@ import {
   Snackbar,
   Divider,
 } from 'react-native-paper';
-import { TaskScheduleTypeEnum, TimeOfDay } from '../types';
+import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
 import type { Space } from '../types';
 import { capitalize } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
@@ -49,6 +50,7 @@ const AddTaskScreen = ({}: Props) => {
 
   const [selectedDateVisible, setSelectedDateVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDays, setSelectedDays] = useState<DaysInAWeek[]>([]);
 
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
 
@@ -117,6 +119,8 @@ const AddTaskScreen = ({}: Props) => {
     console.log('[Form] Reset complete');
   }, []);
 
+  useFocusEffect(resetForm);
+
   const handleAddTask = async () => {
     const trimmedTaskName = taskName.trim();
     if (!trimmedTaskName) {
@@ -134,11 +138,12 @@ const AddTaskScreen = ({}: Props) => {
 
     setIsSaving(true);
 
-    const trimmedDescription = taskDescription.trim();
-    const isScorableType =
+    const trimmedDescription = taskDescription.trim(); // crucial todo - description need to be html. Need to find an rich editor and html parser
+    const isRepetitiveTask =
       selectedScheduleType === TaskScheduleTypeEnum.Daily ||
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
-    const finalShouldBeScored = isScorableType ? (shouldBeScored ? 1 : 0) : 0;
+
+    const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
 
     try {
       await taskRepository.addTask({
@@ -187,7 +192,6 @@ const AddTaskScreen = ({}: Props) => {
 
   const [spaceQuery, setSpaceQuery] = useState('');
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
-  // const [errorLoadingSpace, setErrorLoadingSpace] = useState();
   const [isSpaceOnFocus, setIsSpaceOnFocus] = useState(false);
 
   const handleSpaceOnFocus = () => {
@@ -257,6 +261,12 @@ const AddTaskScreen = ({}: Props) => {
     [setSelectedSpace, allSpaces],
   );
 
+  const handleDayToggle = (day: DaysInAWeek) => {
+    setSelectedDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day],
+    );
+  };
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -276,7 +286,12 @@ const AddTaskScreen = ({}: Props) => {
     );
   }
 
-  const addTaskDisabled = !taskName || !selectedScheduleType || isSpaceOnFocus;
+  const addTaskDisabled =
+    !taskName ||
+    !selectedScheduleType ||
+    isSpaceOnFocus ||
+    (selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
+      selectedDays.length === 0);
 
   return (
     <SafeAreaView
@@ -284,7 +299,7 @@ const AddTaskScreen = ({}: Props) => {
       edges={['top', 'bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <TextInput
-          label="Task Name *"
+          label="Task Name*"
           value={taskName}
           onChangeText={setTaskName}
           style={styles.textInput}
@@ -328,6 +343,46 @@ const AddTaskScreen = ({}: Props) => {
           </>
         )}
 
+        {selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek && (
+          <>
+            <Text variant="titleMedium" style={styles.inputHeader}>
+              Select Days*
+            </Text>
+            <View style={styles.chipContainer}>
+              {Object.values(DaysInAWeek).map((day, index) => (
+                <Chip
+                  key={index}
+                  mode="outlined"
+                  style={styles.chip}
+                  selected={selectedDays.includes(day)}
+                  showSelectedOverlay={true}
+                  onPress={() => handleDayToggle(day)}
+                  disabled={isSaving}>
+                  {capitalize(day)}
+                </Chip>
+              ))}
+            </View>
+          </>
+        )}
+
+        {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
+          selectedScheduleType ===
+            TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
+          <View style={styles.checkboxContainer}>
+            <Checkbox
+              status={shouldBeScored ? 'checked' : 'unchecked'}
+              onPress={handleShouldBeScored}
+              disabled={isSaving}
+            />
+            <Text
+              variant="bodyMedium"
+              onPress={isSaving ? undefined : handleShouldBeScored}
+              style={isSaving ? styles.disabledText : null}>
+              Should be scored
+            </Text>
+          </View>
+        )}
+
         <Text variant="titleMedium" style={styles.inputHeader}>
           Time of day
         </Text>
@@ -346,23 +401,6 @@ const AddTaskScreen = ({}: Props) => {
           ))}
         </View>
 
-        {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
-          selectedScheduleType ===
-            TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
-          <View style={styles.checkboxContainer}>
-            <Checkbox.Android
-              status={shouldBeScored ? 'checked' : 'unchecked'}
-              onPress={handleShouldBeScored}
-              disabled={isSaving}
-            />
-            <Text
-              variant="bodyMedium"
-              onPress={isSaving ? undefined : handleShouldBeScored}
-              style={isSaving ? styles.disabledText : null}>
-              Should be scored
-            </Text>
-          </View>
-        )}
         <AutocompleteInput
           label="Select or Create a space for the task (Optional)"
           query={spaceQuery}
@@ -452,7 +490,7 @@ const styles = StyleSheet.create({
   chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   chip: {
     marginRight: 8,
@@ -467,8 +505,6 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 5,
   },
   disabledText: {
     color: '#a0a0a0',
