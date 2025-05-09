@@ -1,7 +1,8 @@
 import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
-import { TaskScheduleTypeEnum, TimeOfDay } from '../../types';
+import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../../types';
 import type { Task, Space } from '../../types';
 
+// todo shouldBeScored should not be in NewTaskData
 interface NewTaskData {
   title: string;
   description?: string;
@@ -101,6 +102,81 @@ export class TaskRepository {
       console.error('[DB Repo] Failed to SELECT tasks:', error);
       throw new Error(
         `Failed to retrieve tasks: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+}
+
+interface NewRepetitiveTaskTemplateData {
+  title: string;
+  description?: string;
+  schedule: TaskScheduleTypeEnum;
+  timeOfDay: TimeOfDay | null;
+  days: DaysInAWeek[];
+  shouldBeScored: number;
+  space: Space | null;
+}
+
+export class RepetitiveTaskTemplateRepository {
+  private db: NitroSQLiteConnection;
+
+  constructor(database: NitroSQLiteConnection) {
+    this.db = database;
+  }
+
+  async addRepetitiveTaskTemplate(
+    repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
+  ): Promise<QueryResult> {
+    const now = new Date().toISOString();
+    const sql = `
+      INSERT INTO repetitive_task_templates (
+        title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        should_be_scored, created_at, modified_at, space_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+
+    const params = [
+      repetitiveTaskTemplateData.title,
+      repetitiveTaskTemplateData.description,
+      repetitiveTaskTemplateData.schedule,
+      repetitiveTaskTemplateData.timeOfDay,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Monday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Tuesday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Wednesday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Thursday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Friday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Saturday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Sunday) ? 1 : 0,
+      repetitiveTaskTemplateData.shouldBeScored,
+      now,
+      now,
+      repetitiveTaskTemplateData.space
+        ? repetitiveTaskTemplateData.space.id
+        : null,
+    ];
+
+    console.log('[DB Repo] Attempting to INSERT Repetitive Task Template:', {
+      sql,
+      params,
+    });
+
+    try {
+      const result: QueryResult = await this.db.executeAsync(sql, params);
+      console.log(
+        '[DB Repo] Repetitive Task Template INSERT successful:',
+        result,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to INSERT Repetitive Task Template:',
+        error,
+      );
+      throw new Error(
+        `Failed to save the Repetitive Task Template: ${
+          error.message || 'Unknown error'
+        }`,
       );
     }
   }

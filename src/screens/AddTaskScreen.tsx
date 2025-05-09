@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   TaskRepository,
+  RepetitiveTaskTemplateRepository,
   SpaceRepository,
 } from '../services/database/repository';
 import AutocompleteInput from '../shared/components/Autocomplete';
@@ -57,6 +58,10 @@ const AddTaskScreen = ({}: Props) => {
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
+  const [
+    repetitiveTaskTemplateRepository,
+    setRepetitiveTaskTemplateRepository,
+  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
   const [spaceRepository, setSpaceRepository] =
     useState<SpaceRepository | null>(null);
 
@@ -67,6 +72,16 @@ const AddTaskScreen = ({}: Props) => {
       setTaskRepository(new TaskRepository(db));
     } else {
       setTaskRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setRepetitiveTaskTemplateRepository(
+        new RepetitiveTaskTemplateRepository(db),
+      );
+    } else {
+      setRepetitiveTaskTemplateRepository(null);
     }
   }, [db, dbError, isDbLoading]);
 
@@ -114,6 +129,7 @@ const AddTaskScreen = ({}: Props) => {
     setSelectedDate(undefined);
     setSelectedSpace(null);
     setSpaceQuery('');
+    setSelectedDays([]);
     setIsSaving(false);
 
     console.log('[Form] Reset complete');
@@ -136,6 +152,14 @@ const AddTaskScreen = ({}: Props) => {
       return;
     }
 
+    if (!repetitiveTaskTemplateRepository) {
+      Alert.alert(
+        'Database Error',
+        'The database repository is not ready. Please wait or restart the app.',
+      );
+      return;
+    }
+
     setIsSaving(true);
 
     const trimmedDescription = taskDescription.trim(); // crucial todo - description need to be html. Need to find an rich editor and html parser
@@ -146,15 +170,27 @@ const AddTaskScreen = ({}: Props) => {
     const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
 
     try {
-      await taskRepository.addTask({
-        title: trimmedTaskName,
-        description: trimmedDescription,
-        schedule: selectedScheduleType,
-        dueDate: selectedDate,
-        timeOfDay: selectedTimeOfDay,
-        shouldBeScored: finalShouldBeScored,
-        space: selectedSpace,
-      });
+      if (!isRepetitiveTask) {
+        await taskRepository.addTask({
+          title: trimmedTaskName,
+          description: trimmedDescription,
+          schedule: selectedScheduleType,
+          dueDate: selectedDate,
+          timeOfDay: selectedTimeOfDay,
+          shouldBeScored: finalShouldBeScored,
+          space: selectedSpace,
+        });
+      } else {
+        await repetitiveTaskTemplateRepository.addRepetitiveTaskTemplate({
+          title: trimmedTaskName,
+          description: trimmedDescription,
+          schedule: selectedScheduleType,
+          days: selectedDays,
+          timeOfDay: selectedTimeOfDay,
+          shouldBeScored: finalShouldBeScored,
+          space: selectedSpace,
+        });
+      }
 
       setSnackbarMessage('Task added successfully!');
       setSnackbarVisible(true);
