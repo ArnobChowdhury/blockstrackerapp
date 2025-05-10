@@ -16,9 +16,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ActiveStackParamList } from '../navigation/RootNavigator';
-import { TaskRepository } from '../services/database/repository';
+import {
+  TaskRepository,
+  RepetitiveTaskTemplateRepository,
+} from '../services/database/repository';
 import { useDatabase } from '../shared/hooks/useDatabase';
-import type { Task } from '../types';
+import { Task, RepetitiveTaskTemplate, TaskScheduleTypeEnum } from '../types';
 
 const taskSeparator = () => <Divider />;
 
@@ -26,11 +29,20 @@ type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveTaskList'>;
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   const { category } = route.params;
+  console.log(
+    '[TaskList] Category:',
+    TaskScheduleTypeEnum.SpecificDaysInAWeek === category,
+  );
+
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [
+    repetitiveTaskTemplateRepository,
+    setRepetitiveTaskTemplateRepository,
+  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
+  const [tasks, setTasks] = useState<Task[] | RepetitiveTaskTemplate[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
@@ -50,6 +62,16 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setRepetitiveTaskTemplateRepository(
+        new RepetitiveTaskTemplateRepository(db),
+      );
+    } else {
+      setRepetitiveTaskTemplateRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
   const fetchTasksByCategory = useCallback(async () => {
     if (!taskRepository) {
       console.log(
@@ -57,11 +79,32 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
       );
       return;
     }
+
+    if (!repetitiveTaskTemplateRepository) {
+      console.log(
+        `[TaskList-${category}] fetchTasks called, but repository not ready.`,
+      );
+      return;
+    }
+
     console.log(`[TaskList-${category}] Fetching tasks...`);
     setIsLoadingTasks(true);
     setErrorLoadingTasks(null);
+
     try {
-      const fetchedTasks = await taskRepository.getAllActiveUnscheduledTasks();
+      let fetchedTasks: Task[] | RepetitiveTaskTemplate[] = [];
+      if (TaskScheduleTypeEnum.Unscheduled === category) {
+        fetchedTasks = await taskRepository.getAllActiveUnscheduledTasks();
+      } else if (TaskScheduleTypeEnum.Once === category) {
+        fetchedTasks = await taskRepository.getAllActiveOnceTasks();
+      } else if (TaskScheduleTypeEnum.Daily === category) {
+        fetchedTasks =
+          await repetitiveTaskTemplateRepository.getAllActiveDailyRepetitiveTaskTemplates();
+      } else if (TaskScheduleTypeEnum.SpecificDaysInAWeek === category) {
+        fetchedTasks =
+          await repetitiveTaskTemplateRepository.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+      }
+
       console.log(
         `[TaskList-${category}] Fetched tasks count:`,
         fetchedTasks.length,
@@ -72,11 +115,11 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
       setErrorLoadingTasks(
         error.message || 'An unknown error occurred while fetching tasks.',
       );
-      setTasks([]); // Clear tasks on error
+      setTasks([]);
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [taskRepository, category]);
+  }, [taskRepository, repetitiveTaskTemplateRepository, category]);
 
   useFocusEffect(
     useCallback(() => {
@@ -122,16 +165,21 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
       title={item.title}
       titleNumberOfLines={2}
       description={item.description}
-      descriptionNumberOfLines={3}
+      descriptionNumberOfLines={1}
       style={styles.listItem}
-      left={props => (
-        <View {...props} style={styles.checkboxContainer}>
-          <Checkbox
-            status={'unchecked'}
-            onPress={() => handleCheckTask(item.id)}
-          />
-        </View>
-      )}
+      {...(category === TaskScheduleTypeEnum.Unscheduled ||
+      category === TaskScheduleTypeEnum.Once
+        ? {
+            left: props => (
+              <View {...props} style={styles.checkboxContainer}>
+                <Checkbox
+                  status={'unchecked'}
+                  onPress={() => handleCheckTask(item.id)}
+                />
+              </View>
+            ),
+          }
+        : {})}
       right={props => (
         <View {...props} style={styles.iconContainer}>
           <IconButton

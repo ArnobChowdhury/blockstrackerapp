@@ -1,6 +1,6 @@
 import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
 import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../../types';
-import type { Task, Space } from '../../types';
+import type { Task, RepetitiveTaskTemplate, Space } from '../../types';
 
 // todo shouldBeScored should not be in NewTaskData
 interface NewTaskData {
@@ -57,14 +57,25 @@ export class TaskRepository {
   }
 
   async getAllActiveUnscheduledTasks(): Promise<Task[]> {
+    return this._getAllActiveTasksBySchedule(TaskScheduleTypeEnum.Unscheduled);
+  }
+
+  async getAllActiveOnceTasks(): Promise<Task[]> {
+    return this._getAllActiveTasksBySchedule(TaskScheduleTypeEnum.Once);
+  }
+
+  private async _getAllActiveTasksBySchedule(
+    schedule: TaskScheduleTypeEnum.Once | TaskScheduleTypeEnum.Unscheduled,
+  ): Promise<Task[]> {
     const sql = `
       SELECT
-        id, title, description, schedule, time_of_day, should_be_scored, created_at, modified_at, is_active
+        id, title, description, schedule, time_of_day, should_be_scored,
+        created_at, modified_at, is_active
       FROM tasks
       WHERE schedule = ? AND is_active = 1
       ORDER BY created_at DESC; -- Order by creation date, newest first
     `;
-    const params: any[] = [TaskScheduleTypeEnum.Unscheduled];
+    const params: any[] = [schedule];
 
     console.log('[DB Repo] Attempting to SELECT all active tasks:', { sql });
     try {
@@ -179,6 +190,105 @@ export class RepetitiveTaskTemplateRepository {
         }`,
       );
     }
+  }
+
+  private async _getAllActiveRepetitiveTaskTemplatesBySchedule(
+    schedule:
+      | TaskScheduleTypeEnum.Daily
+      | TaskScheduleTypeEnum.SpecificDaysInAWeek,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    const sql = `
+      SELECT
+        id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
+      FROM repetitive_task_templates
+      WHERE schedule = ? AND is_active = 1
+      ORDER BY created_at DESC;
+    `;
+    const params: any[] = [schedule];
+
+    console.log(
+      '[DB Repo] Attempting to SELECT all active repetitive task templates:',
+      { sql },
+    );
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      console.log(
+        '[DB Repo] SELECT successful, rows found:',
+        resultSet.rows?.length,
+      );
+
+      const repetitiveTaskTemplates: RepetitiveTaskTemplate[] = [];
+
+      if (resultSet.rows) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const repetitiveTaskTemplate = resultSet.rows.item(i);
+          if (repetitiveTaskTemplate) {
+            const transformedRepetitiveTaskTemplate: RepetitiveTaskTemplate = {
+              id: repetitiveTaskTemplate.id as number,
+              title: repetitiveTaskTemplate.title as string,
+              isActive: (repetitiveTaskTemplate.is_active === 1) as boolean,
+              description: repetitiveTaskTemplate.description as string | null,
+              schedule: repetitiveTaskTemplate.schedule as TaskScheduleTypeEnum,
+              priority: repetitiveTaskTemplate.priority as number,
+              shouldBeScored: (repetitiveTaskTemplate.should_be_scored ===
+                1) as boolean,
+              monday: (repetitiveTaskTemplate.monday === 1) as boolean | null,
+              tuesday: (repetitiveTaskTemplate.tuesday === 1) as boolean | null,
+              wednesday: (repetitiveTaskTemplate.wednesday === 1) as
+                | boolean
+                | null,
+              thursday: (repetitiveTaskTemplate.thursday === 1) as
+                | boolean
+                | null,
+              friday: (repetitiveTaskTemplate.friday === 1) as boolean | null,
+              saturday: (repetitiveTaskTemplate.saturday === 1) as
+                | boolean
+                | null,
+              sunday: (repetitiveTaskTemplate.sunday === 1) as boolean | null,
+              timeOfDay: repetitiveTaskTemplate.time_of_day as TimeOfDay | null,
+              lastDateOfTaskGeneration:
+                repetitiveTaskTemplate.last_date_of_task_generation as
+                  | string
+                  | null,
+              createdAt: repetitiveTaskTemplate.created_at as string,
+              modifiedAt: repetitiveTaskTemplate.modified_at as string,
+              spaceId: repetitiveTaskTemplate.space_id as number | null,
+            };
+
+            repetitiveTaskTemplates.push(transformedRepetitiveTaskTemplate);
+          }
+        }
+      }
+
+      return repetitiveTaskTemplates;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to SELECT all active repetitive task templates:',
+        error,
+      );
+      throw new Error(
+        `Failed to get all active repetitive task templates: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async getAllActiveDailyRepetitiveTaskTemplates(): Promise<
+    RepetitiveTaskTemplate[]
+  > {
+    return this._getAllActiveRepetitiveTaskTemplatesBySchedule(
+      TaskScheduleTypeEnum.Daily,
+    );
+  }
+
+  async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(): Promise<
+    RepetitiveTaskTemplate[]
+  > {
+    return this._getAllActiveRepetitiveTaskTemplatesBySchedule(
+      TaskScheduleTypeEnum.SpecificDaysInAWeek,
+    );
   }
 }
 

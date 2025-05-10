@@ -24,6 +24,28 @@ export interface Task {
   modifiedAt: string;
 }
 
+export interface RepetitiveTaskTemplate {
+  id: number;
+  isActive: boolean;
+  title: string;
+  description: string | null;
+  schedule: TaskScheduleTypeEnum;
+  priority: number;
+  shouldBeScored: boolean;
+  monday: boolean | null;
+  tuesday: boolean | null;
+  wednesday: boolean | null;
+  thursday: boolean | null;
+  friday: boolean | null;
+  saturday: boolean | null;
+  sunday: boolean | null;
+  timeOfDay: TimeOfDay | null;
+  lastDateOfTaskGeneration: string | null;
+  createdAt: string;
+  modifiedAt: string;
+  spaceId: number | null;
+}
+
 export interface Space {
   id: number;
   name: string;
