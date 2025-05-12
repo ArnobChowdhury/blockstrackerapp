@@ -1,7 +1,7 @@
 // src/screens/ActiveCategoryListScreen.tsx
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { List, Divider } from 'react-native-paper';
+import { Text, List, Divider } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ActiveStackParamList } from '../navigation/RootNavigator'; // Import stack param list
@@ -28,7 +28,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
         {categoriesToDisplay.map((categoryKey, index) => (
           <React.Fragment key={categoryKey}>
             <List.Item
-              title={categoryKey}
+              title={<Text variant="titleMedium">{categoryKey}</Text>}
               right={props => <List.Icon {...props} icon="chevron-right" />}
               onPress={() => handleCategoryPress(categoryKey)}
               style={styles.listItem}

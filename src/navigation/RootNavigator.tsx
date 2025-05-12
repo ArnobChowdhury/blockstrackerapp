@@ -5,7 +5,7 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { BottomNavigation, useTheme } from 'react-native-paper';
+import { BottomNavigation, useTheme, Text } from 'react-native-paper';
 import { CommonActions } from '@react-navigation/native';
 import { StyleSheet } from 'react-native';
 import TodayScreen from '../screens/TodayScreen';
@@ -33,8 +33,11 @@ const ActiveStackNavigator = () => {
   return (
     <Stack.Navigator
       initialRouteName="ActiveCategoryList"
-      // screenOptions={{}}
-    >
+      screenOptions={{
+        headerTitle: ({ children }) => (
+          <Text variant="titleLarge">{children}</Text>
+        ),
+      }}>
       <Stack.Screen
         name="ActiveCategoryList"
         component={ActiveCategoryListScreen}

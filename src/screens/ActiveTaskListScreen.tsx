@@ -166,9 +166,11 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     item: Task | RepetitiveTaskTemplate;
   }) => (
     <List.Item
-      title={item.title}
+      title={<Text variant="bodyLarge">{item.title}</Text>}
       titleNumberOfLines={2}
-      description={item.description}
+      {...(item.description && {
+        description: <Text variant="bodyMedium">{item.description}</Text>,
+      })}
       descriptionNumberOfLines={1}
       style={styles.listItem}
       {...(category === TaskScheduleTypeEnum.Unscheduled ||
