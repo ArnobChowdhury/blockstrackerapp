@@ -1,7 +1,10 @@
-import { MD3LightTheme as DefaultTheme } from 'react-native-paper';
+import {
+  MD3LightTheme as DefaultTheme,
+  configureFonts,
+} from 'react-native-paper';
 import { MD3Theme } from 'react-native-paper/lib/typescript/types';
 
-const customFontFamily = {
+const customFontFamilyOverrides = {
   displayLarge: { fontFamily: 'HankenGrotesk-Bold' },
   displayMedium: { fontFamily: 'HankenGrotesk-Bold' },
   displaySmall: { fontFamily: 'HankenGrotesk-SemiBold' },
@@ -23,20 +26,12 @@ const customFontFamily = {
   labelSmall: { fontFamily: 'HankenGrotesk-Regular' },
 };
 
+// Use configureFonts to merge custom font families with default MD3 typescale properties
+const fonts = configureFonts({ config: customFontFamilyOverrides });
+
 export const theme: MD3Theme = {
   ...DefaultTheme,
-  fonts: {
-    ...DefaultTheme.fonts,
-    ...Object.fromEntries(
-      Object.entries(customFontFamily).map(([key, override]) => [
-        key,
-        {
-          ...DefaultTheme.fonts[key as keyof typeof DefaultTheme.fonts],
-          ...override,
-        },
-      ]),
-    ),
-  },
+  fonts: fonts,
   colors: {
     ...DefaultTheme.colors,
     primary: '#007A9F',

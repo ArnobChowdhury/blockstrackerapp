@@ -46,7 +46,6 @@ export class TaskRepository {
     try {
       const result: QueryResult = await this.db.executeAsync(sql, params);
       console.log('[DB Repo] Task INSERT successful:', result);
-
       return result;
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT task:', error);
@@ -57,27 +56,42 @@ export class TaskRepository {
   }
 
   async getAllActiveUnscheduledTasks(): Promise<Task[]> {
-    return this._getAllActiveTasksBySchedule(TaskScheduleTypeEnum.Unscheduled);
+    return this._getActiveTasksByCondition('schedule = ?', [
+      TaskScheduleTypeEnum.Unscheduled,
+    ]);
   }
 
   async getAllActiveOnceTasks(): Promise<Task[]> {
-    return this._getAllActiveTasksBySchedule(TaskScheduleTypeEnum.Once);
+    return this._getActiveTasksByCondition('schedule = ?', [
+      TaskScheduleTypeEnum.Once,
+    ]);
   }
 
-  private async _getAllActiveTasksBySchedule(
-    schedule: TaskScheduleTypeEnum.Once | TaskScheduleTypeEnum.Unscheduled,
+  async getAllActiveTasks(): Promise<Task[]> {
+    return this._getActiveTasksByCondition(); // no condition
+  }
+
+  private async _getActiveTasksByCondition(
+    conditionSql = '',
+    conditionParams: any[] = [],
   ): Promise<Task[]> {
+    const whereClause = ['is_active = 1'];
+    if (conditionSql) {
+      whereClause.push(conditionSql);
+    }
+
     const sql = `
       SELECT
         id, title, description, schedule, time_of_day, should_be_scored,
-        created_at, modified_at, is_active
+        created_at, modified_at, is_active, due_date
       FROM tasks
-      WHERE schedule = ? AND is_active = 1
-      ORDER BY created_at DESC; -- Order by creation date, newest first
+      WHERE ${whereClause.join(' AND ')}
+      ORDER BY created_at DESC;
     `;
-    const params: any[] = [schedule];
 
-    console.log('[DB Repo] Attempting to SELECT all active tasks:', { sql });
+    const params = [...conditionParams];
+    console.log('[DB Repo] Attempting to SELECT tasks:', { sql, params });
+
     try {
       const resultSet: QueryResult = await this.db.executeAsync(sql, params);
       console.log(
@@ -97,6 +111,7 @@ export class TaskRepository {
               isActive: (task.is_active === 1) as boolean,
               description: task.description as string | null,
               schedule: task.schedule as TaskScheduleTypeEnum,
+              dueDate: task.due_date as string | null,
               timeOfDay: task.time_of_day as TimeOfDay | null,
               shouldBeScored: (task.should_be_scored === 1) as boolean,
               createdAt: task.created_at as string,
@@ -113,6 +128,89 @@ export class TaskRepository {
       console.error('[DB Repo] Failed to SELECT tasks:', error);
       throw new Error(
         `Failed to retrieve tasks: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  // todo logic need to be re-checked. Especially, we need completion_status of the task.
+  async getTasksForToday(): Promise<Task[]> {
+    const sql = `
+      SELECT
+        id, title, description, schedule, due_date, time_of_day, should_be_scored,
+        created_at, modified_at, is_active
+      FROM tasks
+      WHERE is_active = 1 AND DATE(due_date) = DATE('now', 'localtime')
+      ORDER BY
+        CASE time_of_day
+          WHEN '${TimeOfDay.Morning}' THEN 1
+          WHEN '${TimeOfDay.Afternoon}' THEN 2
+          WHEN '${TimeOfDay.Evening}' THEN 3
+          WHEN '${TimeOfDay.Night}' THEN 4
+          ELSE 5 -- For null or other values, they appear last or in their own 'Any Time' group
+        END,
+        created_at DESC;
+    `;
+
+    console.log('[DB Repo] Attempting to SELECT tasks for today:', { sql });
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql); // No params for this query
+      console.log(
+        '[DB Repo] SELECT tasks for today successful, rows found:',
+        resultSet.rows?.length,
+      );
+
+      const tasks: Task[] = [];
+      if (resultSet.rows) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const row = resultSet.rows.item(i);
+          if (row) {
+            tasks.push({
+              id: row.id as number,
+              title: row.title as string,
+              isActive: (row.is_active === 1) as boolean,
+              description: row.description as string | null,
+              schedule: row.schedule as TaskScheduleTypeEnum,
+              dueDate: row.due_date as string | null,
+              timeOfDay: row.time_of_day as TimeOfDay | null,
+              shouldBeScored: (row.should_be_scored === 1) as boolean,
+              createdAt: row.created_at as string,
+              modifiedAt: row.modified_at as string,
+            });
+          }
+        }
+      }
+      return tasks;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to SELECT tasks for today:', error);
+      throw new Error(
+        `Failed to retrieve tasks for today: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  // todo logic need to be re-checked. Especially, we need check by the completion_status of the task.
+  async updateTaskActiveStatus(
+    taskId: number,
+    isActive: boolean,
+  ): Promise<QueryResult> {
+    const sql = 'UPDATE tasks SET is_active = ?, modified_at = ? WHERE id = ?;';
+    const params = [isActive ? 1 : 0, new Date().toISOString(), taskId];
+    console.log('[DB Repo] Attempting to UPDATE task active status:', {
+      sql,
+      params,
+    });
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Task active status UPDATE successful:', result);
+      return result;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to UPDATE task active status:', error);
+      throw new Error(
+        `Failed to update task active status: ${
+          error.message || 'Unknown error'
+        }`,
       );
     }
   }

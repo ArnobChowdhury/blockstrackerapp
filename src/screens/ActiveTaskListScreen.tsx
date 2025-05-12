@@ -160,7 +160,11 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     [category],
   );
 
-  const renderTaskItem = ({ item }: { item: Task }) => (
+  const renderTaskItem = ({
+    item,
+  }: {
+    item: Task | RepetitiveTaskTemplate;
+  }) => (
     <List.Item
       title={item.title}
       titleNumberOfLines={2}
@@ -182,12 +186,15 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         : {})}
       right={props => (
         <View {...props} style={styles.iconContainer}>
-          <IconButton
-            icon="calendar-refresh-outline"
-            size={20}
-            onPress={() => handleRescheduleTask(item.id)}
-            style={styles.iconButton}
-          />
+          {(category === TaskScheduleTypeEnum.Unscheduled ||
+            category === TaskScheduleTypeEnum.Once) && (
+            <IconButton
+              icon="calendar-refresh-outline"
+              size={20}
+              onPress={() => handleRescheduleTask(item.id)}
+              style={styles.iconButton}
+            />
+          )}
           <IconButton
             icon="delete-outline"
             size={20}
