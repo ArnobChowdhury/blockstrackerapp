@@ -15,7 +15,7 @@ import type { RootTabParamList } from '../navigation/RootNavigator';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { formatDate, capitalize } from '../shared/utils';
 import { TaskRepository } from '../services/database/repository';
-import { Task, TimeOfDay } from '../types';
+import { Task, TimeOfDay, TaskCompletionStatusEnum } from '../types';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'Today'>;
 
@@ -82,7 +82,7 @@ const TodayScreen = ({ navigation }: Props) => {
     null,
   );
   const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
-  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
@@ -101,7 +101,6 @@ const TodayScreen = ({ navigation }: Props) => {
     }
 
     console.log('[TodayScreen] Fetching tasks for today...');
-    setIsLoadingTasks(true);
     setErrorLoadingTasks(null);
 
     try {
@@ -127,17 +126,17 @@ const TodayScreen = ({ navigation }: Props) => {
   );
 
   const handleCheckTask = useCallback(
-    async (taskId: number) => {
+    async (taskId: number, completionStatus: TaskCompletionStatusEnum) => {
       if (!taskRepository) {
         return;
       }
 
       try {
-        // For now, "checking" a task means marking it as inactive.
-        // It will disappear from the list on next refresh.
-        await taskRepository.updateTaskActiveStatus(taskId, false);
-        Alert.alert('Task Updated', 'Task marked as done.');
-        fetchTasksForToday(); // Refresh the list
+        await taskRepository.updateTaskCompletionStatus(
+          taskId,
+          completionStatus,
+        );
+        await fetchTasksForToday();
       } catch (error: any) {
         Alert.alert('Error', `Failed to update task: ${error.message}`);
       }
@@ -160,17 +159,38 @@ const TodayScreen = ({ navigation }: Props) => {
           },
         ]}>
         <List.Item
-          title={<Text variant="bodyLarge">{item.title}</Text>}
+          title={
+            <Text
+              variant="bodyLarge"
+              style={
+                item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                  ? styles.taskCompleted
+                  : null
+              }>
+              {item.title}
+            </Text>
+          }
           {...(item.description && {
             description: <Text variant="bodyMedium">{item.description}</Text>,
           })}
           descriptionNumberOfLines={1}
-          style={styles.listItem}
+          style={[styles.listItem]}
           left={props => (
             <View {...props} style={styles.checkboxContainer}>
               <Checkbox
-                status={'unchecked'}
-                onPress={() => handleCheckTask(item.id)}
+                status={
+                  item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                    ? 'checked'
+                    : 'unchecked'
+                }
+                onPress={() =>
+                  handleCheckTask(
+                    item.id,
+                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                      ? TaskCompletionStatusEnum.INCOMPLETE
+                      : TaskCompletionStatusEnum.COMPLETE,
+                  )
+                }
               />
             </View>
           )}
@@ -246,7 +266,9 @@ const TodayScreen = ({ navigation }: Props) => {
           ListHeaderComponent={() => (
             <View>
               <Text variant="headlineLarge">Today</Text>
-              <Text variant="bodyLarge">{formatDate(dayjs())}</Text>
+              <Text variant="bodyLarge" style={styles.timeAndDate}>
+                {formatDate(dayjs())}
+              </Text>
             </View>
           )}
           ListEmptyComponent={
@@ -290,6 +312,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  timeAndDate: {
+    marginVertical: 10,
+    fontSize: 20,
+  },
   sectionList: {
     paddingHorizontal: 16,
   },
@@ -307,6 +333,9 @@ const styles = StyleSheet.create({
   listItem: {
     paddingHorizontal: 16,
     paddingLeft: 10,
+  },
+  taskCompleted: {
+    textDecorationLine: 'line-through',
   },
   checkboxContainer: {
     justifyContent: 'center',

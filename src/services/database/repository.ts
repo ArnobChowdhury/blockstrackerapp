@@ -1,5 +1,10 @@
 import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
-import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../../types';
+import {
+  TaskScheduleTypeEnum,
+  TimeOfDay,
+  DaysInAWeek,
+  TaskCompletionStatusEnum,
+} from '../../types';
 import type { Task, RepetitiveTaskTemplate, Space } from '../../types';
 
 // todo shouldBeScored should not be in NewTaskData
@@ -83,7 +88,7 @@ export class TaskRepository {
     const sql = `
       SELECT
         id, title, description, schedule, time_of_day, should_be_scored,
-        created_at, modified_at, is_active, due_date
+        created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
       WHERE ${whereClause.join(' AND ')}
       ORDER BY created_at DESC;
@@ -113,6 +118,8 @@ export class TaskRepository {
               schedule: task.schedule as TaskScheduleTypeEnum,
               dueDate: task.due_date as string | null,
               timeOfDay: task.time_of_day as TimeOfDay | null,
+              completionStatus:
+                task.completion_status as TaskCompletionStatusEnum,
               shouldBeScored: (task.should_be_scored === 1) as boolean,
               createdAt: task.created_at as string,
               modifiedAt: task.modified_at as string,
@@ -136,10 +143,11 @@ export class TaskRepository {
   async getTasksForToday(): Promise<Task[]> {
     const sql = `
       SELECT
-        id, title, description, schedule, due_date, time_of_day, should_be_scored,
-        created_at, modified_at, is_active
+        id, title, description, schedule, due_date, time_of_day,
+        should_be_scored, created_at, modified_at, is_active, completion_status
       FROM tasks
-      WHERE is_active = 1 AND DATE(due_date) = DATE('now', 'localtime')
+      WHERE DATE(due_date) = DATE('now', 'localtime')
+        AND completion_status IN ('${TaskCompletionStatusEnum.INCOMPLETE}', '${TaskCompletionStatusEnum.COMPLETE}')
       ORDER BY
         CASE time_of_day
           WHEN '${TimeOfDay.Morning}' THEN 1
@@ -173,6 +181,8 @@ export class TaskRepository {
               dueDate: row.due_date as string | null,
               timeOfDay: row.time_of_day as TimeOfDay | null,
               shouldBeScored: (row.should_be_scored === 1) as boolean,
+              completionStatus:
+                row.completion_status as TaskCompletionStatusEnum,
               createdAt: row.created_at as string,
               modifiedAt: row.modified_at as string,
             });
@@ -190,25 +200,32 @@ export class TaskRepository {
     }
   }
 
-  // todo logic need to be re-checked. Especially, we need check by the completion_status of the task.
-  async updateTaskActiveStatus(
+  async updateTaskCompletionStatus(
     taskId: number,
-    isActive: boolean,
+    status: TaskCompletionStatusEnum,
   ): Promise<QueryResult> {
-    const sql = 'UPDATE tasks SET is_active = ?, modified_at = ? WHERE id = ?;';
-    const params = [isActive ? 1 : 0, new Date().toISOString(), taskId];
-    console.log('[DB Repo] Attempting to UPDATE task active status:', {
+    const sql =
+      'UPDATE tasks SET completion_status = ?, modified_at = ? WHERE id = ?;';
+    const params = [status, new Date().toISOString(), taskId];
+    console.log('[DB Repo] Attempting to UPDATE task completion_status:', {
       sql,
       params,
     });
+
     try {
       const result = await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Task active status UPDATE successful:', result);
+      console.log(
+        '[DB Repo] Task completion_status UPDATE successful:',
+        result,
+      );
       return result;
     } catch (error: any) {
-      console.error('[DB Repo] Failed to UPDATE task active status:', error);
+      console.error(
+        '[DB Repo] Failed to UPDATE task completion_status:',
+        error,
+      );
       throw new Error(
-        `Failed to update task active status: ${
+        `Failed to update task completion_status: ${
           error.message || 'Unknown error'
         }`,
       );

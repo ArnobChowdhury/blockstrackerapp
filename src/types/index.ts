@@ -12,6 +12,12 @@ export enum TimeOfDay {
   Night = 'night',
 }
 
+export enum TaskCompletionStatusEnum {
+  INCOMPLETE = 'INCOMPLETE',
+  COMPLETE = 'COMPLETE',
+  FAILED = 'FAILED',
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -21,6 +27,7 @@ export interface Task {
   dueDate: string | null;
   timeOfDay: TimeOfDay | null;
   shouldBeScored: boolean;
+  completionStatus: TaskCompletionStatusEnum;
   createdAt: string;
   modifiedAt: string;
 }
