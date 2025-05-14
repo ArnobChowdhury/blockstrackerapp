@@ -222,9 +222,7 @@ const TodayScreen = ({ navigation }: Props) => {
   }
 
   return (
-    <SafeAreaView
-      style={styles.container}
-      edges={['top', 'bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.topBar}>
         <Logo width={200} height={60} />
       </View>
