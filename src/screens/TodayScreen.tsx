@@ -14,6 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootTabParamList } from '../navigation/RootNavigator';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { formatDate, capitalize } from '../shared/utils';
+import { Logo } from '../shared/components/icons';
 import { TaskRepository } from '../services/database/repository';
 import { Task, TimeOfDay, TaskCompletionStatusEnum } from '../types';
 
@@ -224,6 +225,9 @@ const TodayScreen = ({ navigation }: Props) => {
     <SafeAreaView
       style={styles.container}
       edges={['top', 'bottom', 'left', 'right']}>
+      <View style={styles.topBar}>
+        <Logo width={200} height={60} />
+      </View>
       {isLoadingTasks ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
@@ -264,8 +268,8 @@ const TodayScreen = ({ navigation }: Props) => {
           }}
           ItemSeparatorComponent={() => <Divider />}
           ListHeaderComponent={() => (
-            <View>
-              <Text variant="headlineLarge">Today</Text>
+            <View style={styles.paddingTop}>
+              <Text variant="titleLarge">Today</Text>
               <Text variant="bodyLarge" style={styles.timeAndDate}>
                 {formatDate(dayjs())}
               </Text>
@@ -296,6 +300,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  topBar: {
+    paddingLeft: 16,
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 1,
   },
   emptyListContainer: {
     flexGrow: 1,
@@ -341,6 +350,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+  },
+  paddingTop: {
+    paddingTop: 10,
   },
 });
 
