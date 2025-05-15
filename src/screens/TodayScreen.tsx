@@ -1,22 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
+import { StyleSheet, View, SectionList, ActivityIndicator } from 'react-native';
 import {
-  StyleSheet,
-  View,
-  SectionList,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { Text, Checkbox, List, Divider, IconButton } from 'react-native-paper';
+  Text,
+  Checkbox,
+  List,
+  Divider,
+  IconButton,
+  Snackbar,
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootTabParamList } from '../navigation/RootNavigator';
-import { useDatabase } from '../shared/hooks/useDatabase';
+import { useDatabase, useToggleTaskCompletionStatus } from '../shared/hooks';
 import { formatDate, capitalize } from '../shared/utils';
 import { Logo } from '../shared/components/icons';
 import { TaskRepository } from '../services/database/repository';
-import { Task, TimeOfDay, TaskCompletionStatusEnum } from '../types';
+import {
+  Task,
+  TimeOfDay,
+  TaskCompletionStatusEnum,
+  TaskScheduleTypeEnum,
+} from '../types';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'Today'>;
 
@@ -88,6 +94,9 @@ const TodayScreen = ({ navigation }: Props) => {
     null,
   );
 
+  const [screenRequestError, setScreenRequestError] = useState('');
+  const [showSnackbar, setShowSnackbar] = useState(false);
+
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
       setTaskRepository(new TaskRepository(db));
@@ -118,6 +127,17 @@ const TodayScreen = ({ navigation }: Props) => {
     }
   }, [taskRepository]);
 
+  const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
+    useToggleTaskCompletionStatus(taskRepository, fetchTasksForToday);
+
+  useEffect(() => {
+    if (toggleTaskCompletionError) {
+      console.log('inside use effect', toggleTaskCompletionError);
+      setScreenRequestError(toggleTaskCompletionError);
+      setShowSnackbar(true);
+    }
+  }, [toggleTaskCompletionError]);
+
   useFocusEffect(
     useCallback(() => {
       if (taskRepository) {
@@ -126,24 +146,12 @@ const TodayScreen = ({ navigation }: Props) => {
     }, [taskRepository, fetchTasksForToday]),
   );
 
-  const handleCheckTask = useCallback(
-    async (taskId: number, completionStatus: TaskCompletionStatusEnum) => {
-      if (!taskRepository) {
-        return;
-      }
-
-      try {
-        await taskRepository.updateTaskCompletionStatus(
-          taskId,
-          completionStatus,
-        );
-        await fetchTasksForToday();
-      } catch (error: any) {
-        Alert.alert('Error', `Failed to update task: ${error.message}`);
-      }
-    },
-    [taskRepository, fetchTasksForToday],
-  );
+  const handleSnackbarDismiss = () => {
+    setShowSnackbar(false);
+    setTimeout(() => {
+      setScreenRequestError('');
+    }, 1000);
+  };
 
   const renderTaskItem = ({
     item,
@@ -185,13 +193,33 @@ const TodayScreen = ({ navigation }: Props) => {
                     : 'unchecked'
                 }
                 onPress={() =>
-                  handleCheckTask(
+                  onToggleTaskCompletionStatus(
                     item.id,
                     item.completionStatus === TaskCompletionStatusEnum.COMPLETE
                       ? TaskCompletionStatusEnum.INCOMPLETE
                       : TaskCompletionStatusEnum.COMPLETE,
                   )
                 }
+              />
+            </View>
+          )}
+          right={props => (
+            <View {...props} style={styles.iconContainer}>
+              {(item.schedule === TaskScheduleTypeEnum.Unscheduled ||
+                item.schedule === TaskScheduleTypeEnum.Once) && (
+                <IconButton
+                  icon="calendar-refresh"
+                  size={20}
+                  // onPress={() => handleRescheduleTask(item.id)}
+                  style={styles.iconButton}
+                />
+              )}
+              <IconButton
+                icon="thumb-down-outline"
+                size={20}
+                iconColor="red"
+                // onPress={() => handleDeleteTask(item.id)} // Add delete handler if needed
+                style={styles.iconButton}
               />
             </View>
           )}
@@ -285,6 +313,18 @@ const TodayScreen = ({ navigation }: Props) => {
           }
         />
       )}
+      <Snackbar
+        visible={showSnackbar}
+        onDismiss={handleSnackbarDismiss}
+        onIconPress={handleSnackbarDismiss}
+        duration={3000}>
+        <View style={styles.snackbarContainer}>
+          <IconButton icon="alert-circle-outline" iconColor="red" />
+          <Text variant="bodyMedium" style={styles.snackbarText}>
+            {screenRequestError}
+          </Text>
+        </View>
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -351,6 +391,24 @@ const styles = StyleSheet.create({
   },
   paddingTop: {
     paddingTop: 10,
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  iconButton: {
+    margin: 0,
+    marginLeft: 4,
+  },
+  snackbarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 50,
+  },
+  snackbarText: {
+    color: 'white',
+    paddingRight: 10,
   },
 });
 
