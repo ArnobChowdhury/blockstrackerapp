@@ -13,7 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootTabParamList } from '../navigation/RootNavigator';
-import { useDatabase, useToggleTaskCompletionStatus } from '../shared/hooks';
+import {
+  useDatabase,
+  useToggleTaskCompletionStatus,
+  useTaskReschedule,
+} from '../shared/hooks';
 import { formatDate, capitalize } from '../shared/utils';
 import { Logo } from '../shared/components/icons';
 import { TaskRepository } from '../services/database/repository';
@@ -23,6 +27,7 @@ import {
   TaskCompletionStatusEnum,
   TaskScheduleTypeEnum,
 } from '../types';
+import { DatePickerModal } from 'react-native-paper-dates';
 
 type Props = NativeStackScreenProps<RootTabParamList, 'Today'>;
 
@@ -97,6 +102,12 @@ const TodayScreen = ({ navigation }: Props) => {
   const [screenRequestError, setScreenRequestError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
 
+  const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
+    number | null
+  >(null);
+  const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
+    useState<Date>();
+
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
       setTaskRepository(new TaskRepository(db));
@@ -130,13 +141,22 @@ const TodayScreen = ({ navigation }: Props) => {
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
     useToggleTaskCompletionStatus(taskRepository, fetchTasksForToday);
 
+  const { onTaskReschedule, error: toggleTaskScheduleError } =
+    useTaskReschedule(taskRepository, fetchTasksForToday);
+
   useEffect(() => {
     if (toggleTaskCompletionError) {
-      console.log('inside use effect', toggleTaskCompletionError);
       setScreenRequestError(toggleTaskCompletionError);
       setShowSnackbar(true);
     }
   }, [toggleTaskCompletionError]);
+
+  useEffect(() => {
+    if (toggleTaskScheduleError) {
+      setScreenRequestError(toggleTaskScheduleError);
+      setShowSnackbar(true);
+    }
+  }, [toggleTaskScheduleError]);
 
   useFocusEffect(
     useCallback(() => {
@@ -152,6 +172,22 @@ const TodayScreen = ({ navigation }: Props) => {
       setScreenRequestError('');
     }, 1000);
   };
+
+  const handleTaskRescheduling = useCallback(
+    async (params: { date: Date | undefined }) => {
+      if (!taskIdToBeRescheduled || !params.date) {
+        setScreenRequestError(
+          'An error occurred while rescheduling the task. Please try again.',
+        );
+        return;
+      }
+
+      await onTaskReschedule(taskIdToBeRescheduled, params.date);
+      setTaskIdToBeRescheduled(null);
+      setSelectedDateForTaskReschedule(undefined);
+    },
+    [taskIdToBeRescheduled, onTaskReschedule],
+  );
 
   const renderTaskItem = ({
     item,
@@ -210,7 +246,12 @@ const TodayScreen = ({ navigation }: Props) => {
                 <IconButton
                   icon="calendar-refresh"
                   size={20}
-                  // onPress={() => handleRescheduleTask(item.id)}
+                  onPress={() => {
+                    setSelectedDateForTaskReschedule(
+                      new Date(item.dueDate as string),
+                    );
+                    setTaskIdToBeRescheduled(item.id);
+                  }}
                   style={styles.iconButton}
                 />
               )}
@@ -218,7 +259,12 @@ const TodayScreen = ({ navigation }: Props) => {
                 icon="thumb-down-outline"
                 size={20}
                 iconColor="red"
-                // onPress={() => handleDeleteTask(item.id)} // Add delete handler if needed
+                onPress={() =>
+                  onToggleTaskCompletionStatus(
+                    item.id,
+                    TaskCompletionStatusEnum.FAILED,
+                  )
+                }
                 style={styles.iconButton}
               />
             </View>
@@ -325,6 +371,20 @@ const TodayScreen = ({ navigation }: Props) => {
           </Text>
         </View>
       </Snackbar>
+
+      <DatePickerModal
+        locale="en"
+        mode="single"
+        visible={!!taskIdToBeRescheduled}
+        onDismiss={() => setTaskIdToBeRescheduled(null)}
+        date={selectedDateForTaskReschedule}
+        onConfirm={handleTaskRescheduling}
+        label="Task Date"
+        calendarIcon="calendar-outline"
+        saveLabel="Reschedule Task"
+        animationType="slide"
+        validRange={{ startDate: new Date() }}
+      />
     </SafeAreaView>
   );
 };

@@ -231,6 +231,60 @@ export class TaskRepository {
       );
     }
   }
+
+  async updateTaskDueDate(taskId: number, dueDate: Date): Promise<QueryResult> {
+    console.log(
+      `[DB Repo] Attempting to update due date for task ID: ${taskId} to ${dueDate.toISOString()}`,
+    );
+    try {
+      const getTaskSql = 'SELECT schedule FROM tasks WHERE id = ?;';
+      const getTaskParams = [taskId];
+      console.log('[DB Repo] Fetching task to check schedule:', {
+        sql: getTaskSql,
+        params: getTaskParams,
+      });
+
+      const taskResult: QueryResult = await this.db.executeAsync(
+        getTaskSql,
+        getTaskParams,
+      );
+
+      if (!taskResult.rows || taskResult.rows.length === 0) {
+        throw new Error(`Task with ID ${taskId} not found.`);
+      }
+
+      const currentSchedule = taskResult.rows.item(0)
+        ?.schedule as TaskScheduleTypeEnum;
+      console.log(
+        `[DB Repo] Current schedule for task ${taskId}: ${currentSchedule}`,
+      );
+
+      const now = new Date().toISOString();
+
+      const scheduleToSet =
+        currentSchedule === TaskScheduleTypeEnum.Unscheduled
+          ? TaskScheduleTypeEnum.Once
+          : currentSchedule;
+
+      const updateSql =
+        'UPDATE tasks SET due_date = ?, schedule = ?, modified_at = ? WHERE id = ?;';
+      const updateParams = [dueDate.toISOString(), scheduleToSet, now, taskId];
+
+      console.log('[DB Repo] Attempting to UPDATE task:', {
+        sql: updateSql,
+        params: updateParams,
+      });
+
+      const result = await this.db.executeAsync(updateSql, updateParams);
+      console.log('[DB Repo] Task UPDATE successful:', result);
+      return result;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to UPDATE task:', error);
+      throw new Error(
+        `Failed to update task: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
 }
 
 interface NewRepetitiveTaskTemplateData {
