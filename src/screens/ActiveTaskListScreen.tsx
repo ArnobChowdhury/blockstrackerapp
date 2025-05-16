@@ -4,14 +4,15 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
+import { StyleSheet, View, ActivityIndicator, FlatList } from 'react-native';
 import {
-  StyleSheet,
-  View,
-  ActivityIndicator,
-  FlatList,
-  Alert,
-} from 'react-native';
-import { Text, Checkbox, IconButton, List, Divider } from 'react-native-paper';
+  Text,
+  Checkbox,
+  IconButton,
+  List,
+  Divider,
+  Snackbar,
+} from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,13 +21,18 @@ import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
 } from '../services/database/repository';
-import { useDatabase, useToggleTaskCompletionStatus } from '../shared/hooks';
+import {
+  useDatabase,
+  useToggleTaskCompletionStatus,
+  useTaskReschedule,
+} from '../shared/hooks';
 import {
   Task,
   RepetitiveTaskTemplate,
   TaskScheduleTypeEnum,
   TaskCompletionStatusEnum,
 } from '../types';
+import { DatePickerModal } from 'react-native-paper-dates';
 
 const taskSeparator = () => <Divider />;
 
@@ -126,8 +132,34 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }
   }, [taskRepository, repetitiveTaskTemplateRepository, category]);
 
+  const [screenRequestError, setScreenRequestError] = useState('');
+  const [showSnackbar, setShowSnackbar] = useState(false);
+
+  const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
+    number | null
+  >(null);
+  const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
+    useState<Date>();
+
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
     useToggleTaskCompletionStatus(taskRepository, fetchTasksByCategory);
+
+  const { onTaskReschedule, error: toggleTaskScheduleError } =
+    useTaskReschedule(taskRepository, fetchTasksByCategory);
+
+  useEffect(() => {
+    if (toggleTaskCompletionError) {
+      setScreenRequestError(toggleTaskCompletionError);
+      setShowSnackbar(true);
+    }
+  }, [toggleTaskCompletionError]);
+
+  useEffect(() => {
+    if (toggleTaskScheduleError) {
+      setScreenRequestError(toggleTaskScheduleError);
+      setShowSnackbar(true);
+    }
+  }, [toggleTaskScheduleError]);
 
   useFocusEffect(
     useCallback(() => {
@@ -140,18 +172,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         );
       }
     }, [category, fetchTasksByCategory, taskRepository]),
-  );
-
-  const handleRescheduleTask = useCallback(
-    (taskId: number) => {
-      console.log(
-        `[TaskList-${category}] Reschedule icon pressed for task ID: ${taskId}`,
-      );
-      Alert.alert('Action Needed', `Reschedule task ${taskId}`);
-      // TODO: Implement navigation/modal logic
-      // Example: navigation.navigate('RescheduleScreen', { taskId }); // Need to add RescheduleScreen to stack
-    },
-    [category],
   );
 
   const renderTaskItem = ({
@@ -193,9 +213,14 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
                   <IconButton
                     icon="calendar-refresh-outline"
                     size={20}
-                    onPress={
-                      () => handleRescheduleTask(item.id) // Add reschedule handler if needed
-                    }
+                    onPress={() => {
+                      if ((item as Task).dueDate) {
+                        setSelectedDateForTaskReschedule(
+                          new Date((item as Task).dueDate as string),
+                        );
+                      }
+                      setTaskIdToBeRescheduled(item.id);
+                    }}
                     style={styles.iconButton}
                   />
                 )}
@@ -217,6 +242,29 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         : {})}
     />
   );
+
+  const handleTaskRescheduling = useCallback(
+    async (params: { date: Date | undefined }) => {
+      if (!taskIdToBeRescheduled || !params.date) {
+        setScreenRequestError(
+          'An error occurred while rescheduling the task. Please try again.',
+        );
+        return;
+      }
+
+      await onTaskReschedule(taskIdToBeRescheduled, params.date);
+      setTaskIdToBeRescheduled(null);
+      setSelectedDateForTaskReschedule(undefined);
+    },
+    [taskIdToBeRescheduled, onTaskReschedule],
+  );
+
+  const handleSnackbarDismiss = () => {
+    setShowSnackbar(false);
+    setTimeout(() => {
+      setScreenRequestError('');
+    }, 1000);
+  };
 
   if (isDbLoading) {
     return (
@@ -266,6 +314,33 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
           }
         />
       )}
+
+      <Snackbar
+        visible={showSnackbar}
+        onDismiss={handleSnackbarDismiss}
+        onIconPress={handleSnackbarDismiss}
+        duration={3000}>
+        <View style={styles.snackbarContainer}>
+          <IconButton icon="alert-circle-outline" iconColor="red" />
+          <Text variant="bodyMedium" style={styles.snackbarText}>
+            {screenRequestError}
+          </Text>
+        </View>
+      </Snackbar>
+
+      <DatePickerModal
+        locale="en"
+        mode="single"
+        visible={!!taskIdToBeRescheduled}
+        onDismiss={() => setTaskIdToBeRescheduled(null)}
+        date={selectedDateForTaskReschedule}
+        onConfirm={handleTaskRescheduling}
+        label="Task Date"
+        calendarIcon="calendar-outline"
+        saveLabel="Reschedule Task"
+        animationType="slide"
+        validRange={{ startDate: new Date() }}
+      />
     </SafeAreaView>
   );
 };
@@ -317,6 +392,15 @@ const styles = StyleSheet.create({
   iconButton: {
     margin: 0,
     marginLeft: 4,
+  },
+  snackbarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 50,
+  },
+  snackbarText: {
+    color: 'white',
+    paddingRight: 10,
   },
 });
 
