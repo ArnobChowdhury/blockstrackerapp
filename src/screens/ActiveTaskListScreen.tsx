@@ -20,8 +20,13 @@ import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
 } from '../services/database/repository';
-import { useDatabase } from '../shared/hooks/useDatabase';
-import { Task, RepetitiveTaskTemplate, TaskScheduleTypeEnum } from '../types';
+import { useDatabase, useToggleTaskCompletionStatus } from '../shared/hooks';
+import {
+  Task,
+  RepetitiveTaskTemplate,
+  TaskScheduleTypeEnum,
+  TaskCompletionStatusEnum,
+} from '../types';
 
 const taskSeparator = () => <Divider />;
 
@@ -38,12 +43,13 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
+
   const [
     repetitiveTaskTemplateRepository,
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
   const [tasks, setTasks] = useState<Task[] | RepetitiveTaskTemplate[]>([]);
-  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
@@ -88,7 +94,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }
 
     console.log(`[TaskList-${category}] Fetching tasks...`);
-    setIsLoadingTasks(true);
     setErrorLoadingTasks(null);
 
     try {
@@ -121,6 +126,9 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }
   }, [taskRepository, repetitiveTaskTemplateRepository, category]);
 
+  const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
+    useToggleTaskCompletionStatus(taskRepository, fetchTasksByCategory);
+
   useFocusEffect(
     useCallback(() => {
       console.log(`[TaskList-${category}] Screen focused.`);
@@ -132,20 +140,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         );
       }
     }, [category, fetchTasksByCategory, taskRepository]),
-  );
-
-  const handleCheckTask = useCallback(
-    (taskId: number) => {
-      console.log(
-        `[TaskList-${category}] Checkbox toggled for task ID: ${taskId}`,
-      );
-      Alert.alert(
-        'Action Needed',
-        `Mark task ${taskId} as complete/incomplete`,
-      );
-      // TODO: Implement DB update logic
-    },
-    [category],
   );
 
   const handleRescheduleTask = useCallback(
@@ -180,32 +174,47 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
               <View {...props} style={styles.checkboxContainer}>
                 <Checkbox
                   status={'unchecked'}
-                  onPress={() => handleCheckTask(item.id)}
+                  onPress={() =>
+                    onToggleTaskCompletionStatus(
+                      item.id,
+                      (item as Task).completionStatus ===
+                        TaskCompletionStatusEnum.COMPLETE
+                        ? TaskCompletionStatusEnum.INCOMPLETE
+                        : TaskCompletionStatusEnum.COMPLETE,
+                    )
+                  }
+                />
+              </View>
+            ),
+            right: props => (
+              <View {...props} style={styles.iconContainer}>
+                {(category === TaskScheduleTypeEnum.Unscheduled ||
+                  category === TaskScheduleTypeEnum.Once) && (
+                  <IconButton
+                    icon="calendar-refresh-outline"
+                    size={20}
+                    onPress={
+                      () => handleRescheduleTask(item.id) // Add reschedule handler if needed
+                    }
+                    style={styles.iconButton}
+                  />
+                )}
+                <IconButton
+                  icon="delete-outline"
+                  size={20}
+                  iconColor="red"
+                  onPress={() =>
+                    onToggleTaskCompletionStatus(
+                      item.id,
+                      TaskCompletionStatusEnum.FAILED,
+                    )
+                  }
+                  style={styles.iconButton}
                 />
               </View>
             ),
           }
         : {})}
-      right={props => (
-        <View {...props} style={styles.iconContainer}>
-          {(category === TaskScheduleTypeEnum.Unscheduled ||
-            category === TaskScheduleTypeEnum.Once) && (
-            <IconButton
-              icon="calendar-refresh-outline"
-              size={20}
-              onPress={() => handleRescheduleTask(item.id)}
-              style={styles.iconButton}
-            />
-          )}
-          <IconButton
-            icon="delete-outline"
-            size={20}
-            iconColor="red"
-            // onPress={() => handleDeleteTask(item.id)} // Add delete handler if needed
-            style={styles.iconButton}
-          />
-        </View>
-      )}
     />
   );
 

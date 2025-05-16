@@ -77,12 +77,18 @@ export class TaskRepository {
   }
 
   private async _getActiveTasksByCondition(
-    conditionSql = '',
-    conditionParams: any[] = [],
+    additionalConditionSql = '',
+    additionalConditionParams: any[] = [],
   ): Promise<Task[]> {
-    const whereClause = ['is_active = 1'];
-    if (conditionSql) {
-      whereClause.push(conditionSql);
+    const baseWhereClauses = ['is_active = ?', 'completion_status = ?'];
+    const baseParams: any[] = [1, TaskCompletionStatusEnum.INCOMPLETE];
+
+    const allWhereClauses = [...baseWhereClauses];
+    const allParams = [...baseParams];
+
+    if (additionalConditionSql) {
+      allWhereClauses.push(additionalConditionSql);
+      allParams.push(...additionalConditionParams);
     }
 
     const sql = `
@@ -90,15 +96,17 @@ export class TaskRepository {
         id, title, description, schedule, time_of_day, should_be_scored,
         created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
-      WHERE ${whereClause.join(' AND ')}
+      WHERE ${allWhereClauses.join(' AND ')}
       ORDER BY created_at DESC;
     `;
 
-    const params = [...conditionParams];
-    console.log('[DB Repo] Attempting to SELECT tasks:', { sql, params });
+    console.log('[DB Repo] Attempting to SELECT tasks:', {
+      sql,
+      params: allParams,
+    });
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, allParams);
       console.log(
         '[DB Repo] SELECT successful, rows found:',
         resultSet.rows?.length,
