@@ -20,7 +20,10 @@ import {
 } from '../shared/hooks';
 import { formatDate, capitalize } from '../shared/utils';
 import { Logo } from '../shared/components/icons';
-import { TaskRepository } from '../services/database/repository';
+import {
+  TaskRepository,
+  RepetitiveTaskTemplateRepository,
+} from '../services/database/repository';
 import {
   Task,
   TimeOfDay,
@@ -93,6 +96,11 @@ const TodayScreen = ({ navigation }: Props) => {
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
+  const [
+    repetitiveTaskTemplateRepository,
+    setRepetitiveTaskTemplateRepository,
+  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
+
   const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
@@ -116,8 +124,21 @@ const TodayScreen = ({ navigation }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setRepetitiveTaskTemplateRepository(
+        new RepetitiveTaskTemplateRepository(db),
+      );
+    } else {
+      setRepetitiveTaskTemplateRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
   const fetchTasksForToday = useCallback(async () => {
-    if (!taskRepository) {
+    if (!taskRepository || !repetitiveTaskTemplateRepository) {
+      console.log(
+        '[TodayScreen] taskRepository or repetitiveTaskTemplateRepository is null',
+      );
       return;
     }
 
@@ -125,6 +146,10 @@ const TodayScreen = ({ navigation }: Props) => {
     setErrorLoadingTasks(null);
 
     try {
+      await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
+        taskRepository,
+      );
+
       const fetchedTasks = await taskRepository.getTasksForToday();
       setTaskSections(groupTasksByTimeOfDay(fetchedTasks));
     } catch (error: any) {
@@ -136,7 +161,7 @@ const TodayScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [taskRepository]);
+  }, [taskRepository, repetitiveTaskTemplateRepository]);
 
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
     useToggleTaskCompletionStatus(taskRepository, fetchTasksForToday);
@@ -252,6 +277,9 @@ const TodayScreen = ({ navigation }: Props) => {
                     );
                     setTaskIdToBeRescheduled(item.id);
                   }}
+                  disabled={
+                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                  }
                   style={styles.iconButton}
                 />
               )}
@@ -259,6 +287,9 @@ const TodayScreen = ({ navigation }: Props) => {
                 icon="thumb-down-outline"
                 size={20}
                 iconColor="red"
+                disabled={
+                  item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                }
                 onPress={() =>
                   onToggleTaskCompletionStatus(
                     item.id,
