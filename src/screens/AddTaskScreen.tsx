@@ -50,6 +50,7 @@ const AddTaskScreen = ({}: Props) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const [selectedDateVisible, setSelectedDateVisible] = useState(false);
+  const [temporaryDate, setTemporaryDate] = useState<Date>();
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedDays, setSelectedDays] = useState<DaysInAWeek[]>([]);
 
@@ -93,12 +94,17 @@ const AddTaskScreen = ({}: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
+  const makeDateSelectionModalVisible = useCallback(() => {
+    setTemporaryDate(undefined);
+    setSelectedDateVisible(true);
+  }, []);
+
   const handleFrequencySelect = useCallback(
     (frequency: TaskScheduleTypeEnum) => {
       setSelectedScheduleType(frequency);
 
       if (frequency === TaskScheduleTypeEnum.Once) {
-        setSelectedDateVisible(true);
+        makeDateSelectionModalVisible();
       }
 
       if (
@@ -108,7 +114,7 @@ const AddTaskScreen = ({}: Props) => {
         setShouldBeScored(false);
       }
     },
-    [],
+    [makeDateSelectionModalVisible],
   );
 
   const handleTimeToggle = useCallback((time: TimeOfDay) => {
@@ -451,7 +457,6 @@ const AddTaskScreen = ({}: Props) => {
           onBlur={handleSpaceOnBlur}
         />
       </ScrollView>
-
       <Button
         mode="contained"
         onPress={handleAddTask}
@@ -476,9 +481,13 @@ const AddTaskScreen = ({}: Props) => {
         onDismiss={() => setSelectedDateVisible(false)}
         date={selectedDate}
         onConfirm={onConfirmSelectedDate}
+        onChange={change => {
+          setTemporaryDate(change.date);
+        }}
         label="Task Date"
         calendarIcon="calendar-outline"
         saveLabel="Select Date"
+        saveLabelDisabled={!temporaryDate}
         animationType="slide"
         validRange={{ startDate: new Date() }}
       />
