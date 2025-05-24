@@ -12,8 +12,17 @@ import TodayScreen from '../screens/TodayScreen';
 import AddTaskScreen from '../screens/AddTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
+import TaskDescription from '../screens/TaskDescription';
 import { TaskScheduleTypeEnum } from '../types';
 import { CalendarToday, PlusIcon } from '../shared/components/icons';
+
+export type AddTaskStackParamList = {
+  AddTask: undefined;
+  TaskDescription: {
+    initialHTML: string;
+    setDescription: (descriptionHTML: string) => void;
+  };
+};
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
@@ -22,29 +31,56 @@ export type ActiveStackParamList = {
 
 export type RootTabParamList = {
   Today: undefined;
+  AddTaskStack: undefined;
   ActiveStack: undefined;
-  AddTask: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
-const Stack = createNativeStackNavigator<ActiveStackParamList>();
+const AddTaskStack = createNativeStackNavigator<AddTaskStackParamList>();
+const ActiveStack = createNativeStackNavigator<ActiveStackParamList>();
+
+const AddTaskStackNavigator = () => {
+  return (
+    <AddTaskStack.Navigator
+      initialRouteName="AddTask"
+      screenOptions={{
+        headerTitle: ({ children }) => (
+          <Text variant="titleLarge">{children}</Text>
+        ),
+      }}>
+      <AddTaskStack.Screen
+        name="AddTask"
+        component={AddTaskScreen}
+        options={{ headerShown: false }}
+      />
+      <AddTaskStack.Screen
+        name="TaskDescription"
+        component={TaskDescription}
+        options={{ headerShown: false }}
+      />
+    </AddTaskStack.Navigator>
+  );
+};
 
 const ActiveStackNavigator = () => {
   return (
-    <Stack.Navigator
+    <ActiveStack.Navigator
       initialRouteName="ActiveCategoryList"
       screenOptions={{
         headerTitle: ({ children }) => (
           <Text variant="titleLarge">{children}</Text>
         ),
       }}>
-      <Stack.Screen
+      <ActiveStack.Screen
         name="ActiveCategoryList"
         component={ActiveCategoryListScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="ActiveTaskList" component={ActiveTaskListScreen} />
-    </Stack.Navigator>
+      <ActiveStack.Screen
+        name="ActiveTaskList"
+        component={ActiveTaskListScreen}
+      />
+    </ActiveStack.Navigator>
   );
 };
 
@@ -163,8 +199,8 @@ const RootNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="AddTask"
-        component={AddTaskScreen}
+        name="AddTaskStack"
+        component={AddTaskStackNavigator}
         options={{
           title: 'Add Task',
           tabBarLabel: 'Add Task',

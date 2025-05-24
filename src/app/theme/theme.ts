@@ -45,6 +45,7 @@ export const theme: MD3Theme = {
 
     surface: '#FFFFFF',
     onSurface: '#333333',
+    // input fields
     surfaceVariant: '#007A9F40',
     onSurfaceVariant: '#444444',
 

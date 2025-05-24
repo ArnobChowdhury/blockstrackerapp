@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TaskCompletionStatusEnum } from '../../types';
-import { TaskRepository } from '/home/sami/Work/BlockstrackerApp/src/services/database/repository';
+import { TaskRepository } from '../../services/database/repository';
 
 export const useToggleTaskCompletionStatus = (
   taskRepository: TaskRepository | null,

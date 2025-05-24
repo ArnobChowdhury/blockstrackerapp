@@ -5,6 +5,8 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -13,10 +15,9 @@ import {
   SpaceRepository,
 } from '../services/database/repository';
 import AutocompleteInput from '../shared/components/Autocomplete';
-import { useFocusEffect } from '@react-navigation/native';
-
+import truncate from 'html-truncate';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootTabParamList } from '../navigation/RootNavigator';
+import type { AddTaskStackParamList } from '../navigation/RootNavigator';
 import {
   TextInput,
   Text,
@@ -25,17 +26,20 @@ import {
   Button,
   Snackbar,
   Divider,
+  useTheme,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
 import type { Space } from '../types';
 import { capitalize } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { DatePickerModal } from 'react-native-paper-dates';
+import RenderHtml from 'react-native-render-html';
 import dayjs from 'dayjs';
 
-type Props = NativeStackScreenProps<RootTabParamList, 'AddTask'>;
+type Props = NativeStackScreenProps<AddTaskStackParamList, 'AddTask'>;
 
-const AddTaskScreen = ({}: Props) => {
+const AddTaskScreen = ({ navigation }: Props) => {
+  const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
@@ -45,7 +49,7 @@ const AddTaskScreen = ({}: Props) => {
     null,
   );
   const [shouldBeScored, setShouldBeScored] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // For Add Task button loading state
+  const [isSaving, setIsSaving] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
@@ -140,8 +144,6 @@ const AddTaskScreen = ({}: Props) => {
 
     console.log('[Form] Reset complete');
   }, []);
-
-  useFocusEffect(resetForm);
 
   const handleAddTask = async () => {
     const trimmedTaskName = taskName.trim();
@@ -309,6 +311,8 @@ const AddTaskScreen = ({}: Props) => {
     );
   };
 
+  const { width } = useWindowDimensions();
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -335,6 +339,12 @@ const AddTaskScreen = ({}: Props) => {
     (selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
       selectedDays.length === 0);
 
+  const source = {
+    html: taskDescription
+      ? truncate(taskDescription, 40)
+      : '<p>Task Description</p>',
+  };
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -348,15 +358,25 @@ const AddTaskScreen = ({}: Props) => {
           disabled={isSaving}
         />
 
-        <TextInput
-          label="Task Description"
-          value={taskDescription}
-          onChangeText={setTaskDescription}
-          multiline={true}
-          numberOfLines={4}
-          style={styles.textInput}
-          disabled={isSaving}
-        />
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate('TaskDescription', {
+              initialHTML: taskDescription,
+              setDescription: setTaskDescription,
+            })
+          }>
+          <View
+            style={[
+              {
+                borderColor: theme.colors.onSurfaceVariant,
+                borderBottomColor: theme.colors.primary,
+                backgroundColor: theme.colors.surfaceVariant,
+              },
+              styles.descriptionContainer,
+            ]}>
+            <RenderHtml contentWidth={width} source={source} />
+          </View>
+        </TouchableOpacity>
 
         <Text variant="titleMedium" style={styles.inputHeader}>
           Schedule*
@@ -509,6 +529,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  descriptionContainer: {
+    borderBottomWidth: 0.6,
+    borderTopEndRadius: 5,
+    borderTopStartRadius: 5,
+    padding: 20,
+    maxHeight: 120,
+    overflow: 'hidden',
   },
   loadingText: {
     marginTop: 10,
