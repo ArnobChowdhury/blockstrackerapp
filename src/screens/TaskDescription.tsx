@@ -30,7 +30,7 @@ const TaskDescription = ({ navigation, route }: Props) => {
   const richText = useRef<RichEditor>(null);
   const theme = useTheme();
 
-  const { initialHTML, setDescription } = route.params;
+  const { initialHTML } = route.params;
   const [descriptionHTML, setDescriptionHTML] = useState(initialHTML);
 
   console.log('descriptionHTML:', descriptionHTML);
@@ -44,8 +44,14 @@ const TaskDescription = ({ navigation, route }: Props) => {
 
   const handleDescriptionAccept = () => {
     if (richText.current) {
-      setDescription(descriptionHTML);
       navigation.goBack();
+      navigation.navigate(
+        'AddTask',
+        {
+          updatedDescription: descriptionHTML,
+        },
+        { merge: true },
+      );
     }
   };
 

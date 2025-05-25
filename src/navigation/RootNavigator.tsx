@@ -17,10 +17,9 @@ import { TaskScheduleTypeEnum } from '../types';
 import { CalendarToday, PlusIcon } from '../shared/components/icons';
 
 export type AddTaskStackParamList = {
-  AddTask: undefined;
+  AddTask: { updatedDescription?: string };
   TaskDescription: {
     initialHTML: string;
-    setDescription: (descriptionHTML: string) => void;
   };
 };
 

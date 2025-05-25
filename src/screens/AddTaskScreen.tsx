@@ -38,7 +38,7 @@ import dayjs from 'dayjs';
 
 type Props = NativeStackScreenProps<AddTaskStackParamList, 'AddTask'>;
 
-const AddTaskScreen = ({ navigation }: Props) => {
+const AddTaskScreen = ({ navigation, route }: Props) => {
   const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
@@ -97,6 +97,13 @@ const AddTaskScreen = ({ navigation }: Props) => {
       setTaskRepository(null);
     }
   }, [db, dbError, isDbLoading]);
+
+  useEffect(() => {
+    if (route.params?.updatedDescription) {
+      setTaskDescription(route.params.updatedDescription);
+      navigation.setParams({ updatedDescription: undefined });
+    }
+  }, [route.params?.updatedDescription, navigation]);
 
   const makeDateSelectionModalVisible = useCallback(() => {
     setTemporaryDate(undefined);
@@ -362,7 +369,6 @@ const AddTaskScreen = ({ navigation }: Props) => {
           onPress={() =>
             navigation.navigate('TaskDescription', {
               initialHTML: taskDescription,
-              setDescription: setTaskDescription,
             })
           }>
           <View
