@@ -182,10 +182,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     <List.Item
       title={<Text variant="bodyLarge">{item.title}</Text>}
       titleNumberOfLines={2}
-      {...(item.description && {
-        description: <Text variant="bodyMedium">{item.description}</Text>,
-      })}
-      descriptionNumberOfLines={1}
       style={styles.listItem}
       {...(category === TaskScheduleTypeEnum.Unscheduled ||
       category === TaskScheduleTypeEnum.Once

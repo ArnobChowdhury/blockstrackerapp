@@ -240,10 +240,6 @@ const TodayScreen = ({ navigation }: Props) => {
               {item.title}
             </Text>
           }
-          {...(item.description && {
-            description: <Text variant="bodyMedium">{item.description}</Text>,
-          })}
-          descriptionNumberOfLines={1}
           style={[styles.listItem]}
           left={props => (
             <View {...props} style={styles.checkboxContainer}>
