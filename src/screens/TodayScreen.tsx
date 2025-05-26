@@ -8,6 +8,7 @@ import {
   Divider,
   IconButton,
   Snackbar,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -92,6 +93,7 @@ export const groupTasksByTimeOfDay = (tasks: Task[]): TaskSection[] => {
 };
 
 const TodayScreen = ({ navigation }: Props) => {
+  const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
@@ -368,7 +370,21 @@ const TodayScreen = ({ navigation }: Props) => {
           ItemSeparatorComponent={() => <Divider />}
           ListHeaderComponent={() => (
             <View style={styles.paddingTop}>
-              <Text variant="titleLarge">Today</Text>
+              <View style={styles.titleContainer}>
+                <Text variant="titleLarge">Today</Text>
+                <IconButton
+                  icon="plus"
+                  size={20}
+                  style={styles.addTaskTodayIcon}
+                  iconColor={theme.colors.secondary}
+                  onPress={() =>
+                    navigation.navigate('AddTaskStack', {
+                      screen: 'AddTask',
+                      params: { isToday: true },
+                    })
+                  }
+                />
+              </View>
               <Text variant="bodyLarge" style={styles.timeAndDate}>
                 {formatDate(dayjs())}
               </Text>
@@ -496,6 +512,13 @@ const styles = StyleSheet.create({
   snackbarText: {
     color: 'white',
     paddingRight: 10,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addTaskTodayIcon: {
+    marginVertical: -4,
   },
 });
 

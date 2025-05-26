@@ -17,7 +17,7 @@ import { TaskScheduleTypeEnum } from '../types';
 import { CalendarToday, PlusIcon } from '../shared/components/icons';
 
 export type AddTaskStackParamList = {
-  AddTask: { updatedDescription?: string };
+  AddTask: { updatedDescription?: string; isToday?: boolean };
   TaskDescription: {
     initialHTML: string;
   };
@@ -30,7 +30,12 @@ export type ActiveStackParamList = {
 
 export type RootTabParamList = {
   Today: undefined;
-  AddTaskStack: undefined;
+  AddTaskStack:
+    | {
+        screen: 'AddTask';
+        params: { isToday: boolean };
+      }
+    | undefined;
   ActiveStack: undefined;
 };
 

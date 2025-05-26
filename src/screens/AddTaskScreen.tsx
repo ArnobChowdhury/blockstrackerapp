@@ -39,6 +39,8 @@ import dayjs from 'dayjs';
 type Props = NativeStackScreenProps<AddTaskStackParamList, 'AddTask'>;
 
 const AddTaskScreen = ({ navigation, route }: Props) => {
+  const isTodaysTask = route.params?.isToday;
+
   const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
@@ -71,6 +73,14 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     useState<SpaceRepository | null>(null);
 
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
+
+  useEffect(() => {
+    if (isTodaysTask) {
+      setSelectedScheduleType(TaskScheduleTypeEnum.Once);
+      setSelectedDate(new Date());
+      navigation.setParams({ isToday: false });
+    }
+  }, [isTodaysTask, navigation]);
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
