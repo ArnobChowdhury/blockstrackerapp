@@ -320,6 +320,14 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
   const { width } = useWindowDimensions();
 
+  const handleDatePickerModalDismiss = () => {
+    if (!selectedDate) {
+      setSelectedScheduleType(TaskScheduleTypeEnum.Unscheduled);
+    }
+
+    setSelectedDateVisible(false);
+  };
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -504,7 +512,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
         locale="en"
         mode="single"
         visible={selectedDateVisible}
-        onDismiss={() => setSelectedDateVisible(false)}
+        onDismiss={handleDatePickerModalDismiss}
         date={selectedDate}
         onConfirm={onConfirmSelectedDate}
         onChange={change => {
