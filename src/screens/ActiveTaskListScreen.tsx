@@ -236,6 +236,16 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
             ),
           }
         : {})}
+      {...(category === TaskScheduleTypeEnum.Daily ||
+      category === TaskScheduleTypeEnum.SpecificDaysInAWeek
+        ? {
+            left: props => (
+              <View {...props} style={styles.checkboxContainer}>
+                <Text style={styles.bulletText}>•</Text>
+              </View>
+            ),
+          }
+        : {})}
     />
   );
 
@@ -356,6 +366,11 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
+  },
+  bulletText: {
+    fontSize: 36,
+    lineHeight: 30,
+    marginLeft: 10,
   },
   errorText: {
     color: 'red',
