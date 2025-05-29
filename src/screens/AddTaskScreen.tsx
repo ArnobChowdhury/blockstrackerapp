@@ -136,6 +136,11 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     (frequency: TaskScheduleTypeEnum) => {
       setSelectedScheduleType(frequency);
 
+      if (frequency !== selectedScheduleType) {
+        setSelectedDate(undefined);
+        setSelectedDays([]);
+      }
+
       if (frequency === TaskScheduleTypeEnum.Once) {
         makeDateSelectionModalVisible();
       }
@@ -147,7 +152,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
         setShouldBeScored(false);
       }
     },
-    [makeDateSelectionModalVisible],
+    [makeDateSelectionModalVisible, selectedScheduleType],
   );
 
   const handleTimeToggle = useCallback((time: TimeOfDay) => {
@@ -199,7 +204,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
     setIsSaving(true);
 
-    const trimmedDescription = taskDescription.trim(); // crucial todo - description need to be html. Need to find an rich editor and html parser
+    const trimmedDescription = taskDescription.trim();
     const isRepetitiveTask =
       selectedScheduleType === TaskScheduleTypeEnum.Daily ||
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
