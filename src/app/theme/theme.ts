@@ -52,6 +52,7 @@ export const theme: MD3Theme = {
     elevation: {
       ...DefaultTheme.colors.elevation,
       level2: '#f9f9f9',
+      level3: '#eeeeee',
     },
   },
 };

@@ -212,29 +212,48 @@ export class TaskRepository {
   async updateTaskCompletionStatus(
     taskId: number,
     status: TaskCompletionStatusEnum,
+    score?: number | null,
   ): Promise<QueryResult> {
-    const sql =
-      'UPDATE tasks SET completion_status = ?, modified_at = ? WHERE id = ?;';
-    const params = [status, new Date().toISOString(), taskId];
-    console.log('[DB Repo] Attempting to UPDATE task completion_status:', {
-      sql,
-      params,
-    });
+    const sql = `
+      UPDATE tasks
+      SET
+        completion_status = ?,
+        score = ?,
+        modified_at = ?
+      WHERE id = ?;
+    `;
+    const params = [
+      status,
+      score === undefined ? null : score, // Handle undefined score as null
+      new Date().toISOString(),
+      taskId,
+    ];
+    console.log(
+      '[DB Repo] Attempting to UPDATE task completion_status and score:',
+      {
+        sql,
+        params,
+      },
+    );
 
     try {
       const result = await this.db.executeAsync(sql, params);
       console.log(
-        '[DB Repo] Task completion_status UPDATE successful:',
+        `[DB Repo] Task ${taskId} completion_status updated to ${status} and score to ${
+          score === undefined ? null : score
+        }. Result:`,
         result,
       );
       return result;
     } catch (error: any) {
       console.error(
-        '[DB Repo] Failed to UPDATE task completion_status:',
+        `[DB Repo] Failed to UPDATE task ${taskId} completion_status to ${status} and score to ${
+          score === undefined ? null : score
+        }:`,
         error,
       );
       throw new Error(
-        `Failed to update task completion_status: ${
+        `Failed to update task completion_status and score: ${
           error.message || 'Unknown error'
         }`,
       );

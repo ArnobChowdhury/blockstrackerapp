@@ -12,6 +12,7 @@ export const useToggleTaskCompletionStatus = (
   const onToggleTaskCompletionStatus = async (
     id: number,
     status: TaskCompletionStatusEnum,
+    taskScore?: number | null,
   ) => {
     if (!taskRepository) {
       setError('Database service not ready.');
@@ -21,7 +22,7 @@ export const useToggleTaskCompletionStatus = (
     setError('');
     setRequestOnGoing(true);
     try {
-      await taskRepository.updateTaskCompletionStatus(id, status);
+      await taskRepository.updateTaskCompletionStatus(id, status, taskScore);
 
       if (cb) {
         cb();

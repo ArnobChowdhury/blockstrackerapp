@@ -8,6 +8,9 @@ import {
   Divider,
   IconButton,
   Snackbar,
+  Portal,
+  Dialog,
+  Button,
   useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,8 +22,9 @@ import {
   useToggleTaskCompletionStatus,
   useTaskReschedule,
 } from '../shared/hooks';
-import { formatDate, capitalize } from '../shared/utils';
+import { formatDate, capitalize, truncateString } from '../shared/utils';
 import { Logo } from '../shared/components/icons';
+import TaskScoring from '../shared/components/TaskScoring';
 import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
@@ -216,6 +220,27 @@ const TodayScreen = ({ navigation }: Props) => {
     [taskIdToBeRescheduled, onTaskReschedule],
   );
 
+  const [taskToBeCompleted, setTaskToBeCompleted] = useState<Task>();
+  const [scoreForTaskToBeCompleted, setScoreForTaskToBeCompleted] =
+    useState<number>();
+
+  const handleTaskCompletion = (task: Task) => {
+    if (task.completionStatus === TaskCompletionStatusEnum.COMPLETE) {
+      onToggleTaskCompletionStatus(
+        task.id,
+        TaskCompletionStatusEnum.INCOMPLETE,
+        null,
+      );
+      return;
+    }
+
+    if (!task.shouldBeScored) {
+      onToggleTaskCompletionStatus(task.id, TaskCompletionStatusEnum.COMPLETE);
+      return;
+    }
+    setTaskToBeCompleted(task);
+  };
+
   const renderTaskItem = ({
     item,
     sectionBackgroundColor,
@@ -251,14 +276,7 @@ const TodayScreen = ({ navigation }: Props) => {
                     ? 'checked'
                     : 'unchecked'
                 }
-                onPress={() =>
-                  onToggleTaskCompletionStatus(
-                    item.id,
-                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                      ? TaskCompletionStatusEnum.INCOMPLETE
-                      : TaskCompletionStatusEnum.COMPLETE,
-                  )
-                }
+                onPress={() => handleTaskCompletion(item)}
               />
             </View>
           )}
@@ -414,7 +432,6 @@ const TodayScreen = ({ navigation }: Props) => {
           </Text>
         </View>
       </Snackbar>
-
       <DatePickerModal
         locale="en"
         mode="single"
@@ -428,6 +445,71 @@ const TodayScreen = ({ navigation }: Props) => {
         animationType="slide"
         validRange={{ startDate: new Date() }}
       />
+      <Portal>
+        <Dialog
+          dismissable
+          dismissableBackButton={true}
+          visible={!!taskToBeCompleted}
+          onDismiss={() => {
+            setTaskToBeCompleted(undefined);
+            setScoreForTaskToBeCompleted(undefined);
+          }}>
+          <Dialog.Title>
+            <View style={styles.dialogTitle}>
+              <Text variant="titleMedium" style={styles.boldFonts}>
+                Task:
+              </Text>
+              <Text style={styles.marginLeft}>
+                {taskToBeCompleted?.title &&
+                  truncateString(taskToBeCompleted.title, 20)}
+              </Text>
+            </View>
+          </Dialog.Title>
+          <Dialog.Content>
+            <Text
+              variant="titleMedium"
+              style={[styles.marginBottom, styles.boldFonts]}>
+              Score:
+            </Text>
+            <TaskScoring
+              onCirclePress={(score: number) =>
+                setScoreForTaskToBeCompleted(prevVal => {
+                  if (prevVal === score) {
+                    return undefined;
+                  }
+                  return score;
+                })
+              }
+              selected={scoreForTaskToBeCompleted}
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => {
+                if (!taskToBeCompleted) {
+                  // show error
+                  return;
+                }
+
+                if (!scoreForTaskToBeCompleted) {
+                  // show error
+                  return;
+                }
+
+                onToggleTaskCompletionStatus(
+                  taskToBeCompleted.id as number,
+                  TaskCompletionStatusEnum.COMPLETE,
+                  scoreForTaskToBeCompleted,
+                );
+                setTaskToBeCompleted(undefined);
+                setScoreForTaskToBeCompleted(undefined);
+              }}
+              disabled={!taskToBeCompleted || !scoreForTaskToBeCompleted}>
+              Done
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -519,6 +601,19 @@ const styles = StyleSheet.create({
   },
   addTaskTodayIcon: {
     marginVertical: -4,
+  },
+  marginBottom: {
+    marginBottom: 10,
+  },
+  dialogTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  boldFonts: {
+    fontWeight: 700,
+  },
+  marginLeft: {
+    marginLeft: 10,
   },
 });
 
