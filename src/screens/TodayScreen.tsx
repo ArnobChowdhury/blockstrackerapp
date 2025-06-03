@@ -389,7 +389,7 @@ const TodayScreen = ({ navigation }: Props) => {
           ListHeaderComponent={() => (
             <View style={styles.paddingTop}>
               <View style={styles.titleContainer}>
-                <Text variant="titleLarge">Today</Text>
+                <Text variant="displaySmall">Today</Text>
                 <IconButton
                   icon="plus"
                   size={20}

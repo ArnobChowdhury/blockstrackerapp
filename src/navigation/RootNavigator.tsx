@@ -9,12 +9,17 @@ import { BottomNavigation, useTheme, Text } from 'react-native-paper';
 import { CommonActions } from '@react-navigation/native';
 import { StyleSheet } from 'react-native';
 import TodayScreen from '../screens/TodayScreen';
+import HabitsScreen from '../screens/HabitsScreen';
 import AddTaskScreen from '../screens/AddTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
 import TaskDescription from '../screens/TaskDescription';
 import { TaskScheduleTypeEnum } from '../types';
-import { CalendarToday, PlusIcon } from '../shared/components/icons';
+import {
+  CalendarToday,
+  PlusIcon,
+  TrackerIcon,
+} from '../shared/components/icons';
 
 export type AddTaskStackParamList = {
   AddTask: { updatedDescription?: string; isToday?: boolean };
@@ -37,6 +42,7 @@ export type RootTabParamList = {
       }
     | undefined;
   ActiveStack: undefined;
+  Tracker: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -118,6 +124,16 @@ const renderActiveIcon = () => {
         color={focused ? theme.colors.primary : color}
         size={size}
       />
+    );
+  };
+};
+
+const renderTrackerIcon = () => {
+  return ({ color, size, focused }: IconProps) => {
+    const theme = useTheme();
+
+    return (
+      <TrackerIcon size={size} color={focused ? theme.colors.primary : color} />
     );
   };
 };
@@ -218,6 +234,15 @@ const RootNavigator = () => {
           title: 'Active',
           tabBarLabel: 'Active',
           tabBarIcon: renderActiveIcon(),
+        }}
+      />
+      <Tab.Screen
+        name="Tracker"
+        component={HabitsScreen}
+        options={{
+          title: 'Tracker',
+          tabBarLabel: 'Tracker',
+          tabBarIcon: renderTrackerIcon(),
         }}
       />
     </Tab.Navigator>
