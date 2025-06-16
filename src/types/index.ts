@@ -30,6 +30,7 @@ export interface Task {
   completionStatus: TaskCompletionStatusEnum;
   createdAt: string;
   modifiedAt: string;
+  repetitiveTaskTemplateId: number | null;
 }
 
 export interface RepetitiveTaskTemplate {

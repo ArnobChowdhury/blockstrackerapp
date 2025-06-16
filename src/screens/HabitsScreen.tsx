@@ -16,21 +16,21 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { RootTabParamList } from '../navigation/RootNavigator';
+import type { TrackerStackParamList } from '../navigation/RootNavigator';
 import { useDatabase } from '../shared/hooks';
 import { RepetitiveTaskTemplate } from '../types';
 import { RepetitiveTaskTemplateRepository } from '../services/database/repository';
 import RenderHtml from 'react-native-render-html';
 import truncate from 'html-truncate';
 
-type Props = NativeStackScreenProps<RootTabParamList, 'Tracker'>;
+type Props = NativeStackScreenProps<TrackerStackParamList, 'HabitsList'>;
 
 export interface HabitsSection {
   title: 'Daily' | 'Specific Days in a Week';
   data: RepetitiveTaskTemplate[];
 }
 
-const HabitsScreen = ({}: Props) => {
+const HabitsScreen = ({ navigation }: Props) => {
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [
     repetitiveTaskTemplateRepository,
@@ -123,7 +123,12 @@ const HabitsScreen = ({}: Props) => {
       };
 
       return (
-        <Card style={styles.card} onPress={() => console.log('Card pressed')}>
+        <Card
+          style={styles.card}
+          onPress={() => {
+            console.log('[Habits] Navigating to Tracker screen...');
+            navigation.navigate('Tracker', { habit: item });
+          }}>
           <Card.Title title={<Text variant="titleMedium">{item.title}</Text>} />
           <Card.Content>
             <View style={styles.cardContentWrapper}>
@@ -139,7 +144,7 @@ const HabitsScreen = ({}: Props) => {
         </Card>
       );
     },
-    [theme.colors.onSurface, width],
+    [navigation, theme.colors.onSurface, width],
   );
 
   if (isDbLoading) {

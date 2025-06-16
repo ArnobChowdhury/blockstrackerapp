@@ -10,11 +10,12 @@ import { CommonActions } from '@react-navigation/native';
 import { StyleSheet } from 'react-native';
 import TodayScreen from '../screens/TodayScreen';
 import HabitsScreen from '../screens/HabitsScreen';
+import TrackerScreen from '../screens/TrackerScreen';
 import AddTaskScreen from '../screens/AddTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
 import TaskDescription from '../screens/TaskDescription';
-import { TaskScheduleTypeEnum } from '../types';
+import { TaskScheduleTypeEnum, RepetitiveTaskTemplate } from '../types';
 import {
   CalendarToday,
   PlusIcon,
@@ -33,6 +34,11 @@ export type ActiveStackParamList = {
   ActiveTaskList: { category: TaskScheduleTypeEnum };
 };
 
+export type TrackerStackParamList = {
+  HabitsList: undefined;
+  Tracker: { habit: RepetitiveTaskTemplate };
+};
+
 export type RootTabParamList = {
   Today: undefined;
   AddTaskStack:
@@ -42,12 +48,13 @@ export type RootTabParamList = {
       }
     | undefined;
   ActiveStack: undefined;
-  Tracker: undefined;
+  HabitsTracker: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const AddTaskStack = createNativeStackNavigator<AddTaskStackParamList>();
 const ActiveStack = createNativeStackNavigator<ActiveStackParamList>();
+const TrackerStack = createNativeStackNavigator<TrackerStackParamList>();
 
 const AddTaskStackNavigator = () => {
   return (
@@ -91,6 +98,25 @@ const ActiveStackNavigator = () => {
         component={ActiveTaskListScreen}
       />
     </ActiveStack.Navigator>
+  );
+};
+
+const TrackerStackNavigator = () => {
+  return (
+    <TrackerStack.Navigator
+      initialRouteName="HabitsList"
+      screenOptions={{
+        headerTitle: ({ children }) => (
+          <Text variant="titleLarge">{children}</Text>
+        ),
+      }}>
+      <TrackerStack.Screen
+        name="HabitsList"
+        component={HabitsScreen}
+        options={{ headerShown: false }}
+      />
+      <TrackerStack.Screen name="Tracker" component={TrackerScreen} />
+    </TrackerStack.Navigator>
   );
 };
 
@@ -237,8 +263,8 @@ const RootNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Tracker"
-        component={HabitsScreen}
+        name="HabitsTracker"
+        component={TrackerStackNavigator}
         options={{
           title: 'Tracker',
           tabBarLabel: 'Tracker',

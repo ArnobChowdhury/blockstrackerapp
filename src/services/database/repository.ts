@@ -15,6 +15,7 @@ interface NewTaskData {
   schedule: TaskScheduleTypeEnum;
   dueDate?: Date;
   timeOfDay: TimeOfDay | null;
+  repetitiveTaskTemplateId?: number;
   shouldBeScored: number;
   space: Space | null;
 }
@@ -30,9 +31,9 @@ export class TaskRepository {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO tasks (
-        title, description, schedule, due_date, time_of_day,
+        title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
         should_be_scored, created_at, modified_at, space_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     const params = [
@@ -41,6 +42,7 @@ export class TaskRepository {
       taskData.schedule,
       taskData.dueDate?.toISOString(),
       taskData.timeOfDay,
+      taskData.repetitiveTaskTemplateId,
       taskData.shouldBeScored,
       now,
       now,
@@ -62,27 +64,38 @@ export class TaskRepository {
   }
 
   async getAllActiveUnscheduledTasks(): Promise<Task[]> {
-    return this._getActiveTasksByCondition('schedule = ?', [
-      TaskScheduleTypeEnum.Unscheduled,
-    ]);
+    return this._getActiveTasksByCondition(
+      'schedule = ? AND completion_status = ?',
+      [TaskScheduleTypeEnum.Unscheduled, TaskCompletionStatusEnum.INCOMPLETE],
+    );
   }
 
   async getAllActiveOnceTasks(): Promise<Task[]> {
-    return this._getActiveTasksByCondition('schedule = ?', [
-      TaskScheduleTypeEnum.Once,
-    ]);
+    return this._getActiveTasksByCondition(
+      'schedule = ? AND completion_status = ?',
+      [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE],
+    );
   }
 
   async getAllActiveTasks(): Promise<Task[]> {
     return this._getActiveTasksByCondition(); // no condition
   }
 
+  async getAllActiveTasksByRepetitiveTaskTemplateId(
+    templateId: number,
+  ): Promise<Task[]> {
+    console.log('templateId', templateId);
+    return this._getActiveTasksByCondition('repetitive_task_template_id = ?', [
+      templateId,
+    ]);
+  }
+
   private async _getActiveTasksByCondition(
     additionalConditionSql = '',
     additionalConditionParams: any[] = [],
   ): Promise<Task[]> {
-    const baseWhereClauses = ['is_active = ?', 'completion_status = ?'];
-    const baseParams: any[] = [1, TaskCompletionStatusEnum.INCOMPLETE];
+    const baseWhereClauses = ['is_active = ?'];
+    const baseParams: any[] = [1];
 
     const allWhereClauses = [...baseWhereClauses];
     const allParams = [...baseParams];
@@ -132,6 +145,9 @@ export class TaskRepository {
               shouldBeScored: (task.should_be_scored === 1) as boolean,
               createdAt: task.created_at as string,
               modifiedAt: task.modified_at as string,
+              repetitiveTaskTemplateId: task.repetitive_task_template_id as
+                | number
+                | null,
             };
 
             tasks.push(transformedTask);
@@ -152,7 +168,7 @@ export class TaskRepository {
   async getTasksForToday(): Promise<Task[]> {
     const sql = `
       SELECT
-        id, title, description, schedule, due_date, time_of_day,
+        id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
         should_be_scored, created_at, modified_at, is_active, completion_status
       FROM tasks
       WHERE DATE(due_date) = DATE('now', 'localtime')
@@ -194,6 +210,9 @@ export class TaskRepository {
                 row.completion_status as TaskCompletionStatusEnum,
               createdAt: row.created_at as string,
               modifiedAt: row.modified_at as string,
+              repetitiveTaskTemplateId: row.repetitive_task_template_id as
+                | number
+                | null,
             });
           }
         }
@@ -630,6 +649,7 @@ export class RepetitiveTaskTemplateRepository {
             schedule: template.schedule,
             dueDate: targetDueDate.toDate(),
             timeOfDay: template.timeOfDay,
+            repetitiveTaskTemplateId: template.id,
             shouldBeScored: template.shouldBeScored ? 1 : 0,
             space: template.spaceId
               ? ({ id: template.spaceId } as Space)
