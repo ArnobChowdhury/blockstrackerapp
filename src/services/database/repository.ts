@@ -143,6 +143,7 @@ export class TaskRepository {
               completionStatus:
                 task.completion_status as TaskCompletionStatusEnum,
               shouldBeScored: (task.should_be_scored === 1) as boolean,
+              score: task.score as number | null,
               createdAt: task.created_at as string,
               modifiedAt: task.modified_at as string,
               repetitiveTaskTemplateId: task.repetitive_task_template_id as
@@ -206,6 +207,7 @@ export class TaskRepository {
               dueDate: row.due_date as string | null,
               timeOfDay: row.time_of_day as TimeOfDay | null,
               shouldBeScored: (row.should_be_scored === 1) as boolean,
+              score: row.score as number | null,
               completionStatus:
                 row.completion_status as TaskCompletionStatusEnum,
               createdAt: row.created_at as string,

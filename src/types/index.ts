@@ -27,6 +27,7 @@ export interface Task {
   dueDate: string | null;
   timeOfDay: TimeOfDay | null;
   shouldBeScored: boolean;
+  score: number | null;
   completionStatus: TaskCompletionStatusEnum;
   createdAt: string;
   modifiedAt: string;
