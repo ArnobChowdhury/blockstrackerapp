@@ -263,6 +263,12 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
                   const dateStr = day.format('YYYY-MM-DD');
                   const taskForDay = taskMap.get(dateStr);
 
+                  const isFirstDayOfMonth = day.date() === 1;
+                  const showDateText =
+                    isDateInDataRange(day) &&
+                    isFirstDayOfMonth &&
+                    dynamicSquareSize >= 15;
+
                   let cellColor: string;
 
                   if (isDateInDataRange(day)) {
@@ -272,22 +278,33 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
                   }
 
                   return (
-                    <Rect
-                      key={dateStr}
-                      x={0}
-                      y={dayOfWeekIdx * totalCellSize}
-                      width={dynamicSquareSize}
-                      height={dynamicSquareSize}
-                      fill={cellColor}
-                      rx={2}
-                      ry={2}
-                      onPress={() => {
-                        if (isDateInDataRange(day) && onDayPress) {
-                          onDayPress(dateStr, taskForDay);
-                        }
-                      }}
-                      disabled={!isDateInDataRange(day) || !onDayPress}
-                    />
+                    <G key={dateStr} y={dayOfWeekIdx * totalCellSize}>
+                      <Rect
+                        width={dynamicSquareSize}
+                        height={dynamicSquareSize}
+                        fill={cellColor}
+                        rx={2}
+                        ry={2}
+                        onPress={() => {
+                          if (isDateInDataRange(day) && onDayPress) {
+                            onDayPress(dateStr, taskForDay);
+                          }
+                        }}
+                        disabled={!isDateInDataRange(day) || !onDayPress}
+                      />
+                      {showDateText && (
+                        <SvgText
+                          x={dynamicSquareSize / 2}
+                          y={dynamicSquareSize / 2}
+                          fontSize={12}
+                          fill="#333333"
+                          alignmentBaseline="middle"
+                          textAnchor="middle"
+                          pointerEvents="none">
+                          {day.format('DD')}
+                        </SvgText>
+                      )}
+                    </G>
                   );
                 })}
               </G>
