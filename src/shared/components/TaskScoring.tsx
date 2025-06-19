@@ -1,12 +1,13 @@
 import { View, StyleSheet } from 'react-native';
 import { Avatar, Icon, TouchableRipple } from 'react-native-paper';
+import { scoreColorConfigs } from '../constants';
 
 export const scoreColors = [
-  '#c0e8c2',
-  '#7be187',
-  '#24c241',
-  '#019927',
-  '#006620',
+  scoreColorConfigs.score0,
+  scoreColorConfigs.score1,
+  scoreColorConfigs.score2,
+  scoreColorConfigs.score3,
+  scoreColorConfigs.score4,
 ];
 
 interface TaskScoringProps {

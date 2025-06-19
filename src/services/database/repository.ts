@@ -107,8 +107,8 @@ export class TaskRepository {
 
     const sql = `
       SELECT
-        id, title, description, schedule, time_of_day, should_be_scored,
-        created_at, modified_at, is_active, due_date, completion_status
+        id, title, description, schedule, time_of_day, should_be_scored, score,
+        repetitive_task_template_id, created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
       WHERE ${allWhereClauses.join(' AND ')}
       ORDER BY created_at DESC;
@@ -170,7 +170,7 @@ export class TaskRepository {
     const sql = `
       SELECT
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
-        should_be_scored, created_at, modified_at, is_active, completion_status
+        should_be_scored, score, created_at, modified_at, is_active, completion_status
       FROM tasks
       WHERE DATE(due_date) = DATE('now', 'localtime')
         AND completion_status IN ('${TaskCompletionStatusEnum.INCOMPLETE}', '${TaskCompletionStatusEnum.COMPLETE}')

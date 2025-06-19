@@ -4,7 +4,7 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, ScrollView } from 'react-native';
 import { Text, IconButton, Snackbar } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,7 +16,7 @@ import {
 } from '../services/database/repository';
 import { useDatabase } from '../shared/hooks';
 import { Task } from '../types';
-import Heatmap from '../shared/components/Heatmap';
+import HabitHeatmap from '../shared/components/HabitHeatmap';
 
 type Props = NativeStackScreenProps<TrackerStackParamList, 'Tracker'>;
 
@@ -148,28 +148,31 @@ const TrackerScreen = ({ route, navigation }: Props) => {
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']}>
-      {isLoadingTasks ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>Loading Tasks...</Text>
-        </View>
-      ) : errorLoadingTasks ? (
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>Failed to Load Tasks</Text>
-          <Text style={styles.errorText}>{errorLoadingTasks}</Text>
-          <IconButton
-            icon="refresh"
-            size={30}
-            onPress={() => fetchTaskOfHabit(habit.id)}
-          />
-        </View>
-      ) : (
-        <View>
-          <Text>Tracker Screen</Text>
-          <Heatmap tasks={tasks} />
-        </View>
-      )}
-
+      <ScrollView>
+        {isLoadingTasks ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" />
+            <Text style={styles.loadingText}>Loading Tasks...</Text>
+          </View>
+        ) : errorLoadingTasks ? (
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>Failed to Load Tasks</Text>
+            <Text style={styles.errorText}>{errorLoadingTasks}</Text>
+            <IconButton
+              icon="refresh"
+              size={30}
+              onPress={() => fetchTaskOfHabit(habit.id)}
+            />
+          </View>
+        ) : (
+          <View style={styles.heatmapContainer}>
+            <Text variant="titleMedium" style={styles.heading}>
+              Activity Heatmap
+            </Text>
+            <HabitHeatmap tasks={tasks} numDays={91} />
+          </View>
+        )}
+      </ScrollView>
       <Snackbar
         visible={showSnackbar}
         onDismiss={handleSnackbarDismiss}
@@ -193,19 +196,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  emptyListContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center', // Center empty message
+  heatmapContainer: {
+    paddingVertical: 20,
+  },
+  heading: {
+    marginBottom: 10,
+    textAlign: 'center',
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-  },
-  bulletText: {
-    fontSize: 36,
-    lineHeight: 30,
-    marginLeft: 10,
   },
   errorText: {
     color: 'red',
@@ -213,31 +213,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  infoText: {
-    textAlign: 'center',
-    marginTop: 10,
-    fontSize: 16,
-    color: 'grey',
-  },
-  listItem: {
-    paddingHorizontal: 16, // Adjust padding
-    paddingRight: 6,
-    paddingLeft: 10,
-  },
-  checkboxContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  iconContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  iconButton: {
-    margin: 0,
-    marginLeft: 4,
   },
   snackbarContainer: {
     flexDirection: 'row',
