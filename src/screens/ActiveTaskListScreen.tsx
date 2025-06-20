@@ -33,6 +33,7 @@ import {
   TaskCompletionStatusEnum,
 } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
+import dayjs from 'dayjs';
 
 const taskSeparator = () => <Divider />;
 
@@ -345,7 +346,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         calendarIcon="calendar-outline"
         saveLabel="Reschedule Task"
         animationType="slide"
-        validRange={{ startDate: new Date() }}
+        validRange={{ startDate: dayjs().startOf('day').toDate() }}
       />
     </SafeAreaView>
   );

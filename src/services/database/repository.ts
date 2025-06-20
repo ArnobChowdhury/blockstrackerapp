@@ -180,7 +180,7 @@ export class TaskRepository {
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
         should_be_scored, score, created_at, modified_at, is_active, completion_status
       FROM tasks
-      WHERE DATE(due_date) = DATE('now', 'localtime')
+      WHERE DATE(due_date, 'localtime') = DATE('now', 'localtime')
         AND completion_status IN ('${TaskCompletionStatusEnum.INCOMPLETE}', '${TaskCompletionStatusEnum.COMPLETE}')
       ORDER BY
         CASE time_of_day

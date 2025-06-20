@@ -443,7 +443,7 @@ const TodayScreen = ({ navigation }: Props) => {
         calendarIcon="calendar-outline"
         saveLabel="Reschedule Task"
         animationType="slide"
-        validRange={{ startDate: new Date() }}
+        validRange={{ startDate: dayjs().startOf('day').toDate() }}
       />
       <Portal>
         <Dialog

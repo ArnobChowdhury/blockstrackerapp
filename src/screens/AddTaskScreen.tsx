@@ -564,7 +564,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
         saveLabel="Select Date"
         saveLabelDisabled={!temporaryDate}
         animationType="slide"
-        validRange={{ startDate: new Date() }}
+        validRange={{ startDate: dayjs().startOf('day').toDate() }}
       />
     </SafeAreaView>
   );
