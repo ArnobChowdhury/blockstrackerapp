@@ -84,7 +84,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
 
       try {
         const fetchedTasks: Task[] =
-          await taskRepository.getAllActiveTasksByRepetitiveTaskTemplateId(
+          await taskRepository.getActiveTasksByRepetitiveTaskTemplateId(
             repetitiveTaskTemplateId,
           );
 

@@ -9,6 +9,7 @@
     "pell",
     "Pressable",
     "Scorable",
-    "Typescale"
+    "Typescale",
+    "viewability"
   ]
 }

@@ -1,27 +1,17 @@
-import { useEffect, useState, useCallback } from 'react';
-import {
-  StyleSheet,
-  SectionList,
-  FlatList,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import {
-  Text,
-  Card,
-  ActivityIndicator,
-  IconButton,
-  useTheme,
-} from 'react-native-paper';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { StyleSheet, SectionList, FlatList, View } from 'react-native';
+import { Text, Card, ActivityIndicator, IconButton } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TrackerStackParamList } from '../navigation/RootNavigator';
 import { useDatabase } from '../shared/hooks';
-import { RepetitiveTaskTemplate } from '../types';
-import { RepetitiveTaskTemplateRepository } from '../services/database/repository';
-import RenderHtml from 'react-native-render-html';
-import truncate from 'html-truncate';
+import { RepetitiveTaskTemplate, Task } from '../types';
+import {
+  RepetitiveTaskTemplateRepository,
+  TaskRepository,
+} from '../services/database/repository';
+import HabitHeatmap from '../shared/components/HabitHeatmap';
 
 type Props = NativeStackScreenProps<TrackerStackParamList, 'HabitsList'>;
 
@@ -30,6 +20,71 @@ export interface HabitsSection {
   data: RepetitiveTaskTemplate[];
 }
 
+interface HabitCardItemProps {
+  habit: RepetitiveTaskTemplate;
+  isViewable: boolean;
+  taskRepository: TaskRepository | null;
+  onPress: () => void;
+}
+
+const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
+  ({ habit, isViewable, taskRepository, onPress }) => {
+    const FETCH_TASKS_LIMIT = 50;
+    const [heatmapTasks, setHeatmapTasks] = useState<Task[]>([]);
+    const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
+    const [hasFetched, setHasFetched] = useState(false);
+
+    useEffect(() => {
+      if (isViewable && taskRepository && !hasFetched && !isLoadingHeatmap) {
+        const fetchHeatmapData = async () => {
+          console.log(`[HabitCardItem-${habit.id}] Fetching heatmap data...`);
+          setIsLoadingHeatmap(true);
+          try {
+            const fetched =
+              await taskRepository.getActiveTasksByRepetitiveTaskTemplateId(
+                habit.id,
+                FETCH_TASKS_LIMIT,
+              );
+            setHeatmapTasks(fetched);
+            setHasFetched(true);
+          } catch (e: any) {
+            // todo: we can think of error handling and showing it to the user
+            console.error(
+              `[HabitCardItem-${habit.id}] Error fetching heatmap data:`,
+              e,
+            );
+          } finally {
+            setIsLoadingHeatmap(false);
+          }
+        };
+        fetchHeatmapData();
+      }
+    }, [isViewable, habit.id, taskRepository, hasFetched, isLoadingHeatmap]);
+
+    return (
+      <Card style={styles.card} onPress={onPress}>
+        <Card.Title title={<Text variant="titleMedium">{habit.title}</Text>} />
+        <Card.Content style={styles.cardContent}>
+          {isLoadingHeatmap && (
+            <ActivityIndicator size="small" style={styles.heatmapLoader} />
+          )}
+          {!isLoadingHeatmap && hasFetched && heatmapTasks.length > 0 && (
+            <HabitHeatmap
+              tasks={heatmapTasks}
+              numDays={FETCH_TASKS_LIMIT}
+              showMonthLabels={false}
+              showDayLabels={false}
+            />
+          )}
+          {!isLoadingHeatmap && hasFetched && heatmapTasks.length === 0 && (
+            <Text style={styles.noActivityText}>No recent activity</Text>
+          )}
+        </Card.Content>
+      </Card>
+    );
+  },
+);
+
 const HabitsScreen = ({ navigation }: Props) => {
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [
@@ -37,6 +92,9 @@ const HabitsScreen = ({ navigation }: Props) => {
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
 
+  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
+    null,
+  );
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
@@ -46,6 +104,7 @@ const HabitsScreen = ({ navigation }: Props) => {
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
+      setTaskRepository(new TaskRepository(db));
       setRepetitiveTaskTemplateRepository(
         new RepetitiveTaskTemplateRepository(db),
       );
@@ -101,6 +160,7 @@ const HabitsScreen = ({ navigation }: Props) => {
     useCallback(() => {
       console.log('[Habits] Screen focused.');
       if (repetitiveTaskTemplateRepository) {
+        setHabitSections([]);
         fetchHabits();
       } else {
         console.log('[Habits] Screen focused, but repository not ready yet.');
@@ -108,43 +168,28 @@ const HabitsScreen = ({ navigation }: Props) => {
     }, [fetchHabits, repetitiveTaskTemplateRepository]),
   );
 
-  const theme = useTheme();
+  const [viewableItems, setViewableItems] = useState<number[]>([]);
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50,
+  };
+  const viewabilityConfigRef = useRef(viewabilityConfig);
 
-  const { width } = useWindowDimensions();
   const renderHabitCard = useCallback(
     ({ item }: { item: RepetitiveTaskTemplate }) => {
-      const source = {
-        html: item.description ? truncate(item.description, 60) : '',
-      };
-      const baseStyles = {
-        fontSize: 16,
-        color: theme.colors.onSurface,
-        fontFamily: 'HankenGrotesk-Regular',
-      };
-
+      const isViewable = viewableItems.includes(item.id);
       return (
-        <Card
-          style={styles.card}
+        <HabitCardItem
+          habit={item}
+          isViewable={isViewable}
+          taskRepository={taskRepository}
           onPress={() => {
             console.log('[Habits] Navigating to Tracker screen...');
             navigation.navigate('Tracker', { habit: item });
-          }}>
-          <Card.Title title={<Text variant="titleMedium">{item.title}</Text>} />
-          <Card.Content>
-            <View style={styles.cardContentWrapper}>
-              <RenderHtml
-                baseStyle={baseStyles}
-                contentWidth={width}
-                source={source}
-                systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
-                ignoredDomTags={['br']}
-              />
-            </View>
-          </Card.Content>
-        </Card>
+          }}
+        />
       );
     },
-    [navigation, theme.colors.onSurface, width],
+    [navigation, viewableItems, taskRepository],
   );
 
   if (isDbLoading) {
@@ -192,7 +237,7 @@ const HabitsScreen = ({ navigation }: Props) => {
               {title}
             </Text>
           )}
-          renderItem={() => null} // Prevent SectionList from rendering each item
+          renderItem={() => null}
           renderSectionFooter={({ section }) => (
             <FlatList
               data={section.data}
@@ -200,7 +245,22 @@ const HabitsScreen = ({ navigation }: Props) => {
               keyExtractor={item => `${item.id}`}
               numColumns={2}
               scrollEnabled={false}
-              contentContainerStyle={styles.innerListContentContainer}
+              viewabilityConfig={viewabilityConfigRef.current}
+              onViewableItemsChanged={({
+                viewableItems: currentlyViewable,
+              }) => {
+                const newViewableIds = currentlyViewable.map(
+                  item => item.item.id,
+                );
+                setViewableItems(newViewableIds);
+              }}
+              ListEmptyComponent={() => (
+                <View style={styles.centered}>
+                  <Text style={styles.infoText}>
+                    Add tasks to start tracking
+                  </Text>
+                </View>
+              )}
             />
           )}
           contentContainerStyle={styles.listContentContainer}
@@ -235,11 +295,6 @@ const styles = StyleSheet.create({
   listContentContainer: {
     paddingHorizontal: 8,
   },
-  innerListContentContainer: {
-    // If you need specific padding for the items within the grid, add it here
-    // paddingBottom: 8,
-    // overflow: 'hidden',
-  },
   sectionTitle: {
     textAlign: 'center',
     marginVertical: 16,
@@ -249,10 +304,31 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 8,
   },
-  cardContentWrapper: {
-    paddingBottom: 10,
+  cardContent: {
+    backgroundColor: 'white',
+    margin: 8,
+    padding: 8,
     height: 100,
-    overflow: 'hidden',
+  },
+  heatmapLoader: {
+    marginVertical: 20,
+  },
+  noActivityText: {
+    textAlign: 'center',
+    color: 'grey',
+    marginVertical: 20,
+    fontSize: 12,
+  },
+  heatmapPlaceholder: {
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+  },
+  heatmapPlaceholderText: {
+    color: '#a0a0a0',
+    fontSize: 12,
   },
 });
 

@@ -81,13 +81,21 @@ export class TaskRepository {
     return this._getActiveTasksByCondition(); // no condition
   }
 
-  async getAllActiveTasksByRepetitiveTaskTemplateId(
+  async getActiveTasksByRepetitiveTaskTemplateId(
     templateId: number,
+    days: number = 91,
   ): Promise<Task[]> {
-    console.log('templateId', templateId);
-    return this._getActiveTasksByCondition('repetitive_task_template_id = ?', [
-      templateId,
-    ]);
+    const startDate = dayjs()
+      .subtract(days - 1, 'day')
+      .startOf('day')
+      .toISOString();
+    console.log(
+      `[DB Repo] Fetching tasks for templateId: ${templateId} from date: ${startDate} (last ${days} days)`,
+    );
+    return this._getActiveTasksByCondition(
+      'repetitive_task_template_id = ? AND due_date >= ?',
+      [templateId, startDate],
+    );
   }
 
   private async _getActiveTasksByCondition(
