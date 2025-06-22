@@ -224,102 +224,112 @@ const TodayScreen = ({ navigation }: Props) => {
   const [scoreForTaskToBeCompleted, setScoreForTaskToBeCompleted] =
     useState<number>();
 
-  const handleTaskCompletion = (task: Task) => {
-    if (task.completionStatus === TaskCompletionStatusEnum.COMPLETE) {
-      onToggleTaskCompletionStatus(
-        task.id,
-        TaskCompletionStatusEnum.INCOMPLETE,
-        null,
-      );
-      return;
-    }
+  const handleTaskCompletion = useCallback(
+    (task: Task) => {
+      if (task.completionStatus === TaskCompletionStatusEnum.COMPLETE) {
+        onToggleTaskCompletionStatus(
+          task.id,
+          TaskCompletionStatusEnum.INCOMPLETE,
+          null,
+        );
+        return;
+      }
 
-    if (!task.shouldBeScored) {
-      onToggleTaskCompletionStatus(task.id, TaskCompletionStatusEnum.COMPLETE);
-      return;
-    }
-    setTaskToBeCompleted(task);
-  };
+      if (!task.shouldBeScored) {
+        onToggleTaskCompletionStatus(
+          task.id,
+          TaskCompletionStatusEnum.COMPLETE,
+        );
+        return;
+      }
+      setTaskToBeCompleted(task);
+    },
+    [onToggleTaskCompletionStatus],
+  );
 
-  const renderTaskItem = ({
-    item,
-    sectionBackgroundColor,
-  }: {
-    item: Task;
-    sectionBackgroundColor: string;
-  }) => {
-    return (
-      <View
-        style={[
-          {
-            backgroundColor: sectionBackgroundColor,
-          },
-        ]}>
-        <List.Item
-          title={
-            <Text
-              variant="bodyLarge"
-              style={
-                item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                  ? styles.taskCompleted
-                  : null
-              }>
-              {item.title}
-            </Text>
-          }
-          style={[styles.listItem]}
-          left={props => (
-            <View {...props} style={styles.checkboxContainer}>
-              <Checkbox
-                status={
+  const renderTaskItem = useCallback(
+    ({
+      item,
+      sectionBackgroundColor,
+    }: {
+      item: Task;
+      sectionBackgroundColor: string;
+    }) => {
+      return (
+        <View
+          style={[
+            {
+              backgroundColor: sectionBackgroundColor,
+            },
+          ]}>
+          <List.Item
+            title={
+              <Text
+                variant="bodyLarge"
+                style={
                   item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                    ? 'checked'
-                    : 'unchecked'
-                }
-                onPress={() => handleTaskCompletion(item)}
-              />
-            </View>
-          )}
-          right={props => (
-            <View {...props} style={styles.iconContainer}>
-              {(item.schedule === TaskScheduleTypeEnum.Unscheduled ||
-                item.schedule === TaskScheduleTypeEnum.Once) && (
+                    ? styles.taskCompleted
+                    : null
+                }>
+                {item.title}
+              </Text>
+            }
+            style={[styles.listItem]}
+            left={props => (
+              <View {...props} style={styles.checkboxContainer}>
+                <Checkbox
+                  status={
+                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                      ? 'checked'
+                      : 'unchecked'
+                  }
+                  onPress={() => handleTaskCompletion(item)}
+                />
+              </View>
+            )}
+            right={props => (
+              <View {...props} style={styles.iconContainer}>
+                {(item.schedule === TaskScheduleTypeEnum.Unscheduled ||
+                  item.schedule === TaskScheduleTypeEnum.Once) && (
+                  <IconButton
+                    icon="calendar-refresh"
+                    size={20}
+                    onPress={() => {
+                      setSelectedDateForTaskReschedule(
+                        new Date(item.dueDate as string),
+                      );
+                      setTaskIdToBeRescheduled(item.id);
+                    }}
+                    disabled={
+                      item.completionStatus ===
+                      TaskCompletionStatusEnum.COMPLETE
+                    }
+                    style={styles.iconButton}
+                  />
+                )}
                 <IconButton
-                  icon="calendar-refresh"
+                  icon="thumb-down-outline"
                   size={20}
-                  onPress={() => {
-                    setSelectedDateForTaskReschedule(
-                      new Date(item.dueDate as string),
-                    );
-                    setTaskIdToBeRescheduled(item.id);
-                  }}
+                  iconColor="red"
                   disabled={
                     item.completionStatus === TaskCompletionStatusEnum.COMPLETE
                   }
+                  onPress={() =>
+                    onToggleTaskCompletionStatus(
+                      item.id,
+                      TaskCompletionStatusEnum.FAILED,
+                    )
+                  }
                   style={styles.iconButton}
                 />
-              )}
-              <IconButton
-                icon="thumb-down-outline"
-                size={20}
-                iconColor="red"
-                disabled={
-                  item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                }
-                onPress={() =>
-                  onToggleTaskCompletionStatus(
-                    item.id,
-                    TaskCompletionStatusEnum.FAILED,
-                  )
-                }
-                style={styles.iconButton}
-              />
-            </View>
-          )}
-        />
-      </View>
-    );
-  };
+              </View>
+            )}
+          />
+        </View>
+      );
+    },
+    [handleTaskCompletion, onToggleTaskCompletionStatus],
+  );
 
   if (isDbLoading) {
     return (
