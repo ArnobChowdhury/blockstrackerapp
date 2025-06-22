@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { StyleSheet, SectionList, FlatList, View } from 'react-native';
+import {
+  StyleSheet,
+  SectionList,
+  FlatList,
+  View,
+  Dimensions,
+} from 'react-native';
 import { Text, Card, ActivityIndicator, IconButton } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,6 +18,17 @@ import {
   TaskRepository,
 } from '../services/database/repository';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
+
+const screenWidth = Dimensions.get('window').width;
+const numColumns = 2;
+const cardMarginVal = 8;
+const listPaddingHorizontalVal = 8;
+
+const flatListAvailableContentWidth =
+  screenWidth - listPaddingHorizontalVal * 2;
+
+const calculatedCardWidth =
+  flatListAvailableContentWidth / numColumns - cardMarginVal * 2;
 
 type Props = NativeStackScreenProps<TrackerStackParamList, 'HabitsList'>;
 
@@ -301,8 +318,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   card: {
-    flex: 1,
-    margin: 8,
+    width: calculatedCardWidth,
+    margin: cardMarginVal,
   },
   cardContent: {
     backgroundColor: 'white',
