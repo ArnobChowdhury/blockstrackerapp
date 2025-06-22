@@ -1,4 +1,4 @@
-export const scoreColorConfigs: Record<string, string> = {
+export const scoreColorConfigs = {
   failed: '#d43f3f',
   score0: '#c0e8c2',
   score1: '#7be187',

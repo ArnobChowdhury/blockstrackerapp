@@ -21,6 +21,7 @@ interface HabitHeatmapProps {
   onDayPress?: (date: string, task: Task | undefined) => void;
   showMonthLabels?: boolean;
   showDayLabels?: boolean;
+  showLegends?: boolean;
 }
 
 const DEFAULT_SQUARE_SIZE = 16;
@@ -85,6 +86,7 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
   numDays = NUM_DAYS_TO_DISPLAY,
   showMonthLabels = true,
   showDayLabels = true,
+  showLegends = false,
 }) => {
   const [viewWidth, setViewWidth] = useState<number | null>(null);
   const [dynamicSquareSize, setDynamicSquareSize] =
@@ -339,6 +341,48 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
           </G>
         </Svg>
       )}
+      {showLegends && (
+        <View style={styles.legendWrapper}>
+          <View style={styles.legendContainer}>
+            <View
+              style={[
+                styles.legendBox,
+                { backgroundColor: scoreColorConfigs.failed },
+              ]}
+            />
+            <View
+              style={[
+                styles.legendBox,
+                { backgroundColor: scoreColorConfigs.score0 },
+              ]}
+            />
+            <View
+              style={[
+                styles.legendBox,
+                { backgroundColor: scoreColorConfigs.score1 },
+              ]}
+            />
+            <View
+              style={[
+                styles.legendBox,
+                { backgroundColor: scoreColorConfigs.score2 },
+              ]}
+            />
+            <View
+              style={[
+                styles.legendBox,
+                { backgroundColor: scoreColorConfigs.score3 },
+              ]}
+            />
+            <View
+              style={[
+                styles.legendBox,
+                { backgroundColor: scoreColorConfigs.score4 },
+              ]}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -347,6 +391,21 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'flex-start',
     paddingHorizontal: 20,
+  },
+  legendWrapper: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
+    paddingTop: 40,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+  },
+  legendBox: {
+    height: 20,
+    width: 20,
+    margin: 2,
+    borderRadius: 2,
   },
 });
 
