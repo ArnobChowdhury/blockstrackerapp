@@ -169,7 +169,11 @@ const TrackerScreen = ({ route, navigation }: Props) => {
             <Text variant="titleMedium" style={styles.heading}>
               Activity Heatmap
             </Text>
-            <HabitHeatmap tasks={tasks} numDays={91} />
+            <HabitHeatmap
+              repetitiveTaskTemplate={habit}
+              tasks={tasks}
+              numDays={91}
+            />
           </View>
         )}
       </ScrollView>

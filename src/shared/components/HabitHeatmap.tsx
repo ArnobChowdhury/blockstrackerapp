@@ -1,11 +1,19 @@
 import React, { useState, useMemo, useLayoutEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import Svg, { Rect, G, Text as SvgText } from 'react-native-svg';
 import dayjs from 'dayjs';
-import { Task, TaskCompletionStatusEnum } from '../../types'; // Import Task and Enum
+import {
+  Task,
+  TaskCompletionStatusEnum,
+  RepetitiveTaskTemplate,
+  DaysInAWeek,
+  TaskScheduleTypeEnum,
+} from '../../types';
 import { scoreColorConfigs } from '../constants';
 
 interface HabitHeatmapProps {
+  repetitiveTaskTemplate: RepetitiveTaskTemplate;
   tasks: Task[];
   endDate?: Date | string;
   squareSize?: number;
@@ -58,10 +66,18 @@ const getColorForTask = (task: Task | undefined): string => {
   return scoreColorConfigs.noActivity;
 };
 
-const DAY_DISPLAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAY_LABEL_INDICES_TO_SHOW = [0, 1, 2, 3, 4, 5, 6];
+const WEEK_DAY_CONFIG = [
+  { label: 'Sun', key: DaysInAWeek.Sunday },
+  { label: 'Mon', key: DaysInAWeek.Monday },
+  { label: 'Tue', key: DaysInAWeek.Tuesday },
+  { label: 'Wed', key: DaysInAWeek.Wednesday },
+  { label: 'Thu', key: DaysInAWeek.Thursday },
+  { label: 'Fri', key: DaysInAWeek.Friday },
+  { label: 'Sat', key: DaysInAWeek.Saturday },
+];
 
 const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
+  repetitiveTaskTemplate,
   tasks,
   endDate: propEndDate = dayjs().toDate(),
   squareSize = DEFAULT_SQUARE_SIZE, // todo no need for this prop
@@ -73,6 +89,8 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
   const [viewWidth, setViewWidth] = useState<number | null>(null);
   const [dynamicSquareSize, setDynamicSquareSize] =
     useState<number>(squareSize);
+
+  const theme = useTheme();
 
   const taskMap = useMemo(() => {
     const map = new Map<string, Task>();
@@ -222,7 +240,6 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
       {viewWidth && (
         <Svg height={heatmapHeight} width={heatmapWidth}>
           <G>
-            {/* Month Labels */}
             {showMonthLabels &&
               monthLabels.map((label, index) => (
                 <SvgText
@@ -230,29 +247,39 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
                   x={label.x}
                   y={MONTH_LABEL_HEIGHT - 6}
                   fontSize={10}
-                  fill="#586069"
+                  fontFamily="HankenGrotesk-Medium"
+                  fill="#888888"
                   textAnchor="start">
                   {label.text}
                 </SvgText>
               ))}
 
             {showDayLabels &&
-              DAY_LABEL_INDICES_TO_SHOW.map(dayIndex => (
-                <SvgText
-                  key={`day-label-${dayIndex}`}
-                  x={DAY_LABEL_WIDTH - 10}
-                  y={
-                    monthLabelOffset +
-                    dayIndex * totalCellSize +
-                    squareSize / 2 +
-                    4
-                  }
-                  fontSize={9}
-                  fill="#586069"
-                  textAnchor="end">
-                  {DAY_DISPLAY_LABELS[dayIndex]}
-                </SvgText>
-              ))}
+              WEEK_DAY_CONFIG.map((dayConfig, index) => {
+                return (
+                  <SvgText
+                    key={`day-label-${index}`}
+                    x={DAY_LABEL_WIDTH - 10}
+                    y={
+                      monthLabelOffset +
+                      index * totalCellSize +
+                      squareSize / 2 +
+                      4
+                    }
+                    fontSize={9}
+                    fontFamily="HankenGrotesk-Medium"
+                    fill={
+                      repetitiveTaskTemplate.schedule ===
+                        TaskScheduleTypeEnum.SpecificDaysInAWeek &&
+                      repetitiveTaskTemplate[dayConfig.key]
+                        ? theme.colors.primary
+                        : '#888888'
+                    }
+                    textAnchor="end">
+                    {dayConfig.label}
+                  </SvgText>
+                );
+              })}
 
             {weeksGrid.map((weekDays, weekIdx) => (
               <G
