@@ -173,7 +173,6 @@ const TrackerScreen = ({ route, navigation }: Props) => {
               repetitiveTaskTemplate={habit}
               tasks={tasks}
               numDays={91}
-              showLegends={true}
             />
           </View>
         )}

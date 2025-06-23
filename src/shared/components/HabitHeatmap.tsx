@@ -13,15 +13,13 @@ import {
 import { scoreColorConfigs } from '../constants';
 
 interface HabitHeatmapProps {
-  repetitiveTaskTemplate: RepetitiveTaskTemplate;
+  repetitiveTaskTemplate?: RepetitiveTaskTemplate;
   tasks: Task[];
   endDate?: Date | string;
   squareSize?: number;
   numDays?: number;
   onDayPress?: (date: string, task: Task | undefined) => void;
   showMonthLabels?: boolean;
-  showDayLabels?: boolean;
-  showLegends?: boolean;
 }
 
 const DEFAULT_SQUARE_SIZE = 16;
@@ -84,9 +82,7 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
   squareSize = DEFAULT_SQUARE_SIZE, // todo no need for this prop
   onDayPress,
   numDays = NUM_DAYS_TO_DISPLAY,
-  showMonthLabels = true,
-  showDayLabels = true,
-  showLegends = false,
+  showMonthLabels = false,
 }) => {
   const [viewWidth, setViewWidth] = useState<number | null>(null);
   const [dynamicSquareSize, setDynamicSquareSize] =
@@ -134,7 +130,7 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
     endWeekForCalc.diff(calendarGridStartDate, 'week') + 1;
 
   const totalCellSize = dynamicSquareSize + DEFAULT_SQUARE_MARGIN;
-  const dayLabelOffset = showDayLabels ? DAY_LABEL_WIDTH : 0;
+  const dayLabelOffset = repetitiveTaskTemplate ? DAY_LABEL_WIDTH : 0;
   const monthLabelOffset = showMonthLabels ? MONTH_LABEL_HEIGHT : 0;
 
   const weeksGrid: dayjs.Dayjs[][] = [];
@@ -219,7 +215,9 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
       const availableWidthForSvgContent =
         viewWidth - 2 * CONTAINER_PADDING_HORIZONTAL;
 
-      const currentDayLabelOffset = showDayLabels ? DAY_LABEL_WIDTH : 0;
+      const currentDayLabelOffset = repetitiveTaskTemplate
+        ? DAY_LABEL_WIDTH
+        : 0;
 
       const widthForSquaresAndTheirMargins =
         availableWidthForSvgContent - currentDayLabelOffset;
@@ -233,155 +231,157 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
 
       setDynamicSquareSize(newSquareSize);
     }
-  }, [numWeeksToRender, showDayLabels, viewWidth]);
+  }, [numWeeksToRender, repetitiveTaskTemplate, viewWidth]);
 
   return (
     <View
       style={styles.container}
       onLayout={e => setViewWidth(e.nativeEvent.layout.width)}>
       {viewWidth && (
-        <Svg height={heatmapHeight} width={heatmapWidth}>
-          <G>
-            {showMonthLabels &&
-              monthLabels.map((label, index) => (
-                <SvgText
-                  key={`month-${index}-${label.text}`}
-                  x={label.x}
-                  y={MONTH_LABEL_HEIGHT - 6}
-                  fontSize={10}
-                  fontFamily="HankenGrotesk-Medium"
-                  fill="#888888"
-                  textAnchor="start">
-                  {label.text}
-                </SvgText>
-              ))}
-
-            {showDayLabels &&
-              WEEK_DAY_CONFIG.map((dayConfig, index) => {
-                return (
+        <>
+          <Svg height={heatmapHeight} width={heatmapWidth}>
+            <G>
+              {showMonthLabels &&
+                monthLabels.map((label, index) => (
                   <SvgText
-                    key={`day-label-${index}`}
-                    x={DAY_LABEL_WIDTH - 10}
-                    y={
-                      monthLabelOffset +
-                      index * totalCellSize +
-                      squareSize / 2 +
-                      4
-                    }
-                    fontSize={9}
+                    key={`month-${index}-${label.text}`}
+                    x={label.x}
+                    y={MONTH_LABEL_HEIGHT - 6}
+                    fontSize={10}
                     fontFamily="HankenGrotesk-Medium"
-                    fill={
-                      repetitiveTaskTemplate.schedule ===
-                        TaskScheduleTypeEnum.SpecificDaysInAWeek &&
-                      repetitiveTaskTemplate[dayConfig.key]
-                        ? theme.colors.primary
-                        : '#888888'
-                    }
-                    textAnchor="end">
-                    {dayConfig.label}
+                    fill="#888888"
+                    textAnchor="start">
+                    {label.text}
                   </SvgText>
-                );
-              })}
+                ))}
 
-            {weeksGrid.map((weekDays, weekIdx) => (
-              <G
-                key={`week-${weekIdx}`}
-                x={dayLabelOffset + weekIdx * totalCellSize}
-                y={monthLabelOffset}>
-                {weekDays.map((day, dayOfWeekIdx) => {
-                  const dateStr = day.format('YYYY-MM-DD');
-                  const taskForDay = taskMap.get(dateStr);
-
-                  const isFirstDayOfMonth = day.date() === 1;
-                  const showDateText =
-                    isDateInDataRange(day) &&
-                    isFirstDayOfMonth &&
-                    dynamicSquareSize >= 15;
-
-                  let cellColor: string;
-
-                  if (isDateInDataRange(day)) {
-                    cellColor = getColorForTask(taskForDay);
-                  } else {
-                    cellColor = scoreColorConfigs.padding;
-                  }
-
+              {repetitiveTaskTemplate &&
+                WEEK_DAY_CONFIG.map((dayConfig, index) => {
                   return (
-                    <G key={dateStr} y={dayOfWeekIdx * totalCellSize}>
-                      <Rect
-                        width={dynamicSquareSize}
-                        height={dynamicSquareSize}
-                        fill={cellColor}
-                        rx={2}
-                        ry={2}
-                        onPress={() => {
-                          if (isDateInDataRange(day) && onDayPress) {
-                            onDayPress(dateStr, taskForDay);
-                          }
-                        }}
-                        disabled={!isDateInDataRange(day) || !onDayPress}
-                      />
-                      {showDateText && (
-                        <SvgText
-                          x={dynamicSquareSize / 2}
-                          y={dynamicSquareSize / 2}
-                          fontSize={12}
-                          fill="#333333"
-                          alignmentBaseline="middle"
-                          textAnchor="middle"
-                          pointerEvents="none">
-                          {day.format('DD')}
-                        </SvgText>
-                      )}
-                    </G>
+                    <SvgText
+                      key={`day-label-${index}`}
+                      x={DAY_LABEL_WIDTH - 10}
+                      y={
+                        monthLabelOffset +
+                        index * totalCellSize +
+                        squareSize / 2 +
+                        4
+                      }
+                      fontSize={9}
+                      fontFamily="HankenGrotesk-Medium"
+                      fill={
+                        repetitiveTaskTemplate.schedule ===
+                          TaskScheduleTypeEnum.SpecificDaysInAWeek &&
+                        repetitiveTaskTemplate[dayConfig.key]
+                          ? theme.colors.primary
+                          : '#888888'
+                      }
+                      textAnchor="end">
+                      {dayConfig.label}
+                    </SvgText>
                   );
                 })}
-              </G>
-            ))}
-          </G>
-        </Svg>
-      )}
-      {showLegends && (
-        <View style={styles.legendWrapper}>
-          <View style={styles.legendContainer}>
-            <View
-              style={[
-                styles.legendBox,
-                { backgroundColor: scoreColorConfigs.failed },
-              ]}
-            />
-            <View
-              style={[
-                styles.legendBox,
-                { backgroundColor: scoreColorConfigs.score0 },
-              ]}
-            />
-            <View
-              style={[
-                styles.legendBox,
-                { backgroundColor: scoreColorConfigs.score1 },
-              ]}
-            />
-            <View
-              style={[
-                styles.legendBox,
-                { backgroundColor: scoreColorConfigs.score2 },
-              ]}
-            />
-            <View
-              style={[
-                styles.legendBox,
-                { backgroundColor: scoreColorConfigs.score3 },
-              ]}
-            />
-            <View
-              style={[
-                styles.legendBox,
-                { backgroundColor: scoreColorConfigs.score4 },
-              ]}
-            />
-          </View>
-        </View>
+
+              {weeksGrid.map((weekDays, weekIdx) => (
+                <G
+                  key={`week-${weekIdx}`}
+                  x={dayLabelOffset + weekIdx * totalCellSize}
+                  y={monthLabelOffset}>
+                  {weekDays.map((day, dayOfWeekIdx) => {
+                    const dateStr = day.format('YYYY-MM-DD');
+                    const taskForDay = taskMap.get(dateStr);
+
+                    const isFirstDayOfMonth = day.date() === 1;
+                    const showDateText =
+                      isDateInDataRange(day) &&
+                      isFirstDayOfMonth &&
+                      dynamicSquareSize >= 15;
+
+                    let cellColor: string;
+
+                    if (isDateInDataRange(day)) {
+                      cellColor = getColorForTask(taskForDay);
+                    } else {
+                      cellColor = scoreColorConfigs.padding;
+                    }
+
+                    return (
+                      <G key={dateStr} y={dayOfWeekIdx * totalCellSize}>
+                        <Rect
+                          width={dynamicSquareSize}
+                          height={dynamicSquareSize}
+                          fill={cellColor}
+                          rx={2}
+                          ry={2}
+                          onPress={() => {
+                            if (isDateInDataRange(day) && onDayPress) {
+                              onDayPress(dateStr, taskForDay);
+                            }
+                          }}
+                          disabled={!isDateInDataRange(day) || !onDayPress}
+                        />
+                        {showDateText && (
+                          <SvgText
+                            x={dynamicSquareSize / 2}
+                            y={dynamicSquareSize / 2}
+                            fontSize={12}
+                            fill="#333333"
+                            alignmentBaseline="middle"
+                            textAnchor="middle"
+                            pointerEvents="none">
+                            {day.format('DD')}
+                          </SvgText>
+                        )}
+                      </G>
+                    );
+                  })}
+                </G>
+              ))}
+            </G>
+          </Svg>
+          {repetitiveTaskTemplate && (
+            <View style={styles.legendWrapper}>
+              <View style={styles.legendContainer}>
+                <View
+                  style={[
+                    styles.legendBox,
+                    { backgroundColor: scoreColorConfigs.failed },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.legendBox,
+                    { backgroundColor: scoreColorConfigs.score0 },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.legendBox,
+                    { backgroundColor: scoreColorConfigs.score1 },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.legendBox,
+                    { backgroundColor: scoreColorConfigs.score2 },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.legendBox,
+                    { backgroundColor: scoreColorConfigs.score3 },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.legendBox,
+                    { backgroundColor: scoreColorConfigs.score4 },
+                  ]}
+                />
+              </View>
+            </View>
+          )}
+        </>
       )}
     </View>
   );

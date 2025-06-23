@@ -86,12 +86,7 @@ const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
             <ActivityIndicator size="small" style={styles.heatmapLoader} />
           )}
           {!isLoadingHeatmap && hasFetched && heatmapTasks.length > 0 && (
-            <HabitHeatmap
-              tasks={heatmapTasks}
-              numDays={FETCH_TASKS_LIMIT}
-              showMonthLabels={false}
-              showDayLabels={false}
-            />
+            <HabitHeatmap tasks={heatmapTasks} numDays={FETCH_TASKS_LIMIT} />
           )}
           {!isLoadingHeatmap && hasFetched && heatmapTasks.length === 0 && (
             <Text style={styles.noActivityText}>No recent activity</Text>
