@@ -355,6 +355,21 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     setSelectedDateVisible(false);
   };
 
+  const descriptionSource = {
+    html: taskDescription
+      ? truncate(taskDescription, 40)
+      : '<p>Task Description</p>',
+  };
+
+  const descriptionInputFieldBaseStyles = useMemo(() => {
+    return {
+      fontSize: 16,
+      color: theme.colors.onSurface,
+      fontFamily: 'HankenGrotesk-Regular',
+      marginLeft: -4,
+    };
+  }, [theme.colors.onSurface]);
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -380,12 +395,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     isSpaceOnFocus ||
     (selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
       selectedDays.length === 0);
-
-  const source = {
-    html: taskDescription
-      ? truncate(taskDescription, 40)
-      : '<p>Task Description</p>',
-  };
 
   return (
     <SafeAreaView
@@ -425,7 +434,13 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
                 },
                 styles.descriptionContainer,
               ]}>
-              <RenderHtml contentWidth={width} source={source} />
+              <RenderHtml
+                baseStyle={descriptionInputFieldBaseStyles}
+                contentWidth={width}
+                source={descriptionSource}
+                systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
+                ignoredDomTags={['br']}
+              />
             </View>
           </TouchableOpacity>
 
