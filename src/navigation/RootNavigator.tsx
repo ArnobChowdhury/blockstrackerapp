@@ -12,6 +12,7 @@ import TodayScreen from '../screens/TodayScreen';
 import HabitsScreen from '../screens/HabitsScreen';
 import TrackerScreen from '../screens/TrackerScreen';
 import AddTaskScreen from '../screens/AddTaskScreen';
+import EditTaskScreen from '../screens/EditTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
 import TaskDescription from '../screens/TaskDescription';
@@ -29,6 +30,10 @@ export type AddTaskStackParamList = {
   };
 };
 
+export type EditTaskStackParamList = {
+  EditTask: { updatedDescription?: string; isToday?: boolean };
+};
+
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
   ActiveTaskList: { category: TaskScheduleTypeEnum };
@@ -39,7 +44,7 @@ export type TrackerStackParamList = {
   Tracker: { habit: RepetitiveTaskTemplate };
 };
 
-export type RootTabParamList = {
+export type BottomTabParamList = {
   Today: undefined;
   AddTaskStack:
     | {
@@ -51,8 +56,16 @@ export type RootTabParamList = {
   HabitsTracker: undefined;
 };
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
+export type RootStackParamList = {
+  BottomNavigation: undefined;
+  EditTask: undefined;
+};
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+
+const Tab = createBottomTabNavigator<BottomTabParamList>();
 const AddTaskStack = createNativeStackNavigator<AddTaskStackParamList>();
+const EditTaskStack = createNativeStackNavigator<EditTaskStackParamList>();
 const ActiveStack = createNativeStackNavigator<ActiveStackParamList>();
 const TrackerStack = createNativeStackNavigator<TrackerStackParamList>();
 
@@ -76,6 +89,18 @@ const AddTaskStackNavigator = () => {
         options={{ headerShown: false }}
       />
     </AddTaskStack.Navigator>
+  );
+};
+
+const EditTaskStackNavigator = () => {
+  return (
+    <EditTaskStack.Navigator initialRouteName="EditTask">
+      <EditTaskStack.Screen
+        name="EditTask"
+        component={EditTaskScreen}
+        options={{ headerShown: true }}
+      />
+    </EditTaskStack.Navigator>
   );
 };
 
@@ -227,7 +252,7 @@ const navigationTabBar = ({
   />
 );
 
-const RootNavigator = () => {
+const BottomNavigator = () => {
   return (
     <Tab.Navigator
       initialRouteName="Today"
@@ -272,6 +297,15 @@ const RootNavigator = () => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+const RootNavigator = () => {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="BottomNavigation" component={BottomNavigator} />
+      <RootStack.Screen name="EditTask" component={EditTaskStackNavigator} />
+    </RootStack.Navigator>
   );
 };
 

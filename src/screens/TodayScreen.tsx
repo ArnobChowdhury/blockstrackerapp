@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootTabParamList } from '../navigation/RootNavigator';
+import type { BottomTabParamList } from '../navigation/RootNavigator';
 import {
   useDatabase,
   useToggleTaskCompletionStatus,
@@ -37,7 +37,7 @@ import {
 } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
 
-type Props = NativeStackScreenProps<RootTabParamList, 'Today'>;
+type Props = NativeStackScreenProps<BottomTabParamList, 'Today'>;
 
 export interface TaskSection {
   title: string;
@@ -263,6 +263,10 @@ const TodayScreen = ({ navigation }: Props) => {
             },
           ]}>
           <List.Item
+            onPress={() => {
+              // @ts-ignore
+              navigation.navigate('EditTask');
+            }}
             title={
               <Text
                 variant="bodyLarge"
@@ -328,7 +332,7 @@ const TodayScreen = ({ navigation }: Props) => {
         </View>
       );
     },
-    [handleTaskCompletion, onToggleTaskCompletionStatus],
+    [handleTaskCompletion, navigation, onToggleTaskCompletionStatus],
   );
 
   if (isDbLoading) {

@@ -44,7 +44,6 @@ const TaskDescription = ({ navigation, route }: Props) => {
 
   const handleDescriptionAccept = () => {
     if (richText.current) {
-      navigation.goBack();
       navigation.navigate(
         'AddTask',
         {
