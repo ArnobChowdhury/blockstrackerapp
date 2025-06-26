@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -39,6 +40,7 @@ import {
   Divider,
   useTheme,
   IconButton,
+  Icon,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
 import type { Space } from '../types';
@@ -62,6 +64,8 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
   const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
+  const [isRepetitiveTask, setIsRepetitiveTask] = useState<boolean>(false);
+  const [taskTemplateId, setTaskTemplateId] = useState<number | null>(null);
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState<string | null>('');
   const [selectedScheduleType, setSelectedScheduleType] =
@@ -169,7 +173,15 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       if (!fetchedTask) {
         throw new Error(`Task with ID ${route.params.taskId} not found.`);
       }
-      console.log('fetchedTask', fetchedTask);
+
+      if (
+        (!isRepetitiveTaskTemplate &&
+          fetchedTask.schedule === TaskScheduleTypeEnum.Daily) ||
+        fetchedTask.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
+      ) {
+        setIsRepetitiveTask(true);
+        setTaskTemplateId(fetchedTask.repetitiveTaskTemplateId);
+      }
 
       setTaskName(fetchedTask.title);
       setTaskDescription(fetchedTask.description);
@@ -198,6 +210,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     taskRepository,
     repetitiveTaskTemplateRepository,
     route.params.taskId,
+    isRepetitiveTaskTemplate,
     fetchSpace,
   ]);
 
@@ -247,22 +260,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const handleShouldBeScored = useCallback(() => {
     setShouldBeScored(prev => !prev);
   }, []);
-
-  // const resetForm = useCallback(() => {
-  //   setTaskName('');
-  //   setTaskDescription('');
-  //   setSelectedScheduleType(TaskScheduleTypeEnum.Unscheduled);
-  //   setSelectedTimeOfDay(null);
-  //   setShouldBeScored(false);
-  //   setSelectedDateVisible(false);
-  //   setSelectedDate(undefined);
-  //   setSelectedSpace(null);
-  //   setSpaceQuery('');
-  //   setSelectedDays([]);
-  //   setIsSaving(false);
-
-  //   console.log('[Form] Reset complete');
-  // }, []);
 
   const handleTaskUpdate = async () => {
     const trimmedTaskName = taskName.trim();
@@ -327,6 +324,17 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       setIsSaving(false);
     }
   };
+
+  const handleEditingRepetitiveTaskTemplateInsteadOfTask = useCallback(() => {
+    if (!taskTemplateId) {
+      return;
+    }
+
+    navigation.replace('EditTask', {
+      taskId: taskTemplateId,
+      isRepetitiveTaskTemplate: true,
+    });
+  }, [taskTemplateId, navigation]);
 
   const onConfirmSelectedDate = useCallback(
     (params: { date: Date | undefined }) => {
@@ -450,6 +458,8 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     };
   }, [theme.colors.onSurface]);
 
+  const [isYesPressed, setIsYesPressed] = useState(false);
+
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -501,6 +511,39 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
               autocompleteInputRef.current?.remeasure();
             }}
             scrollEventThrottle={16}>
+            {isRepetitiveTask && (
+              <View style={styles.disclaimer}>
+                <Icon source="information-outline" size={20} />
+                <Text
+                  variant="bodyMedium"
+                  style={[
+                    { color: theme.colors.primary },
+                    styles.disclaimerText,
+                  ]}>
+                  Editing this form will not affect the underlying template of
+                  this repetitive task. Would you like to edit the template
+                  instead?{' '}
+                  <Pressable
+                    style={[isYesPressed && styles.disclaimerPressable]}
+                    onPressIn={() => setIsYesPressed(true)}
+                    onPressOut={() => {
+                      setIsYesPressed(false);
+                      handleEditingRepetitiveTaskTemplateInsteadOfTask();
+                    }}>
+                    <Text
+                      variant="bodyMedium"
+                      style={[
+                        styles.disclaimerLink,
+                        {
+                          color: theme.colors.secondary,
+                        },
+                      ]}>
+                      Yes
+                    </Text>
+                  </Pressable>
+                </Text>
+              </View>
+            )}
             <TextInput
               label="Task Name*"
               value={taskName}
@@ -747,6 +790,19 @@ const styles = StyleSheet.create({
   },
   scheduleContainer: {
     flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  disclaimer: {
+    marginBottom: 10,
+    flexDirection: 'row',
+  },
+  disclaimerText: { flex: 1, marginLeft: 6 },
+  disclaimerPressable: {
+    opacity: 0.5,
+  },
+  disclaimerLink: {
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
 });
 
