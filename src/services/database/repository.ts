@@ -27,6 +27,14 @@ export class TaskRepository {
     this.db = database;
   }
 
+  async getTaskById(taskId: number): Promise<Task | null> {
+    const task = await this._getActiveTasksByCondition('id = ?', [taskId]);
+    if (task) {
+      return task[0];
+    }
+    return null;
+  }
+
   async addTask(taskData: NewTaskData): Promise<QueryResult> {
     const now = new Date().toISOString();
     const sql = `
@@ -115,7 +123,7 @@ export class TaskRepository {
 
     const sql = `
       SELECT
-        id, title, description, schedule, time_of_day, should_be_scored, score,
+        id, title, description, schedule, time_of_day, should_be_scored, score, space_id,
         repetitive_task_template_id, created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
       WHERE ${allWhereClauses.join(' AND ')}
@@ -157,6 +165,7 @@ export class TaskRepository {
               repetitiveTaskTemplateId: task.repetitive_task_template_id as
                 | number
                 | null,
+              spaceId: task.space_id as number | null,
             };
 
             tasks.push(transformedTask);
@@ -178,7 +187,7 @@ export class TaskRepository {
     const sql = `
       SELECT
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
-        should_be_scored, score, created_at, modified_at, is_active, completion_status
+        should_be_scored, score, created_at, modified_at, is_active, completion_status, space_id
       FROM tasks
       WHERE DATE(due_date, 'localtime') = DATE('now', 'localtime')
         AND completion_status IN ('${TaskCompletionStatusEnum.INCOMPLETE}', '${TaskCompletionStatusEnum.COMPLETE}')
@@ -223,6 +232,7 @@ export class TaskRepository {
               repetitiveTaskTemplateId: row.repetitive_task_template_id as
                 | number
                 | null,
+              spaceId: row.space_id as number | null,
             });
           }
         }
@@ -691,6 +701,45 @@ export class SpaceRepository {
 
   constructor(database: NitroSQLiteConnection) {
     this.db = database;
+  }
+
+  async getSpaceById(spaceId: number): Promise<Space | null> {
+    const sql = `
+      SELECT id, name, created_at, modified_at FROM spaces WHERE id = ?;
+    `;
+
+    console.log('[DB Repo] Attempting to SELECT space by id:', {
+      sql,
+      spaceId,
+    });
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql, [spaceId]);
+      console.log(
+        '[DB Repo] SELECT successful, rows found:',
+        resultSet.rows?.length,
+      );
+
+      if (resultSet.rows) {
+        const space = resultSet.rows.item(0);
+        if (space) {
+          const transformedSpace: Space = {
+            id: space.id as number,
+            name: space.name as string,
+            createdAt: space.created_at as string,
+            modifiedAt: space.modified_at as string,
+          };
+
+          return transformedSpace;
+        }
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to SELECT space by id:', error);
+      throw new Error(
+        `Failed to retrieve space by id: ${error.message || 'Unknown error'}`,
+      );
+    }
   }
 
   async getAllSpaces(): Promise<Space[]> {

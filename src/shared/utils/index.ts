@@ -1,4 +1,5 @@
 import { Dayjs } from 'dayjs';
+import { DaysInAWeek, RepetitiveTaskTemplate } from '../../types';
 
 export const capitalize = (s: string) => {
   if (typeof s !== 'string') {
@@ -29,4 +30,17 @@ export const truncateString = (
   const charactersToKeep = maxLength - suffix.length;
   const truncatedText = text.substring(0, charactersToKeep);
   return truncatedText + suffix;
+};
+
+export const getScheduledWeekDaysFromRepetitiveTask = (
+  repetitiveTaskTemplate: RepetitiveTaskTemplate,
+) => {
+  const days: DaysInAWeek[] = [];
+  Object.values(DaysInAWeek).forEach(day => {
+    if (repetitiveTaskTemplate[day]) {
+      days.push(day);
+    }
+  });
+
+  return days;
 };

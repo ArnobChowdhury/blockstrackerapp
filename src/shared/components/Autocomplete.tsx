@@ -120,6 +120,12 @@ const AutocompleteInput = forwardRef<
     }, [measureAndSetLayout]);
 
     useEffect(() => {
+      if (selectedOption) {
+        setQuery(selectedOption.name);
+      }
+    }, [selectedOption, setQuery]);
+
+    useEffect(() => {
       if (query.length > 0) {
         if (!selectedOption || selectedOption.name !== query) {
           setShowSuggestions(true);

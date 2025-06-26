@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useLayoutEffect,
 } from 'react';
 import {
   StyleSheet,
@@ -27,7 +28,7 @@ import AutocompleteInput, {
 } from '../shared/components/Autocomplete';
 import truncate from 'html-truncate';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { EditTaskStackParamList } from '../navigation/RootNavigator';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import {
   TextInput,
   Text,
@@ -37,6 +38,7 @@ import {
   Snackbar,
   Divider,
   useTheme,
+  IconButton,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
 import type { Space } from '../types';
@@ -46,15 +48,22 @@ import { DatePickerModal } from 'react-native-paper-dates';
 import RenderHtml from 'react-native-render-html';
 import dayjs from 'dayjs';
 
-type Props = NativeStackScreenProps<EditTaskStackParamList, 'EditTask'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'EditTask'>;
 
 const EditTaskScreen = ({ navigation, route }: Props) => {
-  const isTodaysTask = route.params?.isToday;
+  const isRepetitiveTaskTemplate =
+    route.params?.isRepetitiveTaskTemplate || false;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Edit',
+    });
+  }, [navigation]);
 
   const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
-  const [taskDescription, setTaskDescription] = useState('');
+  const [taskDescription, setTaskDescription] = useState<string | null>('');
   const [selectedScheduleType, setSelectedScheduleType] =
     useState<TaskScheduleTypeEnum>(TaskScheduleTypeEnum.Unscheduled);
   const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<TimeOfDay | null>(
@@ -82,17 +91,12 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const [spaceRepository, setSpaceRepository] =
     useState<SpaceRepository | null>(null);
 
+  const [isLoadingTask, setIsLoadingTask] = useState(true);
+  const [errorLoadingTask, setErrorLoadingTask] = useState<string | null>(null);
+
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const autocompleteInputRef = useRef<AutocompleteInputHandles>(null);
-
-  useEffect(() => {
-    if (isTodaysTask) {
-      setSelectedScheduleType(TaskScheduleTypeEnum.Once);
-      setSelectedDate(new Date());
-      navigation.setParams({ isToday: false });
-    }
-  }, [isTodaysTask, navigation]);
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
@@ -120,6 +124,87 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
+  const fetchSpace = useCallback(
+    async (spaceId: number) => {
+      if (!spaceRepository) {
+        return;
+      }
+
+      try {
+        const space = await spaceRepository.getSpaceById(spaceId);
+        if (!space) {
+          throw new Error(`Space with ID ${spaceId} not found.`);
+        }
+        setSelectedSpace(space);
+      } catch (error: any) {
+        console.error('[EditTaskScreen] Failed to fetch space');
+      }
+    },
+    [spaceRepository],
+  );
+
+  const fetchTask = useCallback(async () => {
+    if (!taskRepository || !repetitiveTaskTemplateRepository) {
+      console.log(
+        '[EditTaskScreen] taskRepository or repetitiveTaskTemplateRepository is null',
+      );
+      return;
+    }
+
+    if (!route.params.taskId) {
+      console.log('[EditTaskScreen] No task ID provided');
+      setErrorLoadingTask('No task ID provided');
+      return;
+    }
+
+    console.log('[EditTaskScreen] Fetching task for editing...');
+    setErrorLoadingTask(null);
+
+    try {
+      await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
+        taskRepository,
+      );
+
+      const fetchedTask = await taskRepository.getTaskById(route.params.taskId);
+      if (!fetchedTask) {
+        throw new Error(`Task with ID ${route.params.taskId} not found.`);
+      }
+      console.log('fetchedTask', fetchedTask);
+
+      setTaskName(fetchedTask.title);
+      setTaskDescription(fetchedTask.description);
+      setSelectedScheduleType(fetchedTask.schedule);
+      setSelectedTimeOfDay(fetchedTask.timeOfDay);
+      setShouldBeScored(fetchedTask.shouldBeScored);
+      setSelectedDate(dayjs(fetchedTask.dueDate).toDate());
+
+      if (fetchedTask.spaceId) {
+        await fetchSpace(fetchedTask.spaceId);
+      }
+
+      // selectedDays are needed for repetitive task templates
+      // const days = getScheduledWeekDaysFromRepetitiveTask(fetchedTask);
+      // console.log(days);
+    } catch (error: any) {
+      console.error('[TodayScreen] Failed to fetch tasks:', error);
+      setErrorLoadingTask(
+        error.message || 'An unknown error occurred while fetching tasks.',
+      );
+      // setTaskSections([]);
+    } finally {
+      setIsLoadingTask(false);
+    }
+  }, [
+    taskRepository,
+    repetitiveTaskTemplateRepository,
+    route.params.taskId,
+    fetchSpace,
+  ]);
+
+  useEffect(() => {
+    fetchTask();
+  }, [fetchTask]);
+
   useEffect(() => {
     if (route.params?.updatedDescription) {
       setTaskDescription(route.params.updatedDescription);
@@ -127,33 +212,33 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     }
   }, [route.params?.updatedDescription, navigation]);
 
-  const makeDateSelectionModalVisible = useCallback(() => {
-    setTemporaryDate(undefined);
-    setSelectedDateVisible(true);
-  }, []);
+  // const makeDateSelectionModalVisible = useCallback(() => {
+  //   setTemporaryDate(undefined);
+  //   setSelectedDateVisible(true);
+  // }, []);
 
-  const handleFrequencySelect = useCallback(
-    (frequency: TaskScheduleTypeEnum) => {
-      setSelectedScheduleType(frequency);
+  // const handleFrequencySelect = useCallback(
+  //   (frequency: TaskScheduleTypeEnum) => {
+  //     setSelectedScheduleType(frequency);
 
-      if (frequency !== selectedScheduleType) {
-        setSelectedDate(undefined);
-        setSelectedDays([]);
-      }
+  //     if (frequency !== selectedScheduleType) {
+  //       setSelectedDate(undefined);
+  //       setSelectedDays([]);
+  //     }
 
-      if (frequency === TaskScheduleTypeEnum.Once) {
-        makeDateSelectionModalVisible();
-      }
+  //     if (frequency === TaskScheduleTypeEnum.Once) {
+  //       makeDateSelectionModalVisible();
+  //     }
 
-      if (
-        frequency !== TaskScheduleTypeEnum.Daily &&
-        frequency !== TaskScheduleTypeEnum.SpecificDaysInAWeek
-      ) {
-        setShouldBeScored(false);
-      }
-    },
-    [makeDateSelectionModalVisible, selectedScheduleType],
-  );
+  //     if (
+  //       frequency !== TaskScheduleTypeEnum.Daily &&
+  //       frequency !== TaskScheduleTypeEnum.SpecificDaysInAWeek
+  //     ) {
+  //       setShouldBeScored(false);
+  //     }
+  //   },
+  //   [makeDateSelectionModalVisible, selectedScheduleType],
+  // );
 
   const handleTimeToggle = useCallback((time: TimeOfDay) => {
     setSelectedTimeOfDay(prev => (prev === time ? null : time));
@@ -204,7 +289,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
     setIsSaving(true);
 
-    const trimmedDescription = taskDescription.trim();
+    const trimmedDescription = taskDescription?.trim();
     const isRepetitiveTask =
       selectedScheduleType === TaskScheduleTypeEnum.Daily ||
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
@@ -393,162 +478,175 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     !taskName ||
     !selectedScheduleType ||
     isSpaceOnFocus ||
-    (selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
+    (isRepetitiveTaskTemplate &&
+      selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
       selectedDays.length === 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.KeyboardAvoidingView}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled" // Already good
-          onScroll={() => {
-            autocompleteInputRef.current?.remeasure();
-          }}
-          scrollEventThrottle={16} // Optional: Adjust for performance
-        >
-          <TextInput
-            label="Task Name*"
-            value={taskName}
-            onChangeText={setTaskName}
-            style={styles.textInput}
-            disabled={isSaving}
-          />
+      {isLoadingTask ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>Loading Tasks...</Text>
+        </View>
+      ) : errorLoadingTask ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Failed to Load Tasks</Text>
+          <Text style={styles.errorText}>{errorLoadingTask}</Text>
+          <IconButton icon="refresh" size={30} onPress={fetchTask} />
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.KeyboardAvoidingView}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            onScroll={() => {
+              autocompleteInputRef.current?.remeasure();
+            }}
+            scrollEventThrottle={16}>
+            <TextInput
+              label="Task Name*"
+              value={taskName}
+              onChangeText={setTaskName}
+              style={styles.textInput}
+              disabled={isSaving}
+            />
 
-          <TouchableOpacity onPress={() => navigation.navigate('EditTask', {})}>
-            <View
-              style={[
-                {
-                  borderColor: theme.colors.onSurfaceVariant,
-                  borderBottomColor: theme.colors.primary,
-                  backgroundColor: theme.colors.surfaceVariant,
-                },
-                styles.descriptionContainer,
-              ]}>
-              <RenderHtml
-                baseStyle={descriptionInputFieldBaseStyles}
-                contentWidth={width}
-                source={descriptionSource}
-                systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
-                ignoredDomTags={['br']}
-              />
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('TaskDescription', {
+                  source: 'EditTask',
+                  initialHTML: taskDescription || '',
+                })
+              }>
+              <View
+                style={[
+                  {
+                    borderColor: theme.colors.onSurfaceVariant,
+                    borderBottomColor: theme.colors.primary,
+                    backgroundColor: theme.colors.surfaceVariant,
+                  },
+                  styles.descriptionContainer,
+                ]}>
+                <RenderHtml
+                  baseStyle={descriptionInputFieldBaseStyles}
+                  contentWidth={width}
+                  source={descriptionSource}
+                  systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
+                />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.scheduleContainer}>
+              <Text variant="titleMedium" style={styles.inputHeader}>
+                Schedule:
+              </Text>
+              <Text variant="bodyLarge" style={styles.inputHeader}>
+                {' '}
+                {selectedScheduleType}
+              </Text>
             </View>
-          </TouchableOpacity>
 
-          <Text variant="titleMedium" style={styles.inputHeader}>
-            Schedule*
-          </Text>
-          <View style={styles.chipContainer}>
-            {Object.values(TaskScheduleTypeEnum).map((option, index) => (
-              <Chip
-                key={index}
-                mode="outlined"
-                style={styles.chip}
-                selected={option === selectedScheduleType}
-                showSelectedOverlay={true}
-                onPress={() => handleFrequencySelect(option)}
-                disabled={isSaving}>
-                {option}
-              </Chip>
-            ))}
-          </View>
-
-          {selectedScheduleType === TaskScheduleTypeEnum.Once &&
-            selectedDate && (
+            {selectedDate && (
               <>
-                <Chip icon={'calendar-outline'} style={styles.marginBottom}>
+                <Chip
+                  icon={'calendar-outline'}
+                  style={styles.marginBottom}
+                  onPress={() => setSelectedDateVisible(true)}>
                   {sDate}
                 </Chip>
                 <Divider style={styles.marginTop} />
               </>
             )}
 
-          {selectedScheduleType ===
-            TaskScheduleTypeEnum.SpecificDaysInAWeek && (
-            <>
-              <Text variant="titleMedium" style={styles.inputHeader}>
-                Select Days*
-              </Text>
-              <View style={styles.chipContainer}>
-                {Object.values(DaysInAWeek).map((day, index) => (
-                  <Chip
-                    key={index}
-                    mode="outlined"
-                    style={styles.chip}
-                    selected={selectedDays.includes(day)}
-                    showSelectedOverlay={true}
-                    onPress={() => handleDayToggle(day)}
-                    disabled={isSaving}>
-                    {capitalize(day)}
-                  </Chip>
-                ))}
+            {isRepetitiveTaskTemplate &&
+              selectedScheduleType ===
+                TaskScheduleTypeEnum.SpecificDaysInAWeek && (
+                <>
+                  <Text variant="titleMedium" style={styles.inputHeader}>
+                    Select Days*
+                  </Text>
+                  <View style={styles.chipContainer}>
+                    {Object.values(DaysInAWeek).map((day, index) => (
+                      <Chip
+                        key={index}
+                        mode="outlined"
+                        style={styles.chip}
+                        selected={selectedDays.includes(day)}
+                        showSelectedOverlay={true}
+                        onPress={() => handleDayToggle(day)}
+                        disabled={isSaving}>
+                        {capitalize(day)}
+                      </Chip>
+                    ))}
+                  </View>
+                </>
+              )}
+
+            {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
+              selectedScheduleType ===
+                TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
+              <View style={styles.checkboxContainer}>
+                <Checkbox
+                  status={shouldBeScored ? 'checked' : 'unchecked'}
+                  onPress={handleShouldBeScored}
+                  disabled={isSaving}
+                />
+                <Text
+                  variant="bodyMedium"
+                  onPress={isSaving ? undefined : handleShouldBeScored}
+                  style={isSaving ? styles.disabledText : null}>
+                  Should be scored
+                </Text>
               </View>
-            </>
-          )}
+            )}
 
-          {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
-            selectedScheduleType ===
-              TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
-            <View style={styles.checkboxContainer}>
-              <Checkbox
-                status={shouldBeScored ? 'checked' : 'unchecked'}
-                onPress={handleShouldBeScored}
-                disabled={isSaving}
-              />
-              <Text
-                variant="bodyMedium"
-                onPress={isSaving ? undefined : handleShouldBeScored}
-                style={isSaving ? styles.disabledText : null}>
-                Should be scored
-              </Text>
+            <Text variant="titleMedium" style={styles.inputHeader}>
+              Time of day
+            </Text>
+            <View style={styles.chipContainer}>
+              {Object.values(TimeOfDay).map((time, index) => (
+                <Chip
+                  key={index}
+                  mode="outlined"
+                  style={styles.chip}
+                  selected={time === selectedTimeOfDay}
+                  showSelectedOverlay={true}
+                  onPress={() => handleTimeToggle(time)}
+                  disabled={isSaving}>
+                  {capitalize(time)}
+                </Chip>
+              ))}
             </View>
-          )}
 
-          <Text variant="titleMedium" style={styles.inputHeader}>
-            Time of day
-          </Text>
-          <View style={styles.chipContainer}>
-            {Object.values(TimeOfDay).map((time, index) => (
-              <Chip
-                key={index}
-                mode="outlined"
-                style={styles.chip}
-                selected={time === selectedTimeOfDay}
-                showSelectedOverlay={true}
-                onPress={() => handleTimeToggle(time)}
-                disabled={isSaving}>
-                {capitalize(time)}
-              </Chip>
-            ))}
-          </View>
-
-          <AutocompleteInput
-            ref={autocompleteInputRef}
-            label="Select or Create a space for the task (Optional)"
-            query={spaceQuery}
-            setQuery={setSpaceQuery}
-            onSelect={handleSpaceSelect}
-            options={allSpaces}
-            loading={isLoadingSpaces}
-            onLoadSuggestions={handleLoadSpace}
-            onAddOption={handleAddSpace}
-            selectedOption={selectedSpace}
-            onFocus={handleSpaceOnFocus}
-            onBlur={handleSpaceOnBlur}
-          />
-          <Button
-            mode="contained"
-            onPress={handleAddTask}
-            style={styles.addButton}
-            loading={isSaving}
-            disabled={isSaving || isDbLoading || addTaskDisabled}
-            icon="plus-circle-outline">
-            {isSaving ? 'Adding Task...' : 'Add Task'}
-          </Button>
-        </ScrollView>
-      </KeyboardAvoidingView>
+            <AutocompleteInput
+              ref={autocompleteInputRef}
+              label="Select or Create a space for the task (Optional)"
+              query={spaceQuery}
+              setQuery={setSpaceQuery}
+              onSelect={handleSpaceSelect}
+              options={allSpaces}
+              loading={isLoadingSpaces}
+              onLoadSuggestions={handleLoadSpace}
+              onAddOption={handleAddSpace}
+              selectedOption={selectedSpace}
+              onFocus={handleSpaceOnFocus}
+              onBlur={handleSpaceOnBlur}
+            />
+            <Button
+              mode="contained"
+              onPress={handleAddTask}
+              style={styles.addButton}
+              loading={isSaving}
+              disabled={isSaving || isDbLoading || addTaskDisabled}
+              icon="plus-circle-outline">
+              {isSaving ? 'Saving Task...' : 'Save Task'}
+            </Button>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
       <Snackbar
         visible={snackbarVisible}
         onDismiss={onDismissSnackBar}
@@ -651,6 +749,9 @@ const styles = StyleSheet.create({
   addButton: {
     paddingVertical: 5,
     marginVertical: 20,
+  },
+  scheduleContainer: {
+    flexDirection: 'row',
   },
 });
 

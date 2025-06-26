@@ -6,7 +6,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BottomNavigation, useTheme, Text } from 'react-native-paper';
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, NavigatorScreenParams } from '@react-navigation/native';
 import { StyleSheet } from 'react-native';
 import TodayScreen from '../screens/TodayScreen';
 import HabitsScreen from '../screens/HabitsScreen';
@@ -15,24 +15,13 @@ import AddTaskScreen from '../screens/AddTaskScreen';
 import EditTaskScreen from '../screens/EditTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
-import TaskDescription from '../screens/TaskDescription';
+import TaskDescriptionScreen from '../screens/TaskDescription';
 import { TaskScheduleTypeEnum, RepetitiveTaskTemplate } from '../types';
 import {
   CalendarToday,
   PlusIcon,
   TrackerIcon,
 } from '../shared/components/icons';
-
-export type AddTaskStackParamList = {
-  AddTask: { updatedDescription?: string; isToday?: boolean };
-  TaskDescription: {
-    initialHTML: string;
-  };
-};
-
-export type EditTaskStackParamList = {
-  EditTask: { updatedDescription?: string; isToday?: boolean };
-};
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
@@ -46,63 +35,30 @@ export type TrackerStackParamList = {
 
 export type BottomTabParamList = {
   Today: undefined;
-  AddTaskStack:
-    | {
-        screen: 'AddTask';
-        params: { isToday: boolean };
-      }
-    | undefined;
+  AddTask: { isToday?: boolean; updatedDescription?: string } | undefined;
   ActiveStack: undefined;
   HabitsTracker: undefined;
 };
 
 export type RootStackParamList = {
-  BottomNavigation: undefined;
-  EditTask: undefined;
+  BottomNavigation: NavigatorScreenParams<BottomTabParamList>;
+  EditTask: {
+    taskId?: number;
+    isRepetitiveTaskTemplate?: boolean;
+    isToday?: boolean;
+    updatedDescription?: string;
+  };
+  TaskDescription: {
+    initialHTML: string;
+    source: 'AddTask' | 'EditTask';
+  };
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
-const AddTaskStack = createNativeStackNavigator<AddTaskStackParamList>();
-const EditTaskStack = createNativeStackNavigator<EditTaskStackParamList>();
 const ActiveStack = createNativeStackNavigator<ActiveStackParamList>();
 const TrackerStack = createNativeStackNavigator<TrackerStackParamList>();
-
-const AddTaskStackNavigator = () => {
-  return (
-    <AddTaskStack.Navigator
-      initialRouteName="AddTask"
-      screenOptions={{
-        headerTitle: ({ children }) => (
-          <Text variant="titleLarge">{children}</Text>
-        ),
-      }}>
-      <AddTaskStack.Screen
-        name="AddTask"
-        component={AddTaskScreen}
-        options={{ headerShown: false }}
-      />
-      <AddTaskStack.Screen
-        name="TaskDescription"
-        component={TaskDescription}
-        options={{ headerShown: false }}
-      />
-    </AddTaskStack.Navigator>
-  );
-};
-
-const EditTaskStackNavigator = () => {
-  return (
-    <EditTaskStack.Navigator initialRouteName="EditTask">
-      <EditTaskStack.Screen
-        name="EditTask"
-        component={EditTaskScreen}
-        options={{ headerShown: true }}
-      />
-    </EditTaskStack.Navigator>
-  );
-};
 
 const ActiveStackNavigator = () => {
   return (
@@ -270,8 +226,8 @@ const BottomNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="AddTaskStack"
-        component={AddTaskStackNavigator}
+        name="AddTask"
+        component={AddTaskScreen}
         options={{
           title: 'Add Task',
           tabBarLabel: 'Add Task',
@@ -302,9 +258,18 @@ const BottomNavigator = () => {
 
 const RootNavigator = () => {
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="BottomNavigation" component={BottomNavigator} />
-      <RootStack.Screen name="EditTask" component={EditTaskStackNavigator} />
+    <RootStack.Navigator>
+      <RootStack.Screen
+        name="BottomNavigation"
+        component={BottomNavigator}
+        options={{ headerShown: false }}
+      />
+      <RootStack.Screen name="EditTask" component={EditTaskScreen} />
+      <RootStack.Screen
+        name="TaskDescription"
+        component={TaskDescriptionScreen}
+        options={{ headerShown: false }}
+      />
     </RootStack.Navigator>
   );
 };

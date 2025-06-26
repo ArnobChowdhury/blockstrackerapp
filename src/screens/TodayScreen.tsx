@@ -14,9 +14,12 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { BottomTabParamList } from '../navigation/RootNavigator';
+import type {
+  BottomTabParamList,
+  RootStackParamList,
+} from '../navigation/RootNavigator';
 import {
   useDatabase,
   useToggleTaskCompletionStatus,
@@ -36,8 +39,12 @@ import {
   TaskScheduleTypeEnum,
 } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
-type Props = NativeStackScreenProps<BottomTabParamList, 'Today'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<BottomTabParamList, 'Today'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 export interface TaskSection {
   title: string;
@@ -264,8 +271,7 @@ const TodayScreen = ({ navigation }: Props) => {
           ]}>
           <List.Item
             onPress={() => {
-              // @ts-ignore
-              navigation.navigate('EditTask');
+              navigation.navigate('EditTask', { taskId: item.id });
             }}
             title={
               <Text
@@ -410,9 +416,8 @@ const TodayScreen = ({ navigation }: Props) => {
                   style={styles.addTaskTodayIcon}
                   iconColor={theme.colors.secondary}
                   onPress={() =>
-                    navigation.navigate('AddTaskStack', {
-                      screen: 'AddTask',
-                      params: { isToday: true },
+                    navigation.navigate('AddTask', {
+                      isToday: true,
                     })
                   }
                 />

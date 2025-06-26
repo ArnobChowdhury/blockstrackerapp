@@ -32,6 +32,7 @@ export interface Task {
   createdAt: string;
   modifiedAt: string;
   repetitiveTaskTemplateId: number | null;
+  spaceId: number | null;
 }
 
 export interface RepetitiveTaskTemplate {

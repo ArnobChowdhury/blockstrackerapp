@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Platform,
   KeyboardAvoidingView,
@@ -7,7 +7,7 @@ import {
   ColorValue,
 } from 'react-native';
 
-import type { AddTaskStackParamList } from '../navigation/RootNavigator';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Text, IconButton, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,33 +24,38 @@ const handleHeadTwo = ({ tintColor }: { tintColor: ColorValue }) => (
   <Text style={{ color: tintColor }}>H2</Text>
 );
 
-type Props = NativeStackScreenProps<AddTaskStackParamList, 'TaskDescription'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'TaskDescription'>;
 
 const TaskDescription = ({ navigation, route }: Props) => {
   const richText = useRef<RichEditor>(null);
   const theme = useTheme();
 
-  const { initialHTML } = route.params;
+  const { initialHTML, source } = route.params;
   const [descriptionHTML, setDescriptionHTML] = useState(initialHTML);
-
-  console.log('descriptionHTML:', descriptionHTML);
-  console.log('initialHTML:', initialHTML);
-
-  useEffect(() => {
-    if (richText.current) {
-      richText.current.insertHTML(initialHTML);
-    }
-  }, [initialHTML]);
 
   const handleDescriptionAccept = () => {
     if (richText.current) {
-      navigation.navigate(
-        'AddTask',
-        {
-          updatedDescription: descriptionHTML,
-        },
-        { merge: true },
-      );
+      navigation.goBack();
+      if (source === 'EditTask') {
+        navigation.navigate(
+          'EditTask',
+          {
+            updatedDescription: descriptionHTML,
+          },
+          { merge: true },
+        );
+      } else {
+        navigation.navigate(
+          'BottomNavigation',
+          {
+            screen: 'AddTask',
+            params: {
+              updatedDescription: descriptionHTML,
+            },
+          },
+          { merge: true },
+        );
+      }
     }
   };
 
@@ -75,7 +80,7 @@ const TaskDescription = ({ navigation, route }: Props) => {
         <View style={styles.editorContainer}>
           <RichEditor
             initialFocus={true}
-            initialContentHTML={descriptionHTML}
+            initialContentHTML={initialHTML || ''}
             ref={richText}
             style={styles.editor}
             placeholder={'Task description...'}

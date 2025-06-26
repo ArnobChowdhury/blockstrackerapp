@@ -26,8 +26,13 @@ import AutocompleteInput, {
   AutocompleteInputHandles,
 } from '../shared/components/Autocomplete';
 import truncate from 'html-truncate';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { AddTaskStackParamList } from '../navigation/RootNavigator';
+import type {
+  BottomTabParamList,
+  RootStackParamList,
+} from '../navigation/RootNavigator';
 import {
   TextInput,
   Text,
@@ -46,7 +51,10 @@ import { DatePickerModal } from 'react-native-paper-dates';
 import RenderHtml from 'react-native-render-html';
 import dayjs from 'dayjs';
 
-type Props = NativeStackScreenProps<AddTaskStackParamList, 'AddTask'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<BottomTabParamList, 'AddTask'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 const AddTaskScreen = ({ navigation, route }: Props) => {
   const isTodaysTask = route.params?.isToday;
@@ -423,6 +431,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
             onPress={() =>
               navigation.navigate('TaskDescription', {
                 initialHTML: taskDescription,
+                source: 'AddTask',
               })
             }>
             <View
