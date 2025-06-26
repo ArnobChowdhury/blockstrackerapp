@@ -248,23 +248,23 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     setShouldBeScored(prev => !prev);
   }, []);
 
-  const resetForm = useCallback(() => {
-    setTaskName('');
-    setTaskDescription('');
-    setSelectedScheduleType(TaskScheduleTypeEnum.Unscheduled);
-    setSelectedTimeOfDay(null);
-    setShouldBeScored(false);
-    setSelectedDateVisible(false);
-    setSelectedDate(undefined);
-    setSelectedSpace(null);
-    setSpaceQuery('');
-    setSelectedDays([]);
-    setIsSaving(false);
+  // const resetForm = useCallback(() => {
+  //   setTaskName('');
+  //   setTaskDescription('');
+  //   setSelectedScheduleType(TaskScheduleTypeEnum.Unscheduled);
+  //   setSelectedTimeOfDay(null);
+  //   setShouldBeScored(false);
+  //   setSelectedDateVisible(false);
+  //   setSelectedDate(undefined);
+  //   setSelectedSpace(null);
+  //   setSpaceQuery('');
+  //   setSelectedDays([]);
+  //   setIsSaving(false);
 
-    console.log('[Form] Reset complete');
-  }, []);
+  //   console.log('[Form] Reset complete');
+  // }, []);
 
-  const handleAddTask = async () => {
+  const handleTaskUpdate = async () => {
     const trimmedTaskName = taskName.trim();
     if (!trimmedTaskName) {
       Alert.alert('Missing Information', 'Please enter a Task Name.');
@@ -287,41 +287,36 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       return;
     }
 
+    if (!route.params.taskId) {
+      Alert.alert(
+        'Something went wrong',
+        'The task ID is missing. Please try again.',
+      );
+      return;
+    }
+
     setIsSaving(true);
 
     const trimmedDescription = taskDescription?.trim();
-    const isRepetitiveTask =
-      selectedScheduleType === TaskScheduleTypeEnum.Daily ||
-      selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
+    // const isRepetitiveTask =
+    //   selectedScheduleType === TaskScheduleTypeEnum.Daily ||
+    //   selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
 
-    const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
+    // const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
 
     try {
-      if (!isRepetitiveTask) {
-        await taskRepository.addTask({
-          title: trimmedTaskName,
-          description: trimmedDescription,
-          schedule: selectedScheduleType,
-          dueDate: selectedDate,
-          timeOfDay: selectedTimeOfDay,
-          shouldBeScored: finalShouldBeScored,
-          space: selectedSpace,
-        });
-      } else {
-        await repetitiveTaskTemplateRepository.addRepetitiveTaskTemplate({
-          title: trimmedTaskName,
-          description: trimmedDescription,
-          schedule: selectedScheduleType,
-          days: selectedDays,
-          timeOfDay: selectedTimeOfDay,
-          shouldBeScored: finalShouldBeScored,
-          space: selectedSpace,
-        });
-      }
+      await taskRepository.updateTask(route.params.taskId, {
+        title: trimmedTaskName,
+        description: trimmedDescription,
+        schedule: selectedScheduleType,
+        dueDate: selectedDate,
+        timeOfDay: selectedTimeOfDay,
+        shouldBeScored: shouldBeScored ? 1 : 0,
+        space: selectedSpace,
+      });
 
-      setSnackbarMessage('Task added successfully!');
+      setSnackbarMessage('Task updated successfully!');
       setSnackbarVisible(true);
-      resetForm();
     } catch (error: any) {
       console.error('[DB] Failed to INSERT task:', error);
       Alert.alert(
@@ -637,7 +632,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
             />
             <Button
               mode="contained"
-              onPress={handleAddTask}
+              onPress={handleTaskUpdate}
               style={styles.addButton}
               loading={isSaving}
               disabled={isSaving || isDbLoading || addTaskDisabled}

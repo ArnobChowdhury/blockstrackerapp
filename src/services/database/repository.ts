@@ -71,6 +71,51 @@ export class TaskRepository {
     }
   }
 
+  async updateTask(
+    taskId: number,
+    taskData: NewTaskData,
+  ): Promise<QueryResult> {
+    const now = new Date().toISOString();
+    const sql = `
+      UPDATE tasks
+      SET
+        title = ?,
+        description = ?,
+        schedule = ?,
+        due_date = ?,
+        time_of_day = ?,
+        should_be_scored = ?,
+        modified_at = ?,
+        space_id = ?
+      WHERE id = ?;
+    `;
+
+    const params = [
+      taskData.title,
+      taskData.description,
+      taskData.schedule,
+      taskData.dueDate?.toISOString(),
+      taskData.timeOfDay,
+      taskData.shouldBeScored,
+      now,
+      taskData.space ? taskData.space.id : null,
+      taskId,
+    ];
+
+    console.log('[DB Repo] Attempting to UPDATE Task:', { sql, params });
+
+    try {
+      const result: QueryResult = await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Task UPDATE successful:', result);
+      return result;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to UPDATE task:', error);
+      throw new Error(
+        `Failed to update the task: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
   async getAllActiveUnscheduledTasks(): Promise<Task[]> {
     return this._getActiveTasksByCondition(
       'schedule = ? AND completion_status = ?',
