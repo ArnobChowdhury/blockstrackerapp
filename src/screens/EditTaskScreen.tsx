@@ -43,8 +43,11 @@ import {
   Icon,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
-import type { Space } from '../types';
-import { capitalize } from '../shared/utils';
+import type { RepetitiveTaskTemplate, Task, Space } from '../types';
+import {
+  capitalize,
+  getScheduledWeekDaysFromRepetitiveTask,
+} from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { DatePickerModal } from 'react-native-paper-dates';
 import RenderHtml from 'react-native-render-html';
@@ -147,7 +150,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     [spaceRepository],
   );
 
-  const fetchTask = useCallback(async () => {
+  const fetchTaskOrTemplate = useCallback(async () => {
     if (!taskRepository || !repetitiveTaskTemplateRepository) {
       console.log(
         '[EditTaskScreen] taskRepository or repetitiveTaskTemplateRepository is null',
@@ -165,44 +168,56 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     setErrorLoadingTask(null);
 
     try {
-      await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
-        taskRepository,
-      );
+      let fetchedTaskOrTemplate: Task | RepetitiveTaskTemplate | null;
 
-      const fetchedTask = await taskRepository.getTaskById(route.params.taskId);
-      if (!fetchedTask) {
-        throw new Error(`Task with ID ${route.params.taskId} not found.`);
+      if (!isRepetitiveTaskTemplate) {
+        const task = await taskRepository.getTaskById(route.params.taskId);
+        if (!task) {
+          throw new Error(`Task with ID ${route.params.taskId} not found.`);
+        }
+        if (
+          task.schedule === TaskScheduleTypeEnum.Daily ||
+          task.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
+        ) {
+          setIsRepetitiveTask(true);
+          setTaskTemplateId(task.repetitiveTaskTemplateId);
+        }
+        setSelectedDate(dayjs(task.dueDate).toDate());
+
+        fetchedTaskOrTemplate = task;
+      } else {
+        const repetitiveTaskTemplate =
+          await repetitiveTaskTemplateRepository.getRepetitiveTaskTemplateById(
+            route.params.taskId,
+          );
+        if (!repetitiveTaskTemplate) {
+          throw new Error(`Task with ID ${route.params.taskId} not found.`);
+        }
+
+        const days = getScheduledWeekDaysFromRepetitiveTask(
+          repetitiveTaskTemplate,
+        );
+        console.log(days);
+        setSelectedDays(days);
+
+        fetchedTaskOrTemplate = repetitiveTaskTemplate;
       }
 
-      if (
-        (!isRepetitiveTaskTemplate &&
-          fetchedTask.schedule === TaskScheduleTypeEnum.Daily) ||
-        fetchedTask.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
-      ) {
-        setIsRepetitiveTask(true);
-        setTaskTemplateId(fetchedTask.repetitiveTaskTemplateId);
+      // common fields
+      setTaskName(fetchedTaskOrTemplate.title);
+      setTaskDescription(fetchedTaskOrTemplate.description);
+      setSelectedScheduleType(fetchedTaskOrTemplate.schedule);
+      setSelectedTimeOfDay(fetchedTaskOrTemplate.timeOfDay);
+      setShouldBeScored(fetchedTaskOrTemplate.shouldBeScored);
+
+      if (fetchedTaskOrTemplate.spaceId) {
+        await fetchSpace(fetchedTaskOrTemplate.spaceId);
       }
-
-      setTaskName(fetchedTask.title);
-      setTaskDescription(fetchedTask.description);
-      setSelectedScheduleType(fetchedTask.schedule);
-      setSelectedTimeOfDay(fetchedTask.timeOfDay);
-      setShouldBeScored(fetchedTask.shouldBeScored);
-      setSelectedDate(dayjs(fetchedTask.dueDate).toDate());
-
-      if (fetchedTask.spaceId) {
-        await fetchSpace(fetchedTask.spaceId);
-      }
-
-      // selectedDays are needed for repetitive task templates
-      // const days = getScheduledWeekDaysFromRepetitiveTask(fetchedTask);
-      // console.log(days);
     } catch (error: any) {
       console.error('[TodayScreen] Failed to fetch tasks:', error);
       setErrorLoadingTask(
         error.message || 'An unknown error occurred while fetching tasks.',
       );
-      // setTaskSections([]);
     } finally {
       setIsLoadingTask(false);
     }
@@ -215,8 +230,8 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   ]);
 
   useEffect(() => {
-    fetchTask();
-  }, [fetchTask]);
+    fetchTaskOrTemplate();
+  }, [fetchTaskOrTemplate]);
 
   useEffect(() => {
     if (route.params?.updatedDescription) {
@@ -224,34 +239,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       navigation.setParams({ updatedDescription: undefined });
     }
   }, [route.params?.updatedDescription, navigation]);
-
-  // const makeDateSelectionModalVisible = useCallback(() => {
-  //   setTemporaryDate(undefined);
-  //   setSelectedDateVisible(true);
-  // }, []);
-
-  // const handleFrequencySelect = useCallback(
-  //   (frequency: TaskScheduleTypeEnum) => {
-  //     setSelectedScheduleType(frequency);
-
-  //     if (frequency !== selectedScheduleType) {
-  //       setSelectedDate(undefined);
-  //       setSelectedDays([]);
-  //     }
-
-  //     if (frequency === TaskScheduleTypeEnum.Once) {
-  //       makeDateSelectionModalVisible();
-  //     }
-
-  //     if (
-  //       frequency !== TaskScheduleTypeEnum.Daily &&
-  //       frequency !== TaskScheduleTypeEnum.SpecificDaysInAWeek
-  //     ) {
-  //       setShouldBeScored(false);
-  //     }
-  //   },
-  //   [makeDateSelectionModalVisible, selectedScheduleType],
-  // );
 
   const handleTimeToggle = useCallback((time: TimeOfDay) => {
     setSelectedTimeOfDay(prev => (prev === time ? null : time));
@@ -295,22 +282,32 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     setIsSaving(true);
 
     const trimmedDescription = taskDescription?.trim();
-    // const isRepetitiveTask =
-    //   selectedScheduleType === TaskScheduleTypeEnum.Daily ||
-    //   selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
-
-    // const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
 
     try {
-      await taskRepository.updateTask(route.params.taskId, {
-        title: trimmedTaskName,
-        description: trimmedDescription,
-        schedule: selectedScheduleType,
-        dueDate: selectedDate,
-        timeOfDay: selectedTimeOfDay,
-        shouldBeScored: shouldBeScored ? 1 : 0,
-        space: selectedSpace,
-      });
+      if (!isRepetitiveTaskTemplate) {
+        await taskRepository.updateTaskById(route.params.taskId, {
+          title: trimmedTaskName,
+          description: trimmedDescription,
+          schedule: selectedScheduleType,
+          dueDate: selectedDate,
+          timeOfDay: selectedTimeOfDay,
+          shouldBeScored: shouldBeScored ? 1 : 0,
+          space: selectedSpace,
+        });
+      } else {
+        await repetitiveTaskTemplateRepository.updateRepetitiveTaskTemplateById(
+          route.params.taskId,
+          {
+            title: trimmedTaskName,
+            description: trimmedDescription,
+            schedule: selectedScheduleType,
+            timeOfDay: selectedTimeOfDay,
+            days: selectedDays,
+            shouldBeScored: shouldBeScored ? 1 : 0,
+            space: selectedSpace,
+          },
+        );
+      }
 
       setSnackbarMessage('Task updated successfully!');
       setSnackbarVisible(true);
@@ -498,7 +495,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         <View style={styles.centered}>
           <Text style={styles.errorText}>Failed to Load Tasks</Text>
           <Text style={styles.errorText}>{errorLoadingTask}</Text>
-          <IconButton icon="refresh" size={30} onPress={fetchTask} />
+          <IconButton icon="refresh" size={30} onPress={fetchTaskOrTemplate} />
         </View>
       ) : (
         <KeyboardAvoidingView

@@ -71,7 +71,7 @@ export class TaskRepository {
     }
   }
 
-  async updateTask(
+  async updateTaskById(
     taskId: number,
     taskData: NewTaskData,
   ): Promise<QueryResult> {
@@ -467,6 +467,147 @@ export class RepetitiveTaskTemplateRepository {
       );
       throw new Error(
         `Failed to save the Repetitive Task Template: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async getRepetitiveTaskTemplateById(
+    templateId: number,
+  ): Promise<RepetitiveTaskTemplate | null> {
+    const sql = `
+      SELECT
+        id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
+      FROM repetitive_task_templates
+      WHERE id = ?;
+    `;
+    const params: any[] = [templateId];
+
+    console.log(
+      '[DB Repo] Attempting to SELECT repetitive task template by id:',
+      {
+        sql,
+        params,
+      },
+    );
+
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      console.log(
+        '[DB Repo] SELECT successful, rows found:',
+        resultSet.rows?.length,
+      );
+
+      if (resultSet.rows) {
+        const row = resultSet.rows.item(0);
+
+        if (row) {
+          const repetitiveTaskTemplate: RepetitiveTaskTemplate = {
+            id: row.id as number,
+            title: row.title as string,
+            isActive: (row.is_active === 1) as boolean,
+            description: row.description as string | null,
+            schedule: row.schedule as TaskScheduleTypeEnum,
+            priority: row.priority as number,
+            timeOfDay: row.time_of_day as TimeOfDay | null,
+            shouldBeScored: (row.should_be_scored === 1) as boolean,
+            lastDateOfTaskGeneration: row.last_date_of_task_generation as
+              | string
+              | null,
+            monday: (row.monday === 1) as boolean | null,
+            tuesday: (row.tuesday === 1) as boolean | null,
+            wednesday: (row.wednesday === 1) as boolean | null,
+            thursday: (row.thursday === 1) as boolean | null,
+            friday: (row.friday === 1) as boolean | null,
+            saturday: (row.saturday === 1) as boolean | null,
+            sunday: (row.sunday === 1) as boolean | null,
+            createdAt: row.created_at as string,
+            modifiedAt: row.modified_at as string,
+            spaceId: row.space_id as number | null,
+          };
+
+          return repetitiveTaskTemplate;
+        }
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to SELECT repetitive task template by id:',
+        error,
+      );
+      throw new Error(
+        `Failed to get the Repetitive Task Template by id: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async updateRepetitiveTaskTemplateById(
+    templateId: number,
+    repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
+  ): Promise<QueryResult> {
+    const now = new Date().toISOString();
+    const sql = `
+      UPDATE repetitive_task_templates
+      SET
+        title = ?,
+        description = ?,
+        schedule = ?,
+        time_of_day = ?,
+        monday = ?,
+        tuesday = ?,
+        wednesday = ?,
+        thursday = ?,
+        friday = ?,
+        saturday = ?,
+        sunday = ?,
+        should_be_scored = ?,
+        modified_at = ?,
+        space_id = ?
+      WHERE id = ?;
+    `;
+
+    const params: any[] = [
+      repetitiveTaskTemplateData.title,
+      repetitiveTaskTemplateData.description,
+      repetitiveTaskTemplateData.schedule,
+      repetitiveTaskTemplateData.timeOfDay,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Monday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Tuesday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Wednesday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Thursday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Friday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Saturday) ? 1 : 0,
+      repetitiveTaskTemplateData.days.includes(DaysInAWeek.Sunday) ? 1 : 0,
+      repetitiveTaskTemplateData.shouldBeScored,
+      now,
+      repetitiveTaskTemplateData.space
+        ? repetitiveTaskTemplateData.space.id
+        : null,
+      templateId,
+    ];
+
+    console.log(
+      '[DB Repo] Attempting to UPDATE repetitive task template by id:',
+      {
+        sql,
+        params,
+      },
+    );
+
+    try {
+      return await this.db.executeAsync(sql, params);
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to UPDATE repetitive task template by id:',
+        error,
+      );
+      throw new Error(
+        `Failed to update the Repetitive Task Template by id: ${
           error.message || 'Unknown error'
         }`,
       );
