@@ -14,9 +14,12 @@ import {
   Snackbar,
 } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { ActiveStackParamList } from '../navigation/RootNavigator';
+import type {
+  ActiveStackParamList,
+  RootStackParamList,
+} from '../navigation/RootNavigator';
 import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
@@ -37,7 +40,10 @@ import dayjs from 'dayjs';
 
 const taskSeparator = () => <Divider />;
 
-type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveTaskList'>;
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<ActiveStackParamList, 'ActiveTaskList'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   const { category } = route.params;
@@ -179,76 +185,90 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     item,
   }: {
     item: Task | RepetitiveTaskTemplate;
-  }) => (
-    <List.Item
-      title={<Text variant="bodyLarge">{item.title}</Text>}
-      titleNumberOfLines={2}
-      style={styles.listItem}
-      {...(category === TaskScheduleTypeEnum.Unscheduled ||
-      category === TaskScheduleTypeEnum.Once
-        ? {
-            left: props => (
-              <View {...props} style={styles.checkboxContainer}>
-                <Checkbox
-                  status={'unchecked'}
-                  onPress={() =>
-                    onToggleTaskCompletionStatus(
-                      item.id,
-                      (item as Task).completionStatus ===
-                        TaskCompletionStatusEnum.COMPLETE
-                        ? TaskCompletionStatusEnum.INCOMPLETE
-                        : TaskCompletionStatusEnum.COMPLETE,
-                    )
-                  }
-                />
-              </View>
-            ),
-            right: props => (
-              <View {...props} style={styles.iconContainer}>
-                {(category === TaskScheduleTypeEnum.Unscheduled ||
-                  category === TaskScheduleTypeEnum.Once) && (
+  }) => {
+    const isRepetitiveTaskTemplate =
+      category === TaskScheduleTypeEnum.Daily ||
+      category === TaskScheduleTypeEnum.SpecificDaysInAWeek;
+
+    return (
+      <List.Item
+        title={<Text variant="bodyLarge">{item.title}</Text>}
+        titleNumberOfLines={2}
+        onPress={() => {
+          if (!isRepetitiveTaskTemplate) {
+            navigation.navigate('EditTask', { taskId: item.id });
+          } else {
+            navigation.navigate('EditTask', {
+              taskId: item.id,
+              isRepetitiveTaskTemplate: true,
+            });
+          }
+        }}
+        style={styles.listItem}
+        {...(!isRepetitiveTaskTemplate
+          ? {
+              left: props => (
+                <View {...props} style={styles.checkboxContainer}>
+                  <Checkbox
+                    status={'unchecked'}
+                    onPress={() =>
+                      onToggleTaskCompletionStatus(
+                        item.id,
+                        (item as Task).completionStatus ===
+                          TaskCompletionStatusEnum.COMPLETE
+                          ? TaskCompletionStatusEnum.INCOMPLETE
+                          : TaskCompletionStatusEnum.COMPLETE,
+                      )
+                    }
+                  />
+                </View>
+              ),
+              right: props => (
+                <View {...props} style={styles.iconContainer}>
+                  {(category === TaskScheduleTypeEnum.Unscheduled ||
+                    category === TaskScheduleTypeEnum.Once) && (
+                    <IconButton
+                      icon="calendar-refresh-outline"
+                      size={20}
+                      onPress={() => {
+                        if ((item as Task).dueDate) {
+                          setSelectedDateForTaskReschedule(
+                            new Date((item as Task).dueDate as string),
+                          );
+                        }
+                        setTaskIdToBeRescheduled(item.id);
+                      }}
+                      style={styles.iconButton}
+                    />
+                  )}
                   <IconButton
-                    icon="calendar-refresh-outline"
+                    icon="delete-outline"
                     size={20}
-                    onPress={() => {
-                      if ((item as Task).dueDate) {
-                        setSelectedDateForTaskReschedule(
-                          new Date((item as Task).dueDate as string),
-                        );
-                      }
-                      setTaskIdToBeRescheduled(item.id);
-                    }}
+                    iconColor="red"
+                    onPress={() =>
+                      onToggleTaskCompletionStatus(
+                        item.id,
+                        TaskCompletionStatusEnum.FAILED,
+                      )
+                    }
                     style={styles.iconButton}
                   />
-                )}
-                <IconButton
-                  icon="delete-outline"
-                  size={20}
-                  iconColor="red"
-                  onPress={() =>
-                    onToggleTaskCompletionStatus(
-                      item.id,
-                      TaskCompletionStatusEnum.FAILED,
-                    )
-                  }
-                  style={styles.iconButton}
-                />
-              </View>
-            ),
-          }
-        : {})}
-      {...(category === TaskScheduleTypeEnum.Daily ||
-      category === TaskScheduleTypeEnum.SpecificDaysInAWeek
-        ? {
-            left: props => (
-              <View {...props} style={styles.checkboxContainer}>
-                <Text style={styles.bulletText}>•</Text>
-              </View>
-            ),
-          }
-        : {})}
-    />
-  );
+                </View>
+              ),
+            }
+          : {})}
+        {...(isRepetitiveTaskTemplate
+          ? {
+              left: props => (
+                <View {...props} style={styles.checkboxContainer}>
+                  <Text style={styles.bulletText}>•</Text>
+                </View>
+              ),
+            }
+          : {})}
+      />
+    );
+  };
 
   const handleTaskRescheduling = useCallback(
     async (params: { date: Date | undefined }) => {
