@@ -16,6 +16,7 @@ import EditTaskScreen from '../screens/EditTaskScreen';
 import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
 import TaskDescriptionScreen from '../screens/TaskDescription';
+import OverdueScreen from '../screens/OverdueTasksScreen';
 import { TaskScheduleTypeEnum, RepetitiveTaskTemplate } from '../types';
 import {
   CalendarToday,
@@ -52,6 +53,7 @@ export type RootStackParamList = {
     initialHTML: string;
     source: 'AddTask' | 'EditTask';
   };
+  Overdue: undefined;
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -269,6 +271,13 @@ const RootNavigator = () => {
         name="TaskDescription"
         component={TaskDescriptionScreen}
         options={{ headerShown: false }}
+      />
+      <RootStack.Screen
+        name="Overdue"
+        component={OverdueScreen}
+        options={{
+          headerTitle: () => <Text variant="titleLarge">Overdue Tasks</Text>,
+        }}
       />
     </RootStack.Navigator>
   );

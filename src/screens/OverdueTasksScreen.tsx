@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
-import { StyleSheet, View, SectionList, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  SectionList,
+  ActivityIndicator,
+  useWindowDimensions,
+} from 'react-native';
 import {
   Text,
   Checkbox,
@@ -11,112 +17,60 @@ import {
   Portal,
   Dialog,
   Button,
-  useTheme,
+  ProgressBar,
   Banner,
+  useTheme,
+  Icon,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type {
-  BottomTabParamList,
-  RootStackParamList,
-} from '../navigation/RootNavigator';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import {
   useDatabase,
   useToggleTaskCompletionStatus,
   useTaskReschedule,
 } from '../shared/hooks';
-import { formatDate, capitalize, truncateString } from '../shared/utils';
-import { Logo } from '../shared/components/icons';
+import { formatDate, truncateString } from '../shared/utils';
 import TaskScoring from '../shared/components/TaskScoring';
-import {
-  TaskRepository,
-  RepetitiveTaskTemplateRepository,
-} from '../services/database/repository';
-import {
-  Task,
-  TimeOfDay,
-  TaskCompletionStatusEnum,
-  TaskScheduleTypeEnum,
-} from '../types';
+import { TaskRepository } from '../services/database/repository';
+import { Task, TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<BottomTabParamList, 'Today'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Overdue'>;
 
 export interface TaskSection {
   title: string;
   data: Task[];
 }
 
-const TIME_OF_DAY_ORDER: Record<TimeOfDay | 'Unspecified', number> = {
-  [TimeOfDay.Morning]: 1,
-  [TimeOfDay.Afternoon]: 2,
-  [TimeOfDay.Evening]: 3,
-  [TimeOfDay.Night]: 4,
-  Unspecified: 5,
-};
-
-const SECTION_THEMES: Record<string, { backgroundColor: string }> = {
-  Morning: { backgroundColor: '#E4F8FC' },
-  Afternoon: { backgroundColor: '#FEEED4' },
-  Evening: { backgroundColor: '#FFDFDC' },
-  Night: { backgroundColor: '#CDD2E9' },
-  'Any Time': { backgroundColor: '#F5F5F5' },
-};
-
-const DEFAULT_SECTION_THEME = {
-  backgroundColor: '#E0E0E0',
-};
-
-export const groupTasksByTimeOfDay = (tasks: Task[]): TaskSection[] => {
+export const groupTasksByDate = (tasks: Task[]): TaskSection[] => {
   const grouped: Record<string, Task[]> = {};
-
   tasks.forEach(task => {
-    const key = task.timeOfDay || 'Unspecified';
+    const key = dayjs(task.dueDate).format('YYYY-MM-DD');
     if (!grouped[key]) {
       grouped[key] = [];
     }
     grouped[key].push(task);
   });
-
   return Object.entries(grouped)
-    .map(([timeOfDayKey, taskItems]) => ({
-      title:
-        timeOfDayKey === 'Unspecified'
-          ? 'Any Time'
-          : capitalize(timeOfDayKey as TimeOfDay),
+    .map(([dateKey, taskItems]) => ({
+      title: formatDate(dayjs(dateKey, 'YYYY-MM-DD')),
       data: taskItems,
     }))
-    .sort((a, b) => {
-      const aKey =
-        a.title === 'Any Time'
-          ? 'Unspecified'
-          : (a.title.toLowerCase() as TimeOfDay);
-      const bKey =
-        b.title === 'Any Time'
-          ? 'Unspecified'
-          : (b.title.toLowerCase() as TimeOfDay);
-      return TIME_OF_DAY_ORDER[aKey] - TIME_OF_DAY_ORDER[bKey];
-    });
+    .sort((a, b) => dayjs(a.title).diff(dayjs(b.title)));
 };
 
-const TodayScreen = ({ navigation }: Props) => {
+const OverdueScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
 
-  const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
-  const [numberOfTaskOverdue, setNumberOfTaskOverdue] = useState(0);
+  const [overdueTaskSections, setOverdueTaskSections] = useState<TaskSection[]>(
+    [],
+  );
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
@@ -139,53 +93,41 @@ const TodayScreen = ({ navigation }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  const fetchTasksForToday = useCallback(async () => {
-    if (!taskRepository || !repetitiveTaskTemplateRepository) {
+  const fetchOverdueTasks = useCallback(async () => {
+    if (!taskRepository) {
       console.log(
         '[TodayScreen] taskRepository or repetitiveTaskTemplateRepository is null',
       );
       return;
     }
 
-    console.log('[TodayScreen] Fetching tasks for today...');
+    console.log('[TodayScreen] Fetching overdue tasks...');
     setErrorLoadingTasks(null);
 
     try {
-      await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
-        taskRepository,
-      );
+      const fetchedOverdueTasks = await taskRepository.getAllOverdueTasks();
+      console.log('fetchedOverdueTasks', groupTasksByDate(fetchedOverdueTasks));
 
-      const countOfTaskOverdue = await taskRepository.getCountOfTasksOverdue();
-      setNumberOfTaskOverdue(countOfTaskOverdue);
-
-      const fetchedTasks = await taskRepository.getTasksForToday();
-      setTaskSections(groupTasksByTimeOfDay(fetchedTasks));
+      setOverdueTaskSections(groupTasksByDate(fetchedOverdueTasks));
     } catch (error: any) {
       console.error('[TodayScreen] Failed to fetch tasks:', error);
       setErrorLoadingTasks(
         error.message || 'An unknown error occurred while fetching tasks.',
       );
-      setTaskSections([]);
+      setOverdueTaskSections([]);
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [taskRepository, repetitiveTaskTemplateRepository]);
+  }, [taskRepository]);
 
-  const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskRepository, fetchTasksForToday);
+  const {
+    onToggleTaskCompletionStatus,
+    requestOnGoing: toggleTaskCompletionRequestOnGoing,
+    error: toggleTaskCompletionError,
+  } = useToggleTaskCompletionStatus(taskRepository, fetchOverdueTasks);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskRepository, fetchTasksForToday);
+    useTaskReschedule(taskRepository, fetchOverdueTasks);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -204,9 +146,9 @@ const TodayScreen = ({ navigation }: Props) => {
   useFocusEffect(
     useCallback(() => {
       if (taskRepository) {
-        fetchTasksForToday();
+        fetchOverdueTasks();
       }
-    }, [taskRepository, fetchTasksForToday]),
+    }, [taskRepository, fetchOverdueTasks]),
   );
 
   const handleSnackbarDismiss = () => {
@@ -259,6 +201,47 @@ const TodayScreen = ({ navigation }: Props) => {
     [onToggleTaskCompletionStatus],
   );
 
+  const [bulkFailureOnGoing, setBulkFailureOnGoing] = useState(false);
+  const handleBulkFailures = async (data: Task[]) => {
+    if (taskRepository === null) {
+      return;
+    }
+
+    const taskIds = data.map(task => task.id);
+    setBulkFailureOnGoing(true);
+    setScreenRequestError('');
+    try {
+      await taskRepository.bulkFailTasks(taskIds);
+      await fetchOverdueTasks();
+    } catch (err) {
+      setScreenRequestError(
+        'An error occurred while marking tasks as failed. Please try again.',
+      );
+      setShowSnackbar(true);
+    } finally {
+      setBulkFailureOnGoing(false);
+    }
+  };
+
+  const handleFailAllOverdueTasksAtOnce = async () => {
+    if (taskRepository === null) {
+      return;
+    }
+    setBulkFailureOnGoing(true);
+    setScreenRequestError('');
+    try {
+      await taskRepository.failAllOverdueTasksAtOnce();
+      await fetchOverdueTasks();
+    } catch (err) {
+      setScreenRequestError(
+        'An error occurred while marking tasks as failed. Please try again.',
+      );
+      setShowSnackbar(true);
+    } finally {
+      setBulkFailureOnGoing(false);
+    }
+  };
+
   const renderTaskItem = useCallback(
     ({
       item,
@@ -275,12 +258,16 @@ const TodayScreen = ({ navigation }: Props) => {
             },
           ]}>
           <List.Item
+            disabled={toggleTaskCompletionRequestOnGoing || bulkFailureOnGoing}
             onPress={() => {
               navigation.navigate('EditTask', { taskId: item.id });
             }}
             title={
               <Text
                 variant="bodyLarge"
+                disabled={
+                  toggleTaskCompletionRequestOnGoing || bulkFailureOnGoing
+                }
                 style={
                   item.completionStatus === TaskCompletionStatusEnum.COMPLETE
                     ? styles.taskCompleted
@@ -299,6 +286,9 @@ const TodayScreen = ({ navigation }: Props) => {
                       : 'unchecked'
                   }
                   onPress={() => handleTaskCompletion(item)}
+                  disabled={
+                    toggleTaskCompletionRequestOnGoing || bulkFailureOnGoing
+                  }
                 />
               </View>
             )}
@@ -317,7 +307,9 @@ const TodayScreen = ({ navigation }: Props) => {
                     }}
                     disabled={
                       item.completionStatus ===
-                      TaskCompletionStatusEnum.COMPLETE
+                        TaskCompletionStatusEnum.COMPLETE ||
+                      toggleTaskCompletionRequestOnGoing ||
+                      bulkFailureOnGoing
                     }
                     style={styles.iconButton}
                   />
@@ -327,7 +319,10 @@ const TodayScreen = ({ navigation }: Props) => {
                   size={20}
                   iconColor="red"
                   disabled={
-                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
+                    item.completionStatus ===
+                      TaskCompletionStatusEnum.COMPLETE ||
+                    toggleTaskCompletionRequestOnGoing ||
+                    bulkFailureOnGoing
                   }
                   onPress={() =>
                     onToggleTaskCompletionStatus(
@@ -343,8 +338,17 @@ const TodayScreen = ({ navigation }: Props) => {
         </View>
       );
     },
-    [handleTaskCompletion, navigation, onToggleTaskCompletionStatus],
+    [
+      handleTaskCompletion,
+      navigation,
+      onToggleTaskCompletionStatus,
+      toggleTaskCompletionRequestOnGoing,
+      bulkFailureOnGoing,
+    ],
   );
+
+  const { width } = useWindowDimensions();
+  const safeMaxWidth = Math.min(width - 64, 300);
 
   if (isDbLoading) {
     return (
@@ -368,106 +372,104 @@ const TodayScreen = ({ navigation }: Props) => {
   }
 
   return (
-    <SafeAreaView
-      style={styles.container}
-      edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.topBar}>
-        <Logo width={200} height={60} />
-      </View>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <ProgressBar
+        indeterminate
+        visible={toggleTaskCompletionRequestOnGoing || bulkFailureOnGoing}
+      />
       {isLoadingTasks ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
-          <Text style={styles.infoText}>Loading Today's Tasks...</Text>
+          <Text style={styles.infoText}>Loading Overdue Tasks...</Text>
         </View>
       ) : errorLoadingTasks ? (
         <View style={styles.centered}>
           <Text style={styles.errorText}>Failed to Load Tasks</Text>
           <Text style={styles.errorText}>{errorLoadingTasks}</Text>
-          <IconButton icon="refresh" size={30} onPress={fetchTasksForToday} />
+          <IconButton icon="refresh" size={30} onPress={fetchOverdueTasks} />
         </View>
       ) : (
-        <>
-          <Banner
-            visible={numberOfTaskOverdue > 0}
-            actions={[
-              {
-                label: 'Review now',
-                onPress: () => {
-                  navigation.navigate('Overdue');
-                },
-              },
-            ]}>
-            <View>
-              <Text variant="bodyLarge" style={styles.boldFonts}>
-                You have {numberOfTaskOverdue} overdue task
-                {numberOfTaskOverdue > 1 ? 's' : ''}.
-              </Text>
-
-              <Text variant="bodyMedium">
-                Update their status to keep your progress accurate.
+        <SectionList
+          style={styles.sectionList}
+          sections={overdueTaskSections}
+          keyExtractor={item => item.id.toString()}
+          renderItem={({ item }) => {
+            return renderTaskItem({
+              item,
+              sectionBackgroundColor: theme.colors.elevation.level2,
+            });
+          }}
+          renderSectionHeader={({ section: { title, data } }) => {
+            return (
+              <View
+                style={[
+                  styles.sectionHeaderContainer,
+                  { backgroundColor: theme.colors.elevation.level2 },
+                ]}>
+                <Text style={[styles.sectionHeaderText]} variant="titleLarge">
+                  {title}
+                </Text>
+                <Button
+                  disabled={
+                    bulkFailureOnGoing || toggleTaskCompletionRequestOnGoing
+                  }
+                  onPress={() => handleBulkFailures(data)}
+                  textColor="red"
+                  labelStyle={styles.failDateTasksButton}>
+                  Fail all
+                </Button>
+              </View>
+            );
+          }}
+          ItemSeparatorComponent={() => <Divider />}
+          ListHeaderComponent={() => (
+            <View style={styles.paddingTop}>
+              <Banner
+                visible={overdueTaskSections.length > 0}
+                elevation={2}
+                actions={[
+                  {
+                    label: 'Fail All Overdue',
+                    onPress: handleFailAllOverdueTasksAtOnce,
+                    labelStyle: { color: theme.colors.error },
+                    mode: 'text',
+                    disabled:
+                      bulkFailureOnGoing || toggleTaskCompletionRequestOnGoing,
+                  },
+                ]}>
+                <View style={styles.bannerContentContainer}>
+                  <Icon
+                    source="alert-circle-outline"
+                    color={theme.colors.error}
+                    size={24}
+                  />
+                  <View style={styles.bannerTextContainer}>
+                    <Text variant="bodyLarge" style={styles.boldFonts}>
+                      Clear Overdue Tasks Quickly
+                    </Text>
+                    <Text
+                      style={{ maxWidth: safeMaxWidth }}
+                      variant="bodyMedium"
+                      numberOfLines={3}>
+                      This helps you mark all items as 'Failed' in one go,
+                      keeping your progress accurate.
+                    </Text>
+                  </View>
+                </View>
+              </Banner>
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Text variant={'bodyLarge'} style={styles.infoText}>
+                No overdue tasks! 👍
               </Text>
             </View>
-          </Banner>
-          <SectionList
-            style={styles.sectionList}
-            sections={taskSections}
-            keyExtractor={item => item.id.toString()}
-            renderItem={({ item, section }) => {
-              const theme =
-                SECTION_THEMES[section.title] || DEFAULT_SECTION_THEME;
-              return renderTaskItem({
-                item,
-                sectionBackgroundColor: theme.backgroundColor,
-              });
-            }}
-            renderSectionHeader={({ section: { title } }) => {
-              const theme = SECTION_THEMES[title] || DEFAULT_SECTION_THEME;
-              return (
-                <View
-                  style={[
-                    styles.sectionHeaderContainer,
-                    { backgroundColor: theme.backgroundColor },
-                  ]}>
-                  <Text style={[styles.sectionHeaderText]} variant="titleLarge">
-                    {title}
-                  </Text>
-                </View>
-              );
-            }}
-            ItemSeparatorComponent={() => <Divider />}
-            ListHeaderComponent={() => (
-              <View style={styles.paddingTop}>
-                <View style={styles.titleContainer}>
-                  <Text variant="displaySmall">Today</Text>
-                  <IconButton
-                    icon="plus"
-                    size={20}
-                    style={styles.addTaskTodayIcon}
-                    iconColor={theme.colors.secondary}
-                    onPress={() =>
-                      navigation.navigate('AddTask', {
-                        isToday: true,
-                      })
-                    }
-                  />
-                </View>
-                <Text variant="bodyLarge" style={styles.timeAndDate}>
-                  {formatDate(dayjs())}
-                </Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={styles.centered}>
-                <Text variant={'bodyLarge'} style={styles.infoText}>
-                  No tasks scheduled for today!
-                </Text>
-              </View>
-            }
-            contentContainerStyle={
-              taskSections.length === 0 ? styles.emptyListContainer : null
-            }
-          />
-        </>
+          }
+          contentContainerStyle={
+            overdueTaskSections.length === 0 ? styles.emptyListContainer : null
+          }
+        />
       )}
       <Snackbar
         visible={showSnackbar}
@@ -573,11 +575,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  topBar: {
-    paddingLeft: 16,
-    borderBottomColor: '#ccc',
-    borderBottomWidth: 1,
-  },
   emptyListContainer: {
     flexGrow: 1,
   },
@@ -593,10 +590,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  timeAndDate: {
-    marginVertical: 10,
-    fontSize: 20,
-  },
   sectionList: {
     paddingHorizontal: 16,
   },
@@ -604,12 +597,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 16,
     paddingTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionHeaderText: {
     fontSize: 18,
-  },
-  listItemContainer: {
-    marginHorizontal: 16,
   },
   listItem: {
     paddingHorizontal: 16,
@@ -644,13 +637,6 @@ const styles = StyleSheet.create({
     color: 'white',
     paddingRight: 10,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  addTaskTodayIcon: {
-    marginVertical: -4,
-  },
   marginBottom: {
     marginBottom: 10,
   },
@@ -664,6 +650,17 @@ const styles = StyleSheet.create({
   marginLeft: {
     marginLeft: 10,
   },
+  failDateTasksButton: {
+    fontSize: 16,
+  },
+  bannerContentContainer: {
+    flexDirection: 'row',
+  },
+  bannerTextContainer: {
+    flex: 1,
+    marginLeft: 10,
+    minWidth: 0,
+  },
 });
 
-export default TodayScreen;
+export default OverdueScreen;

@@ -116,6 +116,128 @@ export class TaskRepository {
     }
   }
 
+  async getAllOverdueTasks(): Promise<Task[]> {
+    const todayStart = dayjs().startOf('day');
+
+    return this._getActiveTasksByCondition(
+      'due_date < ? AND completion_status = ?',
+      [todayStart.toISOString(), TaskCompletionStatusEnum.INCOMPLETE],
+    );
+  }
+
+  async getCountOfTasksOverdue(): Promise<number> {
+    const todayStart = dayjs().startOf('day');
+
+    const sql = `
+      SELECT COUNT(*) as count
+      FROM tasks
+      WHERE due_date < ? AND completion_status = ? AND is_active = ?;
+    `;
+
+    const params = [
+      todayStart.toISOString(),
+      TaskCompletionStatusEnum.INCOMPLETE,
+      1,
+    ];
+
+    console.log('[DB Repo] Attempting to SELECT count of overdue tasks:', {
+      sql,
+      params,
+    });
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      const count = result.rows?.item(0)?.count ?? 0;
+      return count as number;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to SELECT count of overdue tasks:',
+        error,
+      );
+      throw new Error(
+        `Failed to fetch count of overdue tasks: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async bulkFailTasks(taskIds: number[]): Promise<QueryResult> {
+    if (taskIds.length === 0) {
+      console.log('[DB Repo] bulkFailTasks called with no task IDs. Skipping.');
+      return { rowsAffected: 0, insertId: undefined, rows: undefined };
+    }
+
+    const now = new Date().toISOString();
+    const placeholders = taskIds.map(() => '?').join(', ');
+    const sql = `
+      UPDATE tasks
+      SET
+        completion_status = ?,
+        modified_at = ?
+      WHERE id IN (${placeholders});
+    `;
+
+    const params = [TaskCompletionStatusEnum.FAILED, now, ...taskIds];
+
+    console.log('[DB Repo] Attempting to bulk fail tasks:', { sql, params });
+
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Bulk fail tasks successful:', result);
+      return result;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to bulk fail tasks:', error);
+      throw new Error(
+        `Failed to bulk fail tasks: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  async failAllOverdueTasksAtOnce(): Promise<QueryResult> {
+    const now = new Date().toISOString();
+    const todayStart = dayjs().startOf('day').toISOString();
+
+    const sql = `
+      UPDATE tasks
+      SET
+        completion_status = ?,
+        modified_at = ?
+        WHERE due_date < ? AND completion_status = ? AND is_active = ?;
+    `;
+
+    const params = [
+      TaskCompletionStatusEnum.FAILED,
+      now,
+      todayStart,
+      TaskCompletionStatusEnum.INCOMPLETE,
+      1,
+    ];
+
+    console.log('[DB Repo] Attempting to fail all overdue tasks at once:', {
+      sql,
+      params,
+    });
+
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      console.log(
+        '[DB Repo] Failed all overdue tasks at once successful:',
+        result,
+      );
+      return result;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to fail all overdue tasks at once:',
+        error,
+      );
+      throw new Error(
+        `Failed to fail all overdue tasks at once: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
   async getAllActiveUnscheduledTasks(): Promise<Task[]> {
     return this._getActiveTasksByCondition(
       'schedule = ? AND completion_status = ?',
