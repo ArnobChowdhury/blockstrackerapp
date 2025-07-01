@@ -72,6 +72,7 @@ const AutocompleteInput = forwardRef<
     const [showSuggestions, setShowSuggestions] = useState(false);
     const textInputRef = useRef<View>(null);
     const [inputLayout, setInputLayout] = useState<Layout | null>(null);
+    const [isFocused, setIsFocused] = useState(false);
 
     const theme = useTheme();
     const measureAndSetLayout = useCallback(() => {
@@ -139,10 +140,10 @@ const AutocompleteInput = forwardRef<
         }, 300);
 
         return () => clearTimeout(timeoutId);
-      } else {
+      } else if (isFocused) {
         setSuggestions(options);
       }
-    }, [query, options, selectedOption]);
+    }, [query, options, selectedOption, isFocused]);
 
     const handleSelectSuggestion = (item: Option) => {
       setQuery(item.name);
@@ -155,6 +156,7 @@ const AutocompleteInput = forwardRef<
     };
 
     const handleFocus = () => {
+      setIsFocused(true);
       measureAndSetLayout();
       setShowSuggestions(true);
       onLoadSuggestions();
@@ -166,10 +168,8 @@ const AutocompleteInput = forwardRef<
       onFocus && onFocus();
     };
 
-    const notExactMatch =
-      suggestions.findIndex(item => item.name === query) === -1;
-
     const handleBlur = () => {
+      setIsFocused(false);
       setTimeout(() => setShowSuggestions(false), 150);
       if (!selectedOption || selectedOption.name !== query) {
         setQuery('');
@@ -180,6 +180,9 @@ const AutocompleteInput = forwardRef<
       }
       onBlur && onBlur();
     };
+
+    const notExactMatch =
+      suggestions.findIndex(item => item.name === query) === -1;
 
     return (
       <View>
@@ -192,7 +195,7 @@ const AutocompleteInput = forwardRef<
             onFocus={handleFocus}
           />
         </View>
-        {showSuggestions && inputLayout && (
+        {showSuggestions && isFocused && inputLayout && (
           <Portal>
             <Surface
               style={[
