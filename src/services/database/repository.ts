@@ -1002,6 +1002,29 @@ export class RepetitiveTaskTemplateRepository {
       }
     }
   }
+
+  async stopRepetitiveTask(repetitiveTaskId: number): Promise<void> {
+    const sql = `
+      UPDATE repetitive_task_templates
+      SET is_active = 0
+      WHERE id = ?;
+    `;
+    const params = [repetitiveTaskId];
+
+    console.log('[DB Repo] Attempting to stop repetitive task:', {
+      sql,
+      params,
+    });
+
+    try {
+      await this.db.executeAsync(sql, params);
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to stop repetitive task:', error);
+      throw new Error(
+        `Failed to stop repetitive task: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
 }
 
 export class SpaceRepository {

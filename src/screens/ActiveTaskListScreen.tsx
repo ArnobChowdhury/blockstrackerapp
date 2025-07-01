@@ -12,6 +12,7 @@ import {
   List,
   Divider,
   Snackbar,
+  Button,
 } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
@@ -181,6 +182,15 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }, [category, fetchTasksByCategory, taskRepository]),
   );
 
+  const handleStoppingRepetitiveTaskTemplate = async (
+    repetitiveTaskTemplateId: number,
+  ) => {
+    await repetitiveTaskTemplateRepository?.stopRepetitiveTask(
+      repetitiveTaskTemplateId,
+    );
+    await fetchTasksByCategory();
+  };
+
   const renderTaskItem = ({
     item,
   }: {
@@ -262,6 +272,16 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
               left: props => (
                 <View {...props} style={styles.checkboxContainer}>
                   <Text style={styles.bulletText}>•</Text>
+                </View>
+              ),
+              right: props => (
+                <View {...props} style={styles.iconContainer}>
+                  <Button
+                    onPress={async () =>
+                      await handleStoppingRepetitiveTaskTemplate(item.id)
+                    }>
+                    Stop
+                  </Button>
                 </View>
               ),
             }
