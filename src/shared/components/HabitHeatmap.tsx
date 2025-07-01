@@ -233,6 +233,8 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
     }
   }, [numWeeksToRender, repetitiveTaskTemplate, viewWidth]);
 
+  console.log('repetitiveTaskTemplate', repetitiveTaskTemplate);
+
   return (
     <View
       style={styles.container}
@@ -348,30 +350,34 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
                     { backgroundColor: scoreColorConfigs.failed },
                   ]}
                 />
-                <View
-                  style={[
-                    styles.legendBox,
-                    { backgroundColor: scoreColorConfigs.score0 },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.legendBox,
-                    { backgroundColor: scoreColorConfigs.score1 },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.legendBox,
-                    { backgroundColor: scoreColorConfigs.score2 },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.legendBox,
-                    { backgroundColor: scoreColorConfigs.score3 },
-                  ]}
-                />
+                {repetitiveTaskTemplate.shouldBeScored && (
+                  <>
+                    <View
+                      style={[
+                        styles.legendBox,
+                        { backgroundColor: scoreColorConfigs.score0 },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.legendBox,
+                        { backgroundColor: scoreColorConfigs.score1 },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.legendBox,
+                        { backgroundColor: scoreColorConfigs.score2 },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.legendBox,
+                        { backgroundColor: scoreColorConfigs.score3 },
+                      ]}
+                    />
+                  </>
+                )}
                 <View
                   style={[
                     styles.legendBox,
