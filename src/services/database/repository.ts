@@ -357,7 +357,6 @@ export class TaskRepository {
         should_be_scored, score, created_at, modified_at, is_active, completion_status, space_id
       FROM tasks
       WHERE DATE(due_date, 'localtime') = DATE('now', 'localtime')
-        AND completion_status IN ('${TaskCompletionStatusEnum.INCOMPLETE}', '${TaskCompletionStatusEnum.COMPLETE}')
       ORDER BY
         CASE time_of_day
           WHEN '${TimeOfDay.Morning}' THEN 1

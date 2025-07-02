@@ -52,18 +52,20 @@ export interface TaskSection {
   data: Task[];
 }
 
-const TIME_OF_DAY_ORDER: Record<TimeOfDay | 'Unspecified', number> = {
+const GROUP_ORDER: Record<TimeOfDay | 'unspecified' | 'failed', number> = {
   [TimeOfDay.Morning]: 1,
   [TimeOfDay.Afternoon]: 2,
   [TimeOfDay.Evening]: 3,
   [TimeOfDay.Night]: 4,
-  Unspecified: 5,
+  unspecified: 5,
+  failed: 6,
 };
 
 const SECTION_THEMES: Record<string, { backgroundColor: string }> = {
   Morning: { backgroundColor: '#E4F8FC' },
   Afternoon: { backgroundColor: '#FEEED4' },
-  Evening: { backgroundColor: '#FFDFDC' },
+  Evening: { backgroundColor: '#FFE5D9' },
+  Failed: { backgroundColor: '#FFDFDC' },
   Night: { backgroundColor: '#CDD2E9' },
   'Any Time': { backgroundColor: '#F5F5F5' },
 };
@@ -72,11 +74,14 @@ const DEFAULT_SECTION_THEME = {
   backgroundColor: '#E0E0E0',
 };
 
-export const groupTasksByTimeOfDay = (tasks: Task[]): TaskSection[] => {
+export const groupTasks = (tasks: Task[]): TaskSection[] => {
   const grouped: Record<string, Task[]> = {};
 
   tasks.forEach(task => {
-    const key = task.timeOfDay || 'Unspecified';
+    const key =
+      task.completionStatus === TaskCompletionStatusEnum.FAILED
+        ? 'Failed'
+        : task.timeOfDay || 'Unspecified';
     if (!grouped[key]) {
       grouped[key] = [];
     }
@@ -84,23 +89,25 @@ export const groupTasksByTimeOfDay = (tasks: Task[]): TaskSection[] => {
   });
 
   return Object.entries(grouped)
-    .map(([timeOfDayKey, taskItems]) => ({
-      title:
-        timeOfDayKey === 'Unspecified'
-          ? 'Any Time'
-          : capitalize(timeOfDayKey as TimeOfDay),
-      data: taskItems,
-    }))
+    .map(([timeOfDayKey, taskItems]) => {
+      return {
+        title:
+          timeOfDayKey === 'Unspecified'
+            ? 'Any Time'
+            : capitalize(timeOfDayKey as keyof typeof GROUP_ORDER),
+        data: taskItems,
+      };
+    })
     .sort((a, b) => {
       const aKey =
         a.title === 'Any Time'
-          ? 'Unspecified'
-          : (a.title.toLowerCase() as TimeOfDay);
+          ? 'unspecified'
+          : (a.title.toLowerCase() as keyof typeof GROUP_ORDER);
       const bKey =
         b.title === 'Any Time'
-          ? 'Unspecified'
-          : (b.title.toLowerCase() as TimeOfDay);
-      return TIME_OF_DAY_ORDER[aKey] - TIME_OF_DAY_ORDER[bKey];
+          ? 'unspecified'
+          : (b.title.toLowerCase() as keyof typeof GROUP_ORDER);
+      return GROUP_ORDER[aKey] - GROUP_ORDER[bKey];
     });
 };
 
@@ -169,7 +176,7 @@ const TodayScreen = ({ navigation }: Props) => {
       setNumberOfTaskOverdue(countOfTaskOverdue);
 
       const fetchedTasks = await taskRepository.getTasksForToday();
-      setTaskSections(groupTasksByTimeOfDay(fetchedTasks));
+      setTaskSections(groupTasks(fetchedTasks));
     } catch (error: any) {
       console.error('[TodayScreen] Failed to fetch tasks:', error);
       setErrorLoadingTasks(
@@ -290,53 +297,76 @@ const TodayScreen = ({ navigation }: Props) => {
               </Text>
             }
             style={[styles.listItem]}
-            left={props => (
-              <View {...props} style={styles.checkboxContainer}>
-                <Checkbox
-                  status={
-                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                      ? 'checked'
-                      : 'unchecked'
-                  }
-                  onPress={() => handleTaskCompletion(item)}
-                />
-              </View>
-            )}
+            {...(item.completionStatus !== TaskCompletionStatusEnum.FAILED
+              ? {
+                  left: props => (
+                    <View {...props} style={styles.checkboxContainer}>
+                      <Checkbox
+                        status={
+                          item.completionStatus ===
+                          TaskCompletionStatusEnum.COMPLETE
+                            ? 'checked'
+                            : 'unchecked'
+                        }
+                        onPress={() => handleTaskCompletion(item)}
+                      />
+                    </View>
+                  ),
+                }
+              : {})}
             right={props => (
               <View {...props} style={styles.iconContainer}>
                 {(item.schedule === TaskScheduleTypeEnum.Unscheduled ||
-                  item.schedule === TaskScheduleTypeEnum.Once) && (
+                  item.schedule === TaskScheduleTypeEnum.Once) &&
+                  item.completionStatus !== TaskCompletionStatusEnum.FAILED && (
+                    <IconButton
+                      icon="calendar-refresh"
+                      size={20}
+                      onPress={() => {
+                        setSelectedDateForTaskReschedule(
+                          new Date(item.dueDate as string),
+                        );
+                        setTaskIdToBeRescheduled(item.id);
+                      }}
+                      disabled={
+                        item.completionStatus ===
+                        TaskCompletionStatusEnum.COMPLETE
+                      }
+                      style={styles.iconButton}
+                    />
+                  )}
+                {item.completionStatus !== TaskCompletionStatusEnum.FAILED && (
                   <IconButton
-                    icon="calendar-refresh"
+                    icon="thumb-down-outline"
                     size={20}
-                    onPress={() => {
-                      setSelectedDateForTaskReschedule(
-                        new Date(item.dueDate as string),
-                      );
-                      setTaskIdToBeRescheduled(item.id);
-                    }}
+                    iconColor="red"
                     disabled={
                       item.completionStatus ===
                       TaskCompletionStatusEnum.COMPLETE
                     }
+                    onPress={() =>
+                      onToggleTaskCompletionStatus(
+                        item.id,
+                        TaskCompletionStatusEnum.FAILED,
+                      )
+                    }
                     style={styles.iconButton}
                   />
                 )}
-                <IconButton
-                  icon="thumb-down-outline"
-                  size={20}
-                  iconColor="red"
-                  disabled={
-                    item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                  }
-                  onPress={() =>
-                    onToggleTaskCompletionStatus(
-                      item.id,
-                      TaskCompletionStatusEnum.FAILED,
-                    )
-                  }
-                  style={styles.iconButton}
-                />
+                {item.completionStatus === TaskCompletionStatusEnum.FAILED && (
+                  <IconButton
+                    icon="restart"
+                    size={20}
+                    iconColor="green"
+                    onPress={() =>
+                      onToggleTaskCompletionStatus(
+                        item.id,
+                        TaskCompletionStatusEnum.INCOMPLETE,
+                      )
+                    }
+                    style={styles.iconButton}
+                  />
+                )}
               </View>
             )}
           />
