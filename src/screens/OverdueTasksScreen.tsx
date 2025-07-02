@@ -425,7 +425,7 @@ const OverdueScreen = ({ navigation }: Props) => {
           ListHeaderComponent={() => (
             <View style={styles.paddingTop}>
               <Banner
-                visible={overdueTaskSections.length > 0}
+                visible={overdueTaskSections.length > 1}
                 elevation={2}
                 actions={[
                   {
