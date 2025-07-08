@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView, View } from 'react-native';
 import { SpaceRepository } from '../services/database/repository';
 import {
   Text,
@@ -7,6 +7,7 @@ import {
   Divider,
   Snackbar,
   ProgressBar,
+  Badge,
   useTheme,
 } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +16,10 @@ import type { ActiveStackParamList } from '../navigation/RootNavigator';
 import { TaskScheduleTypeEnum, Space } from '../types';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useFocusEffect } from '@react-navigation/native';
+import {
+  TaskRepository,
+  RepetitiveTaskTemplateRepository,
+} from '../services/database/repository';
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveCategoryList'>;
 
@@ -36,6 +41,33 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
 
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
+
+  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
+    null,
+  );
+  const [
+    repetitiveTaskTemplateRepository,
+    setRepetitiveTaskTemplateRepository,
+  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
+
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setTaskRepository(new TaskRepository(db));
+    } else {
+      setTaskRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setRepetitiveTaskTemplateRepository(
+        new RepetitiveTaskTemplateRepository(db),
+      );
+    } else {
+      setRepetitiveTaskTemplateRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
       setSpaceRepository(new SpaceRepository(db));
@@ -81,12 +113,33 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     }
   }, [spaceRepository]);
 
+  const [countForCategories, setCountForCategories] =
+    useState<Record<TaskScheduleTypeEnum, number>>();
+
+  const getCountForAllCategory = useCallback(async () => {
+    if (!taskRepository || !repetitiveTaskTemplateRepository) {
+      return;
+    }
+    const countForNonRepetitiveTasks =
+      await taskRepository.countAllActiveTasksByCategory();
+    const countForRepetitiveTasks =
+      await repetitiveTaskTemplateRepository.countAllActiveRepetitiveTasksByCategory();
+
+    const counts = {
+      ...countForNonRepetitiveTasks,
+      ...countForRepetitiveTasks,
+    };
+
+    setCountForCategories(counts);
+  }, [repetitiveTaskTemplateRepository, taskRepository]);
+
   useFocusEffect(
     useCallback(() => {
       if (spaceRepository) {
+        getCountForAllCategory();
         loadAllSpaces();
       }
-    }, [spaceRepository, loadAllSpaces]),
+    }, [spaceRepository, getCountForAllCategory, loadAllSpaces]),
   );
 
   const onDismissSnackBar = () => {
@@ -96,11 +149,37 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   const [expandedSpaceId, setExpandedSpaceId] = useState<number | string>();
 
-  const handleSpaceExpansion = (expandedId: string | number) => {
+  const [countForSpace, setCountForSpace] =
+    useState<Record<TaskScheduleTypeEnum, number>>();
+
+  const getCountForSpace = useCallback(
+    async (spaceId: number) => {
+      if (!taskRepository || !repetitiveTaskTemplateRepository) {
+        return;
+      }
+      const countForNonRepetitiveTasks =
+        await taskRepository.countActiveTasksBySpaceId(spaceId);
+      const countForRepetitiveTasks =
+        await repetitiveTaskTemplateRepository.countActiveRepetitiveTasksBySpaceId(
+          spaceId,
+        );
+
+      const counts = {
+        ...countForNonRepetitiveTasks,
+        ...countForRepetitiveTasks,
+      };
+
+      setCountForSpace(counts);
+    },
+    [repetitiveTaskTemplateRepository, taskRepository],
+  );
+
+  const handleSpaceExpansion = async (expandedId: string | number) => {
     if (expandedId === expandedSpaceId) {
       setExpandedSpaceId(undefined);
       return;
     }
+    await getCountForSpace(allSpaces[Number(expandedId) - 1].id);
     setExpandedSpaceId(expandedId);
   };
 
@@ -112,7 +191,20 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
           {categoriesToDisplay.map((categoryKey, index) => (
             <React.Fragment key={categoryKey}>
               <List.Item
-                title={<Text variant="titleMedium">{categoryKey}</Text>}
+                title={
+                  <View>
+                    <Text variant="titleMedium">{categoryKey}</Text>
+                    <Badge
+                      style={[
+                        {
+                          backgroundColor: theme.colors.primary,
+                        },
+                        styles.badge,
+                      ]}>
+                      {countForCategories?.[categoryKey]}
+                    </Badge>
+                  </View>
+                }
                 right={props => <List.Icon {...props} icon="chevron-right" />}
                 onPress={() => handleCategoryPress(categoryKey)}
                 style={styles.listItemLevelOne}
@@ -141,7 +233,20 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
                   {categoriesToDisplay.map((categoryKey, index) => (
                     <React.Fragment key={categoryKey}>
                       <List.Item
-                        title={<Text variant="titleSmall">{categoryKey}</Text>}
+                        title={
+                          <View>
+                            <Text variant="titleSmall">{categoryKey}</Text>
+                            <Badge
+                              style={[
+                                {
+                                  backgroundColor: theme.colors.primary,
+                                },
+                                styles.badge,
+                              ]}>
+                              {countForSpace?.[categoryKey]}
+                            </Badge>
+                          </View>
+                        }
                         right={props => (
                           <List.Icon {...props} icon="chevron-right" />
                         )}
@@ -172,6 +277,12 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 };
 
 const styles = StyleSheet.create({
+  badge: {
+    marginLeft: 5,
+    position: 'absolute',
+    top: -2,
+    right: -24,
+  },
   listItemLevelOne: {
     paddingHorizontal: 20,
   },

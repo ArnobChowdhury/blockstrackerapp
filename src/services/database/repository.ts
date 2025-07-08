@@ -161,6 +161,72 @@ export class TaskRepository {
     }
   }
 
+  async _countActiveTasksByCondition(
+    conditionSql: string,
+    conditionParams: any[],
+  ): Promise<number> {
+    const sql = `
+      SELECT COUNT(*) as count
+      FROM tasks
+      WHERE ${conditionSql} AND is_active = ?;
+    `;
+    const params = [...conditionParams, 1];
+
+    console.log('[DB Repo] Attempting to SELECT count of active tasks:', {
+      sql,
+      params,
+    });
+
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      const count = result.rows?.item(0)?.count ?? 0;
+      return count as number;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to SELECT count of active tasks:', error);
+      throw new Error(
+        `Failed to fetch count of active tasks: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async countAllActiveTasksByCategory() {
+    const sql = 'schedule = ? AND completion_status = ?';
+    const countUnscheduledTasks = await this._countActiveTasksByCondition(sql, [
+      TaskScheduleTypeEnum.Unscheduled,
+      TaskCompletionStatusEnum.INCOMPLETE,
+    ]);
+
+    const countOnceTasks = await this._countActiveTasksByCondition(sql, [
+      TaskScheduleTypeEnum.Once,
+      TaskCompletionStatusEnum.INCOMPLETE,
+    ]);
+    return {
+      [TaskScheduleTypeEnum.Unscheduled]: countUnscheduledTasks,
+      [TaskScheduleTypeEnum.Once]: countOnceTasks,
+    };
+  }
+
+  async countActiveTasksBySpaceId(spaceId: number) {
+    const sql = 'schedule = ? AND completion_status = ? AND space_id = ?';
+    const countUnscheduledTasks = await this._countActiveTasksByCondition(sql, [
+      TaskScheduleTypeEnum.Unscheduled,
+      TaskCompletionStatusEnum.INCOMPLETE,
+      spaceId,
+    ]);
+
+    const countOnceTasks = await this._countActiveTasksByCondition(sql, [
+      TaskScheduleTypeEnum.Once,
+      TaskCompletionStatusEnum.INCOMPLETE,
+      spaceId,
+    ]);
+    return {
+      [TaskScheduleTypeEnum.Unscheduled]: countUnscheduledTasks,
+      [TaskScheduleTypeEnum.Once]: countOnceTasks,
+    };
+  }
+
   async bulkFailTasks(taskIds: number[]): Promise<QueryResult> {
     if (taskIds.length === 0) {
       console.log('[DB Repo] bulkFailTasks called with no task IDs. Skipping.');
@@ -879,6 +945,80 @@ export class RepetitiveTaskTemplateRepository {
       'schedule = ? AND space_id = ?',
       [TaskScheduleTypeEnum.SpecificDaysInAWeek, spaceId],
     );
+  }
+
+  async _countActiveTasksByCondition(
+    conditionSql: string,
+    conditionParams: any[],
+  ): Promise<number> {
+    const sql = `
+      SELECT COUNT(*) as count
+      FROM repetitive_task_templates
+      WHERE ${conditionSql} AND is_active = ?;
+    `;
+    const params = [...conditionParams, 1];
+
+    console.log('[DB Repo] Attempting to SELECT count of active tasks:', {
+      sql,
+      params,
+    });
+
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      console.log(
+        '[DB Repo] SELECT count of active tasks successful:',
+        resultSet,
+      );
+
+      return resultSet.rows?.item(0)?.count as number;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to SELECT count of active tasks:', error);
+      throw new Error(
+        `Failed to get count of active tasks: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async countAllActiveRepetitiveTasksByCategory() {
+    const whereClause = 'schedule = ?';
+
+    const countOfDailyTasks = await this._countActiveTasksByCondition(
+      whereClause,
+      [TaskScheduleTypeEnum.Daily],
+    );
+    const countOfSpecificDaysInAWeekTasks =
+      await this._countActiveTasksByCondition(whereClause, [
+        TaskScheduleTypeEnum.SpecificDaysInAWeek,
+      ]);
+
+    return {
+      [TaskScheduleTypeEnum.SpecificDaysInAWeek]:
+        countOfSpecificDaysInAWeekTasks,
+      [TaskScheduleTypeEnum.Daily]: countOfDailyTasks,
+    };
+  }
+
+  async countActiveRepetitiveTasksBySpaceId(spaceId: number) {
+    const whereClause = 'schedule = ? AND space_id = ?';
+
+    const countOfDailyTasks = await this._countActiveTasksByCondition(
+      whereClause,
+      [TaskScheduleTypeEnum.Daily, spaceId],
+    );
+
+    const countOfSpecificDaysInAWeekTasks =
+      await this._countActiveTasksByCondition(whereClause, [
+        TaskScheduleTypeEnum.SpecificDaysInAWeek,
+        spaceId,
+      ]);
+
+    return {
+      [TaskScheduleTypeEnum.SpecificDaysInAWeek]:
+        countOfSpecificDaysInAWeekTasks,
+      [TaskScheduleTypeEnum.Daily]: countOfDailyTasks,
+    };
   }
 
   async updateLastDateOfTaskGeneration(
