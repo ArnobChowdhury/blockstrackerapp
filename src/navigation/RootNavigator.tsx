@@ -26,7 +26,7 @@ import {
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
-  ActiveTaskList: { category: TaskScheduleTypeEnum };
+  ActiveTaskList: { category: TaskScheduleTypeEnum; spaceId?: number };
 };
 
 export type TrackerStackParamList = {

@@ -124,7 +124,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     if (db && !dbError && !isDbLoading) {
       setSpaceRepository(new SpaceRepository(db));
     } else {
-      setTaskRepository(null);
+      setSpaceRepository(null);
     }
   }, [db, dbError, isDbLoading]);
 

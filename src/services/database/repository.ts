@@ -252,6 +252,24 @@ export class TaskRepository {
     );
   }
 
+  async getActiveUnscheduledTasksBySpace(spaceId: number): Promise<Task[]> {
+    return this._getActiveTasksByCondition(
+      'schedule = ? AND completion_status = ? AND space_id = ?',
+      [
+        TaskScheduleTypeEnum.Unscheduled,
+        TaskCompletionStatusEnum.INCOMPLETE,
+        spaceId,
+      ],
+    );
+  }
+
+  async getActiveOnceTasksBySpace(spaceId: number): Promise<Task[]> {
+    return this._getActiveTasksByCondition(
+      'schedule = ? AND completion_status = ? AND space_id = ?',
+      [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE, spaceId],
+    );
+  }
+
   async getAllActiveTasks(): Promise<Task[]> {
     return this._getActiveTasksByCondition(); // no condition
   }
@@ -735,27 +753,36 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  private async _getAllActiveRepetitiveTaskTemplatesBySchedule(
-    schedule:
-      | TaskScheduleTypeEnum.Daily
-      | TaskScheduleTypeEnum.SpecificDaysInAWeek,
+  private async _getAllActiveRepetitiveTaskTemplatesByCondition(
+    additionalConditionSql = '',
+    additionalConditionParams: any[] = [],
   ): Promise<RepetitiveTaskTemplate[]> {
+    const baseWhereClauses = ['is_active = ?'];
+    const baseParams: any[] = [1];
+
+    const allWhereClauses = [...baseWhereClauses];
+    const allParams = [...baseParams];
+
+    if (additionalConditionSql) {
+      allWhereClauses.push(additionalConditionSql);
+      allParams.push(...additionalConditionParams);
+    }
+
     const sql = `
       SELECT
         id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
         created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
       FROM repetitive_task_templates
-      WHERE schedule = ? AND is_active = 1
+      WHERE ${allWhereClauses.join(' AND ')}
       ORDER BY created_at DESC;
     `;
-    const params: any[] = [schedule];
 
     console.log(
       '[DB Repo] Attempting to SELECT all active repetitive task templates:',
       { sql },
     );
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, allParams);
       console.log(
         '[DB Repo] SELECT successful, rows found:',
         resultSet.rows?.length,
@@ -821,16 +848,36 @@ export class RepetitiveTaskTemplateRepository {
   async getAllActiveDailyRepetitiveTaskTemplates(): Promise<
     RepetitiveTaskTemplate[]
   > {
-    return this._getAllActiveRepetitiveTaskTemplatesBySchedule(
-      TaskScheduleTypeEnum.Daily,
+    return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      'schedule = ?',
+      [TaskScheduleTypeEnum.Daily],
     );
   }
 
   async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(): Promise<
     RepetitiveTaskTemplate[]
   > {
-    return this._getAllActiveRepetitiveTaskTemplatesBySchedule(
-      TaskScheduleTypeEnum.SpecificDaysInAWeek,
+    return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      'schedule = ?',
+      [TaskScheduleTypeEnum.SpecificDaysInAWeek],
+    );
+  }
+
+  async getActiveDailyRepetitiveTaskTemplatesBySpace(
+    spaceId: number,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      'schedule = ? AND space_id = ?',
+      [TaskScheduleTypeEnum.Daily, spaceId],
+    );
+  }
+
+  async getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+    spaceId: number,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      'schedule = ? AND space_id = ?',
+      [TaskScheduleTypeEnum.SpecificDaysInAWeek, spaceId],
     );
   }
 

@@ -24,6 +24,7 @@ import type {
 import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
+  SpaceRepository,
 } from '../services/database/repository';
 import {
   useDatabase,
@@ -47,7 +48,7 @@ type Props = CompositeScreenProps<
 >;
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
-  const { category } = route.params;
+  const { category, spaceId } = route.params;
   console.log(
     '[TaskList] Category:',
     TaskScheduleTypeEnum.SpecificDaysInAWeek === category,
@@ -62,17 +63,15 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     repetitiveTaskTemplateRepository,
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
+
+  const [spaceRepository, setSpaceRepository] =
+    useState<SpaceRepository | null>(null);
+
   const [tasks, setTasks] = useState<Task[] | RepetitiveTaskTemplate[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: category,
-    });
-  }, [navigation, category]);
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
@@ -91,6 +90,31 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
       setRepetitiveTaskTemplateRepository(null);
     }
   }, [db, dbError, isDbLoading]);
+
+  useEffect(() => {
+    if (db && !dbError && !isDbLoading) {
+      setSpaceRepository(new SpaceRepository(db));
+    } else {
+      setSpaceRepository(null);
+    }
+  }, [db, dbError, isDbLoading]);
+
+  useLayoutEffect(() => {
+    if (spaceId && spaceRepository) {
+      spaceRepository.getSpaceById(spaceId).then(space => {
+        if (!space) {
+          return;
+        }
+        navigation.setOptions({
+          title: `${space.name} - ${category}`,
+        });
+      });
+    } else {
+      navigation.setOptions({
+        title: category,
+      });
+    }
+  }, [navigation, category, spaceId, spaceRepository]);
 
   const fetchTasksByCategory = useCallback(async () => {
     if (!taskRepository) {
@@ -112,7 +136,27 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
 
     try {
       let fetchedTasks: Task[] | RepetitiveTaskTemplate[] = [];
-      if (TaskScheduleTypeEnum.Unscheduled === category) {
+      if (spaceId) {
+        if (TaskScheduleTypeEnum.Unscheduled === category) {
+          fetchedTasks = await taskRepository.getActiveUnscheduledTasksBySpace(
+            spaceId,
+          );
+        } else if (TaskScheduleTypeEnum.Once === category) {
+          fetchedTasks = await taskRepository.getActiveOnceTasksBySpace(
+            spaceId,
+          );
+        } else if (TaskScheduleTypeEnum.Daily === category) {
+          fetchedTasks =
+            await repetitiveTaskTemplateRepository.getActiveDailyRepetitiveTaskTemplatesBySpace(
+              spaceId,
+            );
+        } else if (TaskScheduleTypeEnum.SpecificDaysInAWeek === category) {
+          fetchedTasks =
+            await repetitiveTaskTemplateRepository.getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+              spaceId,
+            );
+        }
+      } else if (TaskScheduleTypeEnum.Unscheduled === category) {
         fetchedTasks = await taskRepository.getAllActiveUnscheduledTasks();
       } else if (TaskScheduleTypeEnum.Once === category) {
         fetchedTasks = await taskRepository.getAllActiveOnceTasks();
@@ -138,7 +182,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [taskRepository, repetitiveTaskTemplateRepository, category]);
+  }, [taskRepository, repetitiveTaskTemplateRepository, category, spaceId]);
 
   const [screenRequestError, setScreenRequestError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
