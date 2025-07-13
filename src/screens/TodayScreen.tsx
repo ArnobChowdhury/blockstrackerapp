@@ -41,6 +41,7 @@ import {
 } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { DrawerActions } from '@react-navigation/native';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<BottomTabParamList, 'Today'>,
@@ -403,6 +404,11 @@ const TodayScreen = ({ navigation }: Props) => {
       edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.topBar}>
         <Logo width={200} height={60} />
+        <IconButton
+          icon="menu"
+          size={30}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        />
       </View>
       {isLoadingTasks ? (
         <View style={styles.centered}>
@@ -607,6 +613,9 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     borderBottomColor: '#ccc',
     borderBottomWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   emptyListContainer: {
     flexGrow: 1,

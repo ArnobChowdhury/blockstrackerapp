@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BottomNavigation, useTheme, Text } from 'react-native-paper';
 import { CommonActions, NavigatorScreenParams } from '@react-navigation/native';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { StyleSheet } from 'react-native';
 import TodayScreen from '../screens/TodayScreen';
 import HabitsScreen from '../screens/HabitsScreen';
@@ -23,6 +24,7 @@ import {
   PlusIcon,
   TrackerIcon,
 } from '../shared/components/icons';
+import CustomDrawerContent from '../shared/components/CustomDrawerComponent';
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
@@ -54,6 +56,12 @@ export type RootStackParamList = {
     source: 'AddTask' | 'EditTask';
   };
   Overdue: undefined;
+  Drawer: undefined;
+};
+
+export type DrawerParamList = {
+  Home: undefined;
+  Overdue: undefined;
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -61,6 +69,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 const ActiveStack = createNativeStackNavigator<ActiveStackParamList>();
 const TrackerStack = createNativeStackNavigator<TrackerStackParamList>();
+const Drawer = createDrawerNavigator<DrawerParamList>();
 
 const ActiveStackNavigator = () => {
   return (
@@ -258,13 +267,35 @@ const BottomNavigator = () => {
   );
 };
 
+const DrawerNavigator = () => {
+  return (
+    <Drawer.Navigator
+      screenOptions={{
+        headerShown: false,
+        drawerPosition: 'right',
+        drawerHideStatusBarOnOpen: true,
+      }}
+      drawerContent={props => <CustomDrawerContent {...props} />}>
+      <Drawer.Screen name="Home" component={BottomNavigator} />
+      <Drawer.Screen
+        name="Overdue"
+        component={OverdueScreen}
+        options={{
+          headerTitle: () => <Text variant="titleLarge">Overdue Tasks</Text>,
+          headerShown: true,
+        }}
+      />
+    </Drawer.Navigator>
+  );
+};
+
 const RootNavigator = () => {
   return (
     <RootStack.Navigator>
       <RootStack.Screen
-        name="BottomNavigation"
-        component={BottomNavigator}
+        name="Drawer"
         options={{ headerShown: false }}
+        component={DrawerNavigator}
       />
       <RootStack.Screen name="EditTask" component={EditTaskScreen} />
       <RootStack.Screen
