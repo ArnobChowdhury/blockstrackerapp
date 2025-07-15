@@ -46,11 +46,14 @@ const TaskDescription = ({ navigation, route }: Props) => {
         );
       } else {
         navigation.navigate(
-          'BottomNavigation',
+          'Drawer',
           {
-            screen: 'AddTask',
+            screen: 'Today',
             params: {
-              updatedDescription: descriptionHTML,
+              screen: 'AddTask',
+              params: {
+                updatedDescription: descriptionHTML,
+              },
             },
           },
           { merge: true },

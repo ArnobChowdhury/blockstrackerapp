@@ -44,7 +44,6 @@ export type BottomTabParamList = {
 };
 
 export type RootStackParamList = {
-  BottomNavigation: NavigatorScreenParams<BottomTabParamList>;
   EditTask: {
     taskId?: number;
     isRepetitiveTaskTemplate?: boolean;
@@ -56,11 +55,11 @@ export type RootStackParamList = {
     source: 'AddTask' | 'EditTask';
   };
   Overdue: undefined;
-  Drawer: undefined;
+  Drawer: NavigatorScreenParams<DrawerParamList>;
 };
 
 export type DrawerParamList = {
-  Home: undefined;
+  Today: NavigatorScreenParams<BottomTabParamList>;
   Overdue: undefined;
 };
 
@@ -276,7 +275,7 @@ const DrawerNavigator = () => {
         drawerHideStatusBarOnOpen: true,
       }}
       drawerContent={props => <CustomDrawerContent {...props} />}>
-      <Drawer.Screen name="Home" component={BottomNavigator} />
+      <Drawer.Screen name="Today" component={BottomNavigator} />
       <Drawer.Screen
         name="Overdue"
         component={OverdueScreen}

@@ -25,8 +25,8 @@ export default function CustomDrawerContent(
         <Drawer.Section>
           <Drawer.Item
             label="Today"
-            active={activeRoute === 'Home'}
-            onPress={() => navigation.navigate('Home')}
+            active={activeRoute === 'Today'}
+            onPress={() => navigation.navigate('Today')}
             style={styles.item}
           />
           <Drawer.Item
