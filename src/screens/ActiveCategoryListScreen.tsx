@@ -198,6 +198,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
                       style={[
                         {
                           backgroundColor: theme.colors.primary,
+                          color: theme.colors.onPrimaryContainer,
                         },
                         styles.badge,
                       ]}>
@@ -240,6 +241,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
                               style={[
                                 {
                                   backgroundColor: theme.colors.primary,
+                                  color: theme.colors.onPrimaryContainer,
                                 },
                                 styles.badge,
                               ]}>

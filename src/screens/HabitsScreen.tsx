@@ -5,8 +5,15 @@ import {
   FlatList,
   View,
   Dimensions,
+  useColorScheme,
 } from 'react-native';
-import { Text, Card, ActivityIndicator, IconButton } from 'react-native-paper';
+import {
+  Text,
+  Card,
+  ActivityIndicator,
+  IconButton,
+  useTheme,
+} from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +25,8 @@ import {
   TaskRepository,
 } from '../services/database/repository';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
+import { useAppContext } from '../shared/contexts/useAppContext';
+import { getIsDarkMode } from '../shared/utils';
 
 const screenWidth = Dimensions.get('window').width;
 const numColumns = 2;
@@ -42,10 +51,11 @@ interface HabitCardItemProps {
   isViewable: boolean;
   taskRepository: TaskRepository | null;
   onPress: () => void;
+  activityBgColor?: string;
 }
 
 const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
-  ({ habit, isViewable, taskRepository, onPress }) => {
+  ({ habit, isViewable, taskRepository, onPress, activityBgColor }) => {
     const FETCH_TASKS_LIMIT = 50;
     const [heatmapTasks, setHeatmapTasks] = useState<Task[]>([]);
     const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
@@ -79,9 +89,13 @@ const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
     }, [isViewable, habit.id, taskRepository, hasFetched, isLoadingHeatmap]);
 
     return (
-      <Card style={styles.card} onPress={onPress}>
+      <Card style={[styles.card]} onPress={onPress}>
         <Card.Title title={<Text variant="titleMedium">{habit.title}</Text>} />
-        <Card.Content style={styles.cardContent}>
+        <Card.Content
+          style={[
+            styles.cardContent,
+            activityBgColor ? { backgroundColor: activityBgColor } : null,
+          ]}>
           {isLoadingHeatmap && (
             <ActivityIndicator size="small" style={styles.heatmapLoader} />
           )}
@@ -103,6 +117,11 @@ const HabitsScreen = ({ navigation }: Props) => {
     repetitiveTaskTemplateRepository,
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
+
+  const { currentTheme } = useAppContext();
+  const colorScheme = useColorScheme();
+  const isDarkMode = getIsDarkMode(currentTheme, colorScheme);
+  const theme = useTheme();
 
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
@@ -191,6 +210,9 @@ const HabitsScreen = ({ navigation }: Props) => {
       const isViewable = viewableItems.includes(item.id);
       return (
         <HabitCardItem
+          activityBgColor={
+            isDarkMode ? undefined : theme.colors.onPrimaryContainer
+          }
           habit={item}
           isViewable={isViewable}
           taskRepository={taskRepository}
@@ -201,7 +223,13 @@ const HabitsScreen = ({ navigation }: Props) => {
         />
       );
     },
-    [navigation, viewableItems, taskRepository],
+    [
+      viewableItems,
+      isDarkMode,
+      theme.colors.onPrimaryContainer,
+      taskRepository,
+      navigation,
+    ],
   );
 
   if (isDbLoading) {
@@ -269,7 +297,7 @@ const HabitsScreen = ({ navigation }: Props) => {
               ListEmptyComponent={() => (
                 <View style={styles.centered}>
                   <Text style={styles.infoText}>
-                    Add tasks to start tracking
+                    Add repetitive tasks to start tracking
                   </Text>
                 </View>
               )}
@@ -317,7 +345,6 @@ const styles = StyleSheet.create({
     margin: cardMarginVal,
   },
   cardContent: {
-    backgroundColor: 'white',
     margin: 8,
     padding: 8,
     height: 100,
