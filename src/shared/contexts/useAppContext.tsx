@@ -1,4 +1,5 @@
 import React, { useContext, useState, ReactNode, useMemo } from 'react';
+import { readData, storeData } from '../utils';
 
 interface AppContextProps {
   currentTheme: 'light' | 'dark' | 'system';
@@ -13,15 +14,23 @@ interface AppProviderProps {
 
 export const AppProvider = ({ children }: AppProviderProps) => {
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(
-    'light',
+    'system',
   );
 
-  const changeTheme = (theme: string) => {
+  readData('theme').then(theme => {
+    if (theme) {
+      setCurrentTheme(theme as 'light' | 'dark' | 'system');
+    }
+  });
+
+  const changeTheme = async (theme: string) => {
     if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
       console.error('Invalid theme:', theme);
       return;
     }
-    console.log('Changing theme to');
+
+    await storeData('theme', theme);
+    console.log('Changing theme to', theme);
     setCurrentTheme(theme);
   };
 

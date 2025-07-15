@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, useColorScheme } from 'react-native';
 import { Text } from 'react-native-paper';
 import { initializeDatabase } from '../db'; // Adjust path if needed
 import 'react-native-gesture-handler';
@@ -31,7 +31,14 @@ registerTranslation('en', en);
 const AppContent = () => {
   const { currentTheme } = useAppContext();
 
-  const isDarkMode = currentTheme === 'dark';
+  const colorScheme = useColorScheme();
+  let isDarkMode;
+
+  if (currentTheme === 'system') {
+    isDarkMode = colorScheme === 'dark';
+  } else {
+    isDarkMode = currentTheme === 'dark';
+  }
 
   let navigationTheme: Theme;
   if (isDarkMode) {

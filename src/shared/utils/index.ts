@@ -1,5 +1,6 @@
 import { Dayjs } from 'dayjs';
 import { DaysInAWeek, RepetitiveTaskTemplate } from '../../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const capitalize = (s: string) => {
   if (typeof s !== 'string') {
@@ -43,4 +44,34 @@ export const getScheduledWeekDaysFromRepetitiveTask = (
   });
 
   return days;
+};
+
+export const storeData = async (key: string, value: string) => {
+  try {
+    await AsyncStorage.setItem(key, value);
+    console.log('Data saved successfully!');
+  } catch (e) {
+    console.error('Failed to save data.', e);
+  }
+};
+
+export const readData = async (key: string) => {
+  try {
+    const value = await AsyncStorage.getItem(key);
+    if (value !== null) {
+      console.log('Retrieved data:', value);
+      return value;
+    }
+  } catch (e) {
+    console.error('Failed to read data.', e);
+  }
+};
+
+export const removeData = async (key: string) => {
+  try {
+    await AsyncStorage.removeItem(key);
+    console.log('Data removed successfully!');
+  } catch (e) {
+    console.error('Failed to remove data.', e);
+  }
 };
