@@ -42,6 +42,7 @@ import {
 import { DatePickerModal } from 'react-native-paper-dates';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { DrawerActions } from '@react-navigation/native';
+import { CombinedLightTheme } from '../app/theme/theme';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<BottomTabParamList, 'Today'>,
@@ -289,11 +290,12 @@ const TodayScreen = ({ navigation }: Props) => {
             title={
               <Text
                 variant="bodyLarge"
-                style={
+                style={[
+                  { color: CombinedLightTheme.colors.onSurface },
                   item.completionStatus === TaskCompletionStatusEnum.COMPLETE
                     ? styles.taskCompleted
-                    : null
-                }>
+                    : null,
+                ]}>
                 {item.title}
               </Text>
             }
@@ -303,6 +305,7 @@ const TodayScreen = ({ navigation }: Props) => {
                   left: props => (
                     <View {...props} style={styles.checkboxContainer}>
                       <Checkbox
+                        uncheckedColor={CombinedLightTheme.colors.onSurface}
                         status={
                           item.completionStatus ===
                           TaskCompletionStatusEnum.COMPLETE
@@ -464,7 +467,12 @@ const TodayScreen = ({ navigation }: Props) => {
                     styles.sectionHeaderContainer,
                     { backgroundColor: theme.backgroundColor },
                   ]}>
-                  <Text style={[styles.sectionHeaderText]} variant="titleLarge">
+                  <Text
+                    style={[
+                      { color: CombinedLightTheme.colors.onSurface },
+                      styles.sectionHeaderText,
+                    ]}
+                    variant="titleLarge">
                     {title}
                   </Text>
                 </View>

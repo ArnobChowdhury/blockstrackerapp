@@ -16,14 +16,56 @@ import { PaperProvider } from 'react-native-paper';
 import {
   NavigationContainer,
   DefaultTheme as ReactNavigationDefaultTheme,
+  DarkTheme as ReactNavigationDarkTheme,
+  Theme,
 } from '@react-navigation/native';
 import RootNavigator from '../navigation/RootNavigator'; // Adjusted path
-import { theme } from './theme/theme';
+import { CombinedLightTheme, CombinedDarkTheme } from './theme/theme';
+import { AppProvider, useAppContext } from '../shared/contexts/useAppContext';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 import { en, registerTranslation } from 'react-native-paper-dates';
 
 enableSimpleNullHandling();
 registerTranslation('en', en);
+
+const AppContent = () => {
+  const { currentTheme } = useAppContext();
+
+  const isDarkMode = currentTheme === 'dark';
+
+  let navigationTheme: Theme;
+  if (isDarkMode) {
+    navigationTheme = { ...ReactNavigationDarkTheme };
+    navigationTheme.colors = {
+      ...ReactNavigationDarkTheme.colors,
+      background: CombinedDarkTheme.colors.surface,
+    };
+    navigationTheme.dark = true;
+  } else {
+    navigationTheme = { ...ReactNavigationDefaultTheme };
+    navigationTheme.colors = {
+      ...ReactNavigationDefaultTheme.colors,
+      background: CombinedLightTheme.colors.surface,
+    };
+    navigationTheme.dark = false;
+  }
+
+  return (
+    <PaperProvider theme={isDarkMode ? CombinedDarkTheme : CombinedLightTheme}>
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={
+          isDarkMode
+            ? CombinedDarkTheme.colors.surface
+            : CombinedLightTheme.colors.surface
+        }
+      />
+      <NavigationContainer theme={navigationTheme}>
+        <RootNavigator />
+      </NavigationContainer>
+    </PaperProvider>
+  );
+};
 
 function App(): React.JSX.Element {
   const [isDbInitialized, setIsDBInitialized] = useState(false);
@@ -51,26 +93,11 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={theme.colors.surface} // Match status bar background to screen background
-        />
-
-        <NavigationContainer
-          theme={{
-            ...ReactNavigationDefaultTheme,
-            colors: {
-              ...ReactNavigationDefaultTheme.colors,
-              background: theme.colors.surface,
-            },
-            dark: true,
-          }}>
-          <RootNavigator />
-        </NavigationContainer>
-      </PaperProvider>
-    </SafeAreaProvider>
+    <AppProvider>
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
+    </AppProvider>
   );
 }
 

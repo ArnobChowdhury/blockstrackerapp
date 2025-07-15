@@ -1,7 +1,13 @@
 import {
-  MD3LightTheme as DefaultTheme,
+  MD3LightTheme,
   configureFonts,
+  MD3DarkTheme,
+  adaptNavigationTheme,
 } from 'react-native-paper';
+import {
+  DefaultTheme as NavigationDefaultTheme,
+  DarkTheme as NavigationDarkTheme,
+} from '@react-navigation/native';
 import { MD3Theme } from 'react-native-paper/lib/typescript/types';
 
 const customFontFamilyOverrides = {
@@ -29,11 +35,19 @@ const customFontFamilyOverrides = {
 // Use configureFonts to merge custom font families with default MD3 typescale properties
 const fonts = configureFonts({ config: customFontFamilyOverrides });
 
-export const theme: MD3Theme = {
-  ...DefaultTheme,
+const { LightTheme: NavLightTheme, DarkTheme: NavDarkTheme } =
+  adaptNavigationTheme({
+    reactNavigationLight: NavigationDefaultTheme,
+    reactNavigationDark: NavigationDarkTheme,
+  });
+
+export const CombinedLightTheme: MD3Theme = {
+  ...MD3LightTheme,
+  ...NavLightTheme,
   fonts: fonts,
   colors: {
-    ...DefaultTheme.colors,
+    ...MD3LightTheme.colors,
+    ...NavLightTheme.colors,
     primary: '#007A9F',
     secondary: '#11C498',
     primaryContainer: '#007A9F',
@@ -50,10 +64,42 @@ export const theme: MD3Theme = {
     onSurfaceVariant: '#444444',
 
     elevation: {
-      ...DefaultTheme.colors.elevation,
+      ...MD3LightTheme.colors.elevation,
       level1: '#f9f9f9',
       level2: '#f6f6f6',
       level3: '#eeeeee',
+    },
+  },
+};
+
+export const CombinedDarkTheme: MD3Theme = {
+  ...MD3DarkTheme,
+  ...NavDarkTheme,
+  fonts: fonts,
+  colors: {
+    ...MD3DarkTheme.colors,
+    ...NavDarkTheme.colors,
+    primary: '#007A9F',
+    secondary: '#11C498',
+    primaryContainer: '#007A9F',
+    onPrimaryContainer: '#ffffff',
+
+    // influences bottom navigation bar
+    secondaryContainer: '#11C498',
+    onSecondaryContainer: '#ffffff',
+
+    surface: '#121212',
+    onSurface: '#EAEAEA',
+
+    // input fields
+    surfaceVariant: '#007A9F40',
+    onSurfaceVariant: '#CCCCCC',
+
+    elevation: {
+      ...MD3DarkTheme.colors.elevation,
+      level1: '#1e1e1e',
+      level2: '#242424',
+      level3: '#282828',
     },
   },
 };
