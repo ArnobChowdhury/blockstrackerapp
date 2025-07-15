@@ -24,6 +24,7 @@ import { CombinedLightTheme, CombinedDarkTheme } from './theme/theme';
 import { AppProvider, useAppContext } from '../shared/contexts/useAppContext';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 import { en, registerTranslation } from 'react-native-paper-dates';
+import { getIsDarkMode } from '../shared/utils';
 
 enableSimpleNullHandling();
 registerTranslation('en', en);
@@ -32,13 +33,7 @@ const AppContent = () => {
   const { currentTheme } = useAppContext();
 
   const colorScheme = useColorScheme();
-  let isDarkMode;
-
-  if (currentTheme === 'system') {
-    isDarkMode = colorScheme === 'dark';
-  } else {
-    isDarkMode = currentTheme === 'dark';
-  }
+  let isDarkMode = getIsDarkMode(currentTheme, colorScheme);
 
   let navigationTheme: Theme;
   if (isDarkMode) {
