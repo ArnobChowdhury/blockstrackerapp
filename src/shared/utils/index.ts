@@ -75,14 +75,3 @@ export const removeData = async (key: string) => {
     console.error('Failed to remove data.', e);
   }
 };
-
-export const getIsDarkMode = (
-  currentTheme: string,
-  colorScheme: string | null | undefined,
-) => {
-  if (currentTheme === 'system') {
-    return colorScheme === 'dark';
-  } else {
-    return currentTheme === 'dark';
-  }
-};

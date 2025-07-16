@@ -15,7 +15,7 @@ export default function CustomDrawerContent(
   const { navigation, state } = props;
   const activeRoute = state.routeNames[state.index];
 
-  const { currentTheme, changeTheme } = useAppContext();
+  const { userPreferredTheme, changeTheme } = useAppContext();
 
   return (
     <SafeAreaView style={styles.flexOne}>
@@ -40,7 +40,7 @@ export default function CustomDrawerContent(
               Mode
             </Text>
             <SegmentedButtons
-              value={currentTheme}
+              value={userPreferredTheme}
               onValueChange={changeTheme}
               buttons={[
                 {

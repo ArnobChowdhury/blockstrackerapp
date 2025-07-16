@@ -1,8 +1,16 @@
-import React, { useContext, useState, ReactNode, useMemo } from 'react';
+import React, {
+  useContext,
+  useState,
+  ReactNode,
+  useMemo,
+  useCallback,
+} from 'react';
 import { readData, storeData } from '../utils';
+import { useColorScheme } from 'react-native';
 
 interface AppContextProps {
-  currentTheme: 'light' | 'dark' | 'system';
+  isDarkMode: boolean;
+  userPreferredTheme: 'light' | 'dark' | 'system';
   changeTheme: (theme: string) => void;
 }
 
@@ -12,29 +20,50 @@ interface AppProviderProps {
   children: ReactNode;
 }
 
+export const getIsDarkMode = (
+  preferredTheme: string,
+  colorScheme: string | null | undefined,
+) => {
+  if (preferredTheme === 'system') {
+    return colorScheme === 'dark';
+  } else {
+    return preferredTheme === 'dark';
+  }
+};
+
 export const AppProvider = ({ children }: AppProviderProps) => {
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(
-    'system',
-  );
+  const [userPreferredTheme, setUserPreferredTheme] = useState<
+    'light' | 'dark' | 'system'
+  >('system');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const colorScheme = useColorScheme();
 
   readData('theme').then(theme => {
     if (theme) {
-      setCurrentTheme(theme as 'light' | 'dark' | 'system');
+      setUserPreferredTheme(theme as 'light' | 'dark' | 'system');
+      setIsDarkMode(getIsDarkMode(theme, colorScheme));
     }
   });
 
-  const changeTheme = async (theme: string) => {
-    if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
-      console.error('Invalid theme:', theme);
-      return;
-    }
+  const changeTheme = useCallback(
+    async (theme: string) => {
+      if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
+        console.error('Invalid theme:', theme);
+        return;
+      }
 
-    await storeData('theme', theme);
-    console.log('Changing theme to', theme);
-    setCurrentTheme(theme);
-  };
+      await storeData('theme', theme);
+      console.log('Changing theme to', theme);
+      setUserPreferredTheme(theme);
+      setIsDarkMode(getIsDarkMode(theme, colorScheme));
+    },
+    [colorScheme],
+  );
 
-  const value = useMemo(() => ({ currentTheme, changeTheme }), [currentTheme]);
+  const value = useMemo(
+    () => ({ userPreferredTheme, changeTheme, isDarkMode }),
+    [userPreferredTheme, changeTheme, isDarkMode],
+  );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

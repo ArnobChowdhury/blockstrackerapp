@@ -1,6 +1,4 @@
 import { Svg, Path, Text } from 'react-native-svg';
-import { getIsDarkMode } from '../../utils';
-import { useColorScheme } from 'react-native';
 import { useAppContext } from '../../contexts/useAppContext';
 
 interface ICalendarTodayProps {
@@ -10,9 +8,7 @@ interface ICalendarTodayProps {
 }
 
 function CalendarToday({ date, size, color }: ICalendarTodayProps) {
-  const { currentTheme } = useAppContext();
-
-  const isDarkMode = getIsDarkMode(currentTheme, useColorScheme());
+  const { isDarkMode } = useAppContext();
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

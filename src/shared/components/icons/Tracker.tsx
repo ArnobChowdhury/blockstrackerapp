@@ -1,7 +1,5 @@
 import { Svg, Path } from 'react-native-svg';
-import { useColorScheme } from 'react-native';
 import { useAppContext } from '../../contexts/useAppContext';
-import { getIsDarkMode } from '../../utils';
 
 interface IHabitsScreenProps {
   size: number;
@@ -9,9 +7,7 @@ interface IHabitsScreenProps {
 }
 
 function Tracker({ color, size }: IHabitsScreenProps) {
-  const { currentTheme } = useAppContext();
-  const colorScheme = useColorScheme();
-  const isDarkMode = getIsDarkMode(currentTheme, colorScheme);
+  const { isDarkMode } = useAppContext();
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

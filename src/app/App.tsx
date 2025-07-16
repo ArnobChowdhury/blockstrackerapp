@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import { StatusBar } from 'react-native';
 import { Text } from 'react-native-paper';
 import { initializeDatabase } from '../db'; // Adjust path if needed
 import 'react-native-gesture-handler';
@@ -24,16 +24,12 @@ import { CombinedLightTheme, CombinedDarkTheme } from './theme/theme';
 import { AppProvider, useAppContext } from '../shared/contexts/useAppContext';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 import { en, registerTranslation } from 'react-native-paper-dates';
-import { getIsDarkMode } from '../shared/utils';
 
 enableSimpleNullHandling();
 registerTranslation('en', en);
 
 const AppContent = () => {
-  const { currentTheme } = useAppContext();
-
-  const colorScheme = useColorScheme();
-  let isDarkMode = getIsDarkMode(currentTheme, colorScheme);
+  const { isDarkMode } = useAppContext();
 
   let navigationTheme: Theme;
   if (isDarkMode) {

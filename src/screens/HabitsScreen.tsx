@@ -5,7 +5,6 @@ import {
   FlatList,
   View,
   Dimensions,
-  useColorScheme,
 } from 'react-native';
 import {
   Text,
@@ -26,7 +25,6 @@ import {
 } from '../services/database/repository';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
 import { useAppContext } from '../shared/contexts/useAppContext';
-import { getIsDarkMode } from '../shared/utils';
 
 const screenWidth = Dimensions.get('window').width;
 const numColumns = 2;
@@ -118,9 +116,7 @@ const HabitsScreen = ({ navigation }: Props) => {
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
 
-  const { currentTheme } = useAppContext();
-  const colorScheme = useColorScheme();
-  const isDarkMode = getIsDarkMode(currentTheme, colorScheme);
+  const { isDarkMode } = useAppContext();
   const theme = useTheme();
 
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
