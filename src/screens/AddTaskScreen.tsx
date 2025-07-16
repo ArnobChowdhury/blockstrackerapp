@@ -372,11 +372,11 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   const descriptionInputFieldBaseStyles = useMemo(() => {
     return {
       fontSize: 16,
-      color: theme.colors.onSurface,
+      color: theme.colors.onSurfaceVariant,
       fontFamily: 'HankenGrotesk-Regular',
       marginLeft: -4,
     };
-  }, [theme.colors.onSurface]);
+  }, [theme.colors.onSurfaceVariant]);
 
   if (isDbLoading) {
     return (
