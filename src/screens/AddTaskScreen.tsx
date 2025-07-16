@@ -558,6 +558,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
             mode="contained"
             onPress={handleAddTask}
             style={styles.addButton}
+            labelStyle={{ color: theme.colors.onPrimaryContainer }}
             loading={isSaving}
             disabled={isSaving || isDbLoading || addTaskDisabled}
             icon="plus-circle-outline">

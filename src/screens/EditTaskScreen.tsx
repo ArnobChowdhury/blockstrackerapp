@@ -674,6 +674,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
               mode="contained"
               onPress={handleTaskUpdate}
               style={styles.addButton}
+              labelStyle={{ color: theme.colors.onPrimaryContainer }}
               loading={isSaving}
               disabled={isSaving || isDbLoading || addTaskDisabled}
               icon="plus-circle-outline">
