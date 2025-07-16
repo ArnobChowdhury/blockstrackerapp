@@ -82,6 +82,10 @@ const TaskDescription = ({ navigation, route }: Props) => {
         </View>
         <View style={styles.editorContainer}>
           <RichEditor
+            editorStyle={{
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.onSurface,
+            }}
             initialFocus={true}
             initialContentHTML={initialHTML || ''}
             ref={richText}
