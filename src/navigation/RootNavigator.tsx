@@ -59,7 +59,7 @@ export type RootStackParamList = {
 };
 
 export type DrawerParamList = {
-  Today: NavigatorScreenParams<BottomTabParamList>;
+  Home: NavigatorScreenParams<BottomTabParamList>;
   Overdue: undefined;
 };
 
@@ -275,7 +275,7 @@ const DrawerNavigator = () => {
         drawerHideStatusBarOnOpen: true,
       }}
       drawerContent={props => <CustomDrawerContent {...props} />}>
-      <Drawer.Screen name="Today" component={BottomNavigator} />
+      <Drawer.Screen name="Home" component={BottomNavigator} />
       <Drawer.Screen
         name="Overdue"
         component={OverdueScreen}

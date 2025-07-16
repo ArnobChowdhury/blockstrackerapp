@@ -48,7 +48,7 @@ const TaskDescription = ({ navigation, route }: Props) => {
         navigation.navigate(
           'Drawer',
           {
-            screen: 'Today',
+            screen: 'Home',
             params: {
               screen: 'AddTask',
               params: {
