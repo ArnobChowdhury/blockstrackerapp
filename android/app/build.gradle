@@ -1,3 +1,11 @@
+def dotenvFile = rootProject.file("../.env")
+def dotenv = new Properties()
+if (dotenvFile.exists()) {
+    dotenvFile.withInputStream { stream ->
+        dotenv.load(stream)
+    }
+}
+
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
@@ -57,7 +65,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -92,6 +100,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (dotenv["KEYSTORE_FILE"] != null) {
+                storeFile file(dotenv["KEYSTORE_FILE"])
+                storePassword dotenv["KEYSTORE_PASSWORD"]
+                keyAlias dotenv["KEY_ALIAS"]
+                keyPassword dotenv["KEY_PASSWORD"]
+            }
+        }
     }
     buildTypes {
         debug {
@@ -100,8 +116,8 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
+            signingConfig signingConfigs.release
+            minifyEnabled true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
