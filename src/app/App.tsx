@@ -24,7 +24,6 @@ import { CombinedLightTheme, CombinedDarkTheme } from './theme/theme';
 import { AppProvider, useAppContext } from '../shared/contexts/useAppContext';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 import { en, registerTranslation } from 'react-native-paper-dates';
-import SplashScreen from 'react-native-splash-screen';
 
 enableSimpleNullHandling();
 registerTranslation('en', en);
@@ -76,7 +75,6 @@ function App(): React.JSX.Element {
       .then(() => {
         console.log('[App] Database initialized successfully!');
         setIsDBInitialized(true);
-        SplashScreen.hide();
       })
       .catch(error => {
         console.error('[App] Error initializing database:', error);
