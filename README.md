@@ -9,7 +9,7 @@ Built with **React Native**, backed by an embedded SQLite database.
 - **React Native CLI**
 - **TypeScript**
 - **SQLite** via `react-native-quick-sqlite`
-- **Redux Toolkit** for state management
+- **React Context API** for state management
 
 ## 🚀 Getting Started
 
