@@ -490,7 +490,7 @@ const TodayScreen = ({ navigation }: Props) => {
             </View>
           </Banner>
           <Banner
-            visible={true}
+            visible={newDayBannerVisible}
             actions={[
               {
                 label: "Show Today's Tasks",
