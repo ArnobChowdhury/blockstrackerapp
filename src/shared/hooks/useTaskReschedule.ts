@@ -4,7 +4,7 @@ import { TaskRepository } from '../../services/database/repository';
 
 export const useTaskReschedule = (
   taskRepository: TaskRepository | null,
-  cb?: () => void,
+  cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +22,7 @@ export const useTaskReschedule = (
         await taskRepository?.updateTaskDueDate(taskId, rescheduledTime);
 
         if (cb) {
-          cb();
+          await cb();
         }
       } catch (err: any) {
         setError(err.message);

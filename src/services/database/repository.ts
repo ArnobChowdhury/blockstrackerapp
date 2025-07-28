@@ -433,14 +433,14 @@ export class TaskRepository {
     }
   }
 
-  // todo logic need to be re-checked. Especially, we need completion_status of the task.
-  async getTasksForToday(): Promise<Task[]> {
+  async getTasksForDate(date: Date): Promise<Task[]> {
+    const dateString = dayjs(date).format('YYYY-MM-DD');
     const sql = `
       SELECT
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
         should_be_scored, score, created_at, modified_at, is_active, completion_status, space_id
       FROM tasks
-      WHERE DATE(due_date, 'localtime') = DATE('now', 'localtime')
+      WHERE DATE(due_date, 'localtime') = ?
       ORDER BY
         CASE time_of_day
           WHEN '${TimeOfDay.Morning}' THEN 1
@@ -451,12 +451,18 @@ export class TaskRepository {
         END,
         created_at DESC;
     `;
+    const params = [dateString];
 
-    console.log('[DB Repo] Attempting to SELECT tasks for today:', { sql });
+    console.log(
+      `[DB Repo] Attempting to SELECT tasks for date: ${dateString}`,
+      {
+        sql,
+      },
+    );
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql); // No params for this query
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
       console.log(
-        '[DB Repo] SELECT tasks for today successful, rows found:',
+        `[DB Repo] SELECT tasks for ${dateString} successful, rows found:`,
         resultSet.rows?.length,
       );
 
@@ -489,9 +495,12 @@ export class TaskRepository {
       }
       return tasks;
     } catch (error: any) {
-      console.error('[DB Repo] Failed to SELECT tasks for today:', error);
+      console.error(
+        `[DB Repo] Failed to SELECT tasks for date ${dateString}:`,
+        error,
+      );
       throw new Error(
-        `Failed to retrieve tasks for today: ${
+        `Failed to retrieve tasks for date ${dateString}: ${
           error.message || 'Unknown error'
         }`,
       );

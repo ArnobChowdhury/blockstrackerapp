@@ -124,6 +124,9 @@ const TodayScreen = ({ navigation }: Props) => {
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
 
+  const [displayDate, setDisplayDate] = useState(() => dayjs().startOf('day'));
+  const [newDayBannerVisible, setNewDayBannerVisible] = useState(false);
+
   const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
   const [numberOfTaskOverdue, setNumberOfTaskOverdue] = useState(0);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -158,43 +161,57 @@ const TodayScreen = ({ navigation }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
-  const fetchTasksForToday = useCallback(async () => {
-    if (!taskRepository || !repetitiveTaskTemplateRepository) {
+  const fetchTasksForDate = useCallback(
+    async (dateToFetch: dayjs.Dayjs) => {
+      if (!taskRepository || !repetitiveTaskTemplateRepository) {
+        console.log(
+          '[TodayScreen] taskRepository or repetitiveTaskTemplateRepository is null',
+        );
+        return;
+      }
+
       console.log(
-        '[TodayScreen] taskRepository or repetitiveTaskTemplateRepository is null',
+        `[TodayScreen] Fetching tasks for ${dateToFetch.format(
+          'YYYY-MM-DD',
+        )}...`,
       );
-      return;
-    }
+      setErrorLoadingTasks(null);
 
-    console.log('[TodayScreen] Fetching tasks for today...');
-    setErrorLoadingTasks(null);
+      try {
+        await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
+          taskRepository,
+        );
 
-    try {
-      await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
-        taskRepository,
-      );
+        const countOfTaskOverdue =
+          await taskRepository.getCountOfTasksOverdue();
+        setNumberOfTaskOverdue(countOfTaskOverdue);
 
-      const countOfTaskOverdue = await taskRepository.getCountOfTasksOverdue();
-      setNumberOfTaskOverdue(countOfTaskOverdue);
+        const fetchedTasks = await taskRepository.getTasksForDate(
+          dateToFetch.toDate(),
+        );
+        setTaskSections(groupTasks(fetchedTasks));
+      } catch (error: any) {
+        console.error('[TodayScreen] Failed to fetch tasks:', error);
+        setErrorLoadingTasks(
+          error.message || 'An unknown error occurred while fetching tasks.',
+        );
+        setTaskSections([]);
+      } finally {
+        setIsLoadingTasks(false);
+      }
+    },
+    [taskRepository, repetitiveTaskTemplateRepository],
+  );
 
-      const fetchedTasks = await taskRepository.getTasksForToday();
-      setTaskSections(groupTasks(fetchedTasks));
-    } catch (error: any) {
-      console.error('[TodayScreen] Failed to fetch tasks:', error);
-      setErrorLoadingTasks(
-        error.message || 'An unknown error occurred while fetching tasks.',
-      );
-      setTaskSections([]);
-    } finally {
-      setIsLoadingTasks(false);
-    }
-  }, [taskRepository, repetitiveTaskTemplateRepository]);
+  const refreshCurrentView = useCallback(async () => {
+    await fetchTasksForDate(displayDate);
+  }, [fetchTasksForDate, displayDate]);
 
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskRepository, fetchTasksForToday);
+    useToggleTaskCompletionStatus(taskRepository, refreshCurrentView);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskRepository, fetchTasksForToday);
+    useTaskReschedule(taskRepository, refreshCurrentView);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -212,11 +229,28 @@ const TodayScreen = ({ navigation }: Props) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (taskRepository) {
-        fetchTasksForToday();
+      if (taskRepository && !newDayBannerVisible) {
+        fetchTasksForDate(displayDate);
       }
-    }, [taskRepository, fetchTasksForToday]),
+    }, [taskRepository, fetchTasksForDate, displayDate, newDayBannerVisible]),
   );
+
+  useEffect(() => {
+    if (newDayBannerVisible) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      const now = dayjs().startOf('day');
+
+      if (now.isAfter(displayDate)) {
+        console.log('A new day has begun while using the app. Showing banner.');
+        setNewDayBannerVisible(true);
+      }
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [displayDate, newDayBannerVisible]);
 
   const handleSnackbarDismiss = () => {
     setShowSnackbar(false);
@@ -240,6 +274,14 @@ const TodayScreen = ({ navigation }: Props) => {
     },
     [taskIdToBeRescheduled, onTaskReschedule],
   );
+
+  const handleRefreshToNewDay = useCallback(() => {
+    const newDate = dayjs().startOf('day');
+    setNewDayBannerVisible(false);
+    setDisplayDate(newDate);
+
+    fetchTasksForDate(newDate);
+  }, [fetchTasksForDate]);
 
   const [taskToBeCompleted, setTaskToBeCompleted] = useState<Task>();
   const [scoreForTaskToBeCompleted, setScoreForTaskToBeCompleted] =
@@ -422,7 +464,7 @@ const TodayScreen = ({ navigation }: Props) => {
         <View style={styles.centered}>
           <Text style={styles.errorText}>Failed to Load Tasks</Text>
           <Text style={styles.errorText}>{errorLoadingTasks}</Text>
-          <IconButton icon="refresh" size={30} onPress={fetchTasksForToday} />
+          <IconButton icon="refresh" size={30} onPress={refreshCurrentView} />
         </View>
       ) : (
         <>
@@ -447,6 +489,21 @@ const TodayScreen = ({ navigation }: Props) => {
               </Text>
             </View>
           </Banner>
+          <Banner
+            visible={true}
+            actions={[
+              {
+                label: "Show Today's Tasks",
+                onPress: handleRefreshToNewDay,
+              },
+            ]}
+            icon="calendar-clock">
+            <Text variant="bodyMedium">
+              A new day has begun! You can continue with yesterday's tasks or
+              refresh to see what's new for today.
+            </Text>
+          </Banner>
+
           <SectionList
             style={styles.sectionList}
             sections={taskSections}
@@ -482,7 +539,9 @@ const TodayScreen = ({ navigation }: Props) => {
             ListHeaderComponent={() => (
               <View style={styles.paddingTop}>
                 <View style={styles.titleContainer}>
-                  <Text variant="displaySmall">Today</Text>
+                  <Text variant="displaySmall">
+                    {newDayBannerVisible ? 'Yesterday' : 'Today'}
+                  </Text>
                   <IconButton
                     icon="plus"
                     size={20}
@@ -496,7 +555,7 @@ const TodayScreen = ({ navigation }: Props) => {
                   />
                 </View>
                 <Text variant="bodyLarge" style={styles.timeAndDate}>
-                  {formatDate(dayjs())}
+                  {formatDate(displayDate)}
                 </Text>
               </View>
             )}
