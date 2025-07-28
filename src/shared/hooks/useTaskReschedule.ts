@@ -11,7 +11,6 @@ export const useTaskReschedule = (
 
   const onTaskReschedule = useCallback(
     async (taskId: number, rescheduledTime: Date) => {
-      console.time('useTaskReschedule');
       if (!taskRepository) {
         setError('Database service not ready.');
         return;
