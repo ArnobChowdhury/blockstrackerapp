@@ -18,6 +18,7 @@ import ActiveCategoryListScreen from '../screens/ActiveCategoryListScreen';
 import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
 import TaskDescriptionScreen from '../screens/TaskDescription';
 import OverdueScreen from '../screens/OverdueTasksScreen';
+import AuthScreen from '../screens/AuthScreen';
 import { TaskScheduleTypeEnum, RepetitiveTaskTemplate } from '../types';
 import {
   CalendarToday,
@@ -56,6 +57,7 @@ export type RootStackParamList = {
   };
   Overdue: undefined;
   Drawer: NavigatorScreenParams<DrawerParamList>;
+  Auth: undefined;
 };
 
 export type DrawerParamList = {
@@ -307,6 +309,13 @@ const RootNavigator = () => {
         component={OverdueScreen}
         options={{
           headerTitle: () => <Text variant="titleLarge">Overdue Tasks</Text>,
+        }}
+      />
+      <RootStack.Screen
+        name="Auth"
+        component={AuthScreen}
+        options={{
+          headerTitle: () => <Text variant="titleLarge">Sign in/Sign up</Text>,
         }}
       />
     </RootStack.Navigator>

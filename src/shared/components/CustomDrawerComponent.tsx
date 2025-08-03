@@ -57,6 +57,12 @@ export default function CustomDrawerContent(
               ]}
             />
           </View>
+          <Drawer.Item
+            label="Sign in or Sign up"
+            active={activeRoute === 'Auth'}
+            onPress={() => navigation.navigate('Auth')}
+            style={styles.item}
+          />
         </Drawer.Section>
       </DrawerContentScrollView>
     </SafeAreaView>
