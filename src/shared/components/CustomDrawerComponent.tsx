@@ -7,7 +7,7 @@ import {
   DrawerContentComponentProps,
 } from '@react-navigation/drawer';
 import { SegmentedButtons } from 'react-native-paper';
-import { useAppContext } from '../contexts/useAppContext';
+import { useAppContext } from '../../shared/contexts/useAppContext';
 
 export default function CustomDrawerContent(
   props: DrawerContentComponentProps,
@@ -15,7 +15,8 @@ export default function CustomDrawerContent(
   const { navigation, state } = props;
   const activeRoute = state.routeNames[state.index];
 
-  const { userPreferredTheme, changeTheme } = useAppContext();
+  const { userToken, signOut, userPreferredTheme, changeTheme } =
+    useAppContext();
 
   return (
     <SafeAreaView style={styles.flexOne}>
@@ -57,12 +58,20 @@ export default function CustomDrawerContent(
               ]}
             />
           </View>
-          <Drawer.Item
-            label="Sign in or Sign up"
-            active={activeRoute === 'Auth'}
-            onPress={() => navigation.navigate('Auth')}
-            style={styles.item}
-          />
+          {userToken ? (
+            <Drawer.Item
+              label="Sign Out"
+              onPress={signOut}
+              style={styles.item}
+              icon="logout"
+            />
+          ) : (
+            <Drawer.Item
+              label="Sign in or Sign up"
+              onPress={() => navigation.navigate('Auth')}
+              style={styles.item}
+            />
+          )}
         </Drawer.Section>
       </DrawerContentScrollView>
     </SafeAreaView>

@@ -1,41 +1,121 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { Text, Button, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import { useAppContext } from '../shared/contexts/useAppContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
-const AuthScreen = ({ navigation: _navigation }: Props) => {
+const AuthScreen = ({ navigation }: Props) => {
   const theme = useTheme();
+  const { signIn } = useAppContext();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      const { type, data } = await GoogleSignin.signIn();
+
+      console.log('[AuthScreen] Google Sign-In result:', type, data);
+      if (type === 'cancelled') {
+        throw new Error('User canceled Google Sign-In.');
+      }
+
+      const { idToken } = data;
+
+      if (!idToken) {
+        throw new Error('Google Sign-In failed: No ID token received.');
+      }
+
+      // --- 🚀 SEND idToken TO YOUR BACKEND ---
+      // const response = await fetch('https://your-backend.com/api/auth/google', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ token: idToken }),
+      // });
+      // const { customJwt } = await response.json();
+      // await signIn(customJwt);
+      // -----------------------------------------
+
+      // For demonstration, we'll just log it and sign in with a dummy token
+      console.log('Google ID Token:', idToken);
+      await signIn('dummy-jwt-from-backend');
+    } catch (error: any) {
+      console.log('error', error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('User cancelled the login flow');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('Sign in is in progress already');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert(
+          'Sign-In Error',
+          'Google Play Services not available or outdated.',
+        );
+      } else {
+        Alert.alert('Sign-In Error', error.message);
+        console.error('Google Sign-In Error:', error);
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <View style={styles.content}>
         <Text variant="headlineMedium" style={styles.title}>
-          Create an Account
+          Sign In or Sign Up
         </Text>
         <Text
           variant="bodyLarge"
           style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-          Creating an account is optional and is mainly for enabling premium
-          features like data sync across devices. By default, all your data is
-          stored locally on this device.
+          Having an account is optional and is mainly for enabling premium
+          features like data sync. By default, all your data is stored locally
+          on this device.
         </Text>
+
         <Button
           icon="email"
           mode="outlined"
-          onPress={() => console.log('Sign in with email pressed')}
+          onPress={() =>
+            navigation.navigate('SignInOrSignup', { signUp: false })
+          }
           style={styles.button}>
-          Sign in or Sign up with email
+          Sign In with Email
         </Button>
+
+        <Button
+          icon="account-plus"
+          mode="outlined"
+          onPress={() =>
+            navigation.navigate('SignInOrSignup', { signUp: true })
+          }
+          style={styles.button}>
+          Sign Up with Email
+        </Button>
+
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
         <Button
           icon="google"
           mode="contained"
-          onPress={() => console.log('Continue with Google pressed')}
+          onPress={handleGoogleSignIn}
           style={[styles.button]}
-          labelStyle={styles.containedButton}>
+          labelStyle={styles.buttonLabel}
+          loading={isGoogleLoading}>
           Continue with Google
         </Button>
       </View>
@@ -54,7 +134,21 @@ const styles = StyleSheet.create({
   title: { textAlign: 'center', marginBottom: 8 },
   subtitle: { textAlign: 'center', marginBottom: 32 },
   button: { marginVertical: 8 },
-  containedButton: { color: 'white' },
+  buttonLabel: { color: '#fff' },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#ccc',
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: '#888',
+  },
 });
 
 export default AuthScreen;

@@ -5,10 +5,15 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { BottomNavigation, useTheme, Text } from 'react-native-paper';
+import {
+  BottomNavigation,
+  useTheme,
+  Text,
+  ActivityIndicator,
+} from 'react-native-paper';
 import { CommonActions, NavigatorScreenParams } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import TodayScreen from '../screens/TodayScreen';
 import HabitsScreen from '../screens/HabitsScreen';
 import TrackerScreen from '../screens/TrackerScreen';
@@ -19,6 +24,7 @@ import ActiveTaskListScreen from '../screens/ActiveTaskListScreen';
 import TaskDescriptionScreen from '../screens/TaskDescription';
 import OverdueScreen from '../screens/OverdueTasksScreen';
 import AuthScreen from '../screens/AuthScreen';
+import SignInOrSignupScreen from '../screens/SignInOrSignupScreen';
 import { TaskScheduleTypeEnum, RepetitiveTaskTemplate } from '../types';
 import {
   CalendarToday,
@@ -26,6 +32,7 @@ import {
   TrackerIcon,
 } from '../shared/components/icons';
 import CustomDrawerContent from '../shared/components/CustomDrawerComponent';
+import { useAppContext } from '../shared/contexts/useAppContext';
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
@@ -58,6 +65,7 @@ export type RootStackParamList = {
   Overdue: undefined;
   Drawer: NavigatorScreenParams<DrawerParamList>;
   Auth: undefined;
+  SignInOrSignup: { signUp: boolean };
 };
 
 export type DrawerParamList = {
@@ -291,6 +299,16 @@ const DrawerNavigator = () => {
 };
 
 const RootNavigator = () => {
+  const { isSigningIn } = useAppContext();
+
+  if (isSigningIn) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <RootStack.Navigator>
       <RootStack.Screen
@@ -318,6 +336,13 @@ const RootNavigator = () => {
           headerTitle: () => <Text variant="titleLarge">Sign in/Sign up</Text>,
         }}
       />
+      <RootStack.Screen
+        name="SignInOrSignup"
+        component={SignInOrSignupScreen}
+        options={{
+          headerTitleStyle: { fontFamily: 'HankenGrotesk-SemiBold' },
+        }}
+      />
     </RootStack.Navigator>
   );
 };
@@ -325,6 +350,11 @@ const RootNavigator = () => {
 export default RootNavigator;
 
 const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   activeTabIndicator: {
     width: 8,
     height: 8,

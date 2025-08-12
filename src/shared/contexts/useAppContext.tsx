@@ -2,16 +2,22 @@ import React, {
   useContext,
   useState,
   ReactNode,
+  useEffect,
   useMemo,
   useCallback,
 } from 'react';
 import { readData, storeData } from '../utils';
 import { useColorScheme } from 'react-native';
+import * as Keychain from 'react-native-keychain';
 
 interface AppContextProps {
   isDarkMode: boolean;
   userPreferredTheme: 'light' | 'dark' | 'system';
   changeTheme: (theme: string) => void;
+  userToken: string | null;
+  isSigningIn: boolean;
+  signIn: (token: string) => void;
+  signOut: () => void;
 }
 
 const AppContext = React.createContext<AppContextProps | undefined>(undefined);
@@ -60,9 +66,74 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     [colorScheme],
   );
 
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(true);
+
+  useEffect(() => {
+    const loadToken = async () => {
+      try {
+        const credentials = await Keychain.getGenericPassword();
+        if (credentials) {
+          console.log('[AuthContext] Token found in keychain.');
+          setUserToken(credentials.password);
+        } else {
+          console.log('[AuthContext] No token found in keychain.');
+        }
+      } catch (error) {
+        console.error("[AuthContext] Couldn't load token from keychain", error);
+      } finally {
+        setIsSigningIn(false);
+      }
+    };
+
+    loadToken();
+  }, []);
+
+  const signIn = useCallback(async (token: string) => {
+    setIsSigningIn(true);
+    try {
+      await Keychain.setGenericPassword('user', token);
+      setUserToken(token);
+      console.log('[AuthContext] Token stored successfully.');
+    } catch (error) {
+      console.error('[AuthContext] Error storing token', error);
+    } finally {
+      setIsSigningIn(false);
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    setIsSigningIn(true);
+    try {
+      await Keychain.resetGenericPassword();
+      setUserToken(null);
+      console.log('[AuthContext] Token removed successfully.');
+    } catch (error) {
+      console.error('[AuthContext] Error removing token', error);
+    } finally {
+      setIsSigningIn(false);
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ userPreferredTheme, changeTheme, isDarkMode }),
-    [userPreferredTheme, changeTheme, isDarkMode],
+    () => ({
+      userPreferredTheme,
+      changeTheme,
+      isDarkMode,
+      userToken,
+      isSigningIn,
+      signIn,
+      signOut,
+    }),
+    [
+      userPreferredTheme,
+      changeTheme,
+      isDarkMode,
+      userToken,
+      isSigningIn,
+      signIn,
+      signOut,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
