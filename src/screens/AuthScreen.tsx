@@ -36,19 +36,22 @@ const AuthScreen = ({ navigation }: Props) => {
         throw new Error('Google Sign-In failed: No ID token received.');
       }
 
-      // --- 🚀 SEND idToken TO YOUR BACKEND ---
-      // const response = await fetch('https://your-backend.com/api/auth/google', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ token: idToken }),
-      // });
-      // const { customJwt } = await response.json();
-      // await signIn(customJwt);
-      // -----------------------------------------
+      const response = await fetch('http://10.0.2.2:5000/api/v1/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: idToken }),
+      });
 
-      // For demonstration, we'll just log it and sign in with a dummy token
-      console.log('Google ID Token:', idToken);
-      await signIn('dummy-jwt-from-backend');
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          responseData.result?.message || 'Failed to sign in with Google.',
+        );
+      }
+
+      const { accessToken } = responseData.result.data;
+      await signIn(accessToken);
     } catch (error: any) {
       console.log('error', error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
