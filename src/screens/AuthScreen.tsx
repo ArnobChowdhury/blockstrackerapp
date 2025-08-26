@@ -9,6 +9,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useAppContext } from '../shared/contexts/useAppContext';
+import { API_URL } from '@env';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
@@ -36,7 +37,7 @@ const AuthScreen = ({ navigation }: Props) => {
         throw new Error('Google Sign-In failed: No ID token received.');
       }
 
-      const response = await fetch('http://10.0.2.2:5000/api/v1/auth/google', {
+      const response = await fetch(`${API_URL}/api/v1/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: idToken }),
