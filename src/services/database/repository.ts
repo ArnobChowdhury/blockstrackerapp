@@ -1,4 +1,5 @@
 import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
+import uuid from 'react-native-uuid';
 import {
   TaskScheduleTypeEnum,
   TimeOfDay,
@@ -15,9 +16,9 @@ interface NewTaskData {
   schedule: TaskScheduleTypeEnum;
   dueDate?: Date;
   timeOfDay: TimeOfDay | null;
-  repetitiveTaskTemplateId?: number;
+  repetitiveTaskTemplateId?: string;
   shouldBeScored: number;
-  space: Space | null;
+  spaceId: string | null;
 }
 
 export class TaskRepository {
@@ -27,7 +28,7 @@ export class TaskRepository {
     this.db = database;
   }
 
-  async getTaskById(taskId: number): Promise<Task | null> {
+  async getTaskById(taskId: string): Promise<Task | null> {
     const task = await this._getActiveTasksByCondition('id = ?', [taskId]);
     if (task) {
       return task[0];
@@ -37,14 +38,16 @@ export class TaskRepository {
 
   async addTask(taskData: NewTaskData): Promise<QueryResult> {
     const now = new Date().toISOString();
+    const newId = uuid.v4() as string;
     const sql = `
       INSERT INTO tasks (
-        title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
+        id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
         should_be_scored, created_at, modified_at, space_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     const params = [
+      newId,
       taskData.title,
       taskData.description,
       taskData.schedule,
@@ -54,7 +57,7 @@ export class TaskRepository {
       taskData.shouldBeScored,
       now,
       now,
-      taskData.space ? taskData.space.id : null,
+      taskData.spaceId || null,
     ];
 
     console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
@@ -72,7 +75,7 @@ export class TaskRepository {
   }
 
   async updateTaskById(
-    taskId: number,
+    taskId: string,
     taskData: NewTaskData,
   ): Promise<QueryResult> {
     const now = new Date().toISOString();
@@ -98,7 +101,7 @@ export class TaskRepository {
       taskData.timeOfDay,
       taskData.shouldBeScored,
       now,
-      taskData.space ? taskData.space.id : null,
+      taskData.spaceId || null,
       taskId,
     ];
 
@@ -208,7 +211,7 @@ export class TaskRepository {
     };
   }
 
-  async countActiveTasksBySpaceId(spaceId: number) {
+  async countActiveTasksBySpaceId(spaceId: string) {
     const sql = 'schedule = ? AND completion_status = ? AND space_id = ?';
     const countUnscheduledTasks = await this._countActiveTasksByCondition(sql, [
       TaskScheduleTypeEnum.Unscheduled,
@@ -227,7 +230,7 @@ export class TaskRepository {
     };
   }
 
-  async bulkFailTasks(taskIds: number[]): Promise<QueryResult> {
+  async bulkFailTasks(taskIds: string[]): Promise<QueryResult> {
     if (taskIds.length === 0) {
       console.log('[DB Repo] bulkFailTasks called with no task IDs. Skipping.');
       return { rowsAffected: 0, insertId: undefined, rows: undefined };
@@ -318,7 +321,7 @@ export class TaskRepository {
     );
   }
 
-  async getActiveUnscheduledTasksBySpace(spaceId: number): Promise<Task[]> {
+  async getActiveUnscheduledTasksBySpace(spaceId: string): Promise<Task[]> {
     return this._getActiveTasksByCondition(
       'schedule = ? AND completion_status = ? AND space_id = ?',
       [
@@ -329,7 +332,7 @@ export class TaskRepository {
     );
   }
 
-  async getActiveOnceTasksBySpace(spaceId: number): Promise<Task[]> {
+  async getActiveOnceTasksBySpace(spaceId: string): Promise<Task[]> {
     return this._getActiveTasksByCondition(
       'schedule = ? AND completion_status = ? AND space_id = ?',
       [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE, spaceId],
@@ -341,7 +344,7 @@ export class TaskRepository {
   }
 
   async getActiveTasksByRepetitiveTaskTemplateId(
-    templateId: number,
+    templateId: string,
     days: number = 91,
   ): Promise<Task[]> {
     const startDate = dayjs()
@@ -400,7 +403,7 @@ export class TaskRepository {
           const task = resultSet.rows.item(i);
           if (task) {
             const transformedTask: Task = {
-              id: task.id as number,
+              id: task.id as string,
               title: task.title as string,
               isActive: (task.is_active === 1) as boolean,
               description: task.description as string | null,
@@ -414,9 +417,9 @@ export class TaskRepository {
               createdAt: task.created_at as string,
               modifiedAt: task.modified_at as string,
               repetitiveTaskTemplateId: task.repetitive_task_template_id as
-                | number
+                | string
                 | null,
-              spaceId: task.space_id as number | null,
+              spaceId: task.space_id as string | null,
             };
 
             tasks.push(transformedTask);
@@ -472,7 +475,7 @@ export class TaskRepository {
           const row = resultSet.rows.item(i);
           if (row) {
             tasks.push({
-              id: row.id as number,
+              id: row.id as string,
               title: row.title as string,
               isActive: (row.is_active === 1) as boolean,
               description: row.description as string | null,
@@ -486,9 +489,9 @@ export class TaskRepository {
               createdAt: row.created_at as string,
               modifiedAt: row.modified_at as string,
               repetitiveTaskTemplateId: row.repetitive_task_template_id as
-                | number
+                | string
                 | null,
-              spaceId: row.space_id as number | null,
+              spaceId: row.space_id as string | null,
             });
           }
         }
@@ -508,7 +511,7 @@ export class TaskRepository {
   }
 
   async updateTaskCompletionStatus(
-    taskId: number,
+    taskId: string,
     status: TaskCompletionStatusEnum,
     score?: number | null,
   ): Promise<QueryResult> {
@@ -558,7 +561,7 @@ export class TaskRepository {
     }
   }
 
-  async updateTaskDueDate(taskId: number, dueDate: Date): Promise<QueryResult> {
+  async updateTaskDueDate(taskId: string, dueDate: Date): Promise<QueryResult> {
     console.log(
       `[DB Repo] Attempting to update due date for task ID: ${taskId} to ${dueDate.toISOString()}`,
     );
@@ -633,15 +636,17 @@ export class RepetitiveTaskTemplateRepository {
   async addRepetitiveTaskTemplate(
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
   ): Promise<QueryResult> {
+    const newId = uuid.v4() as string;
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO repetitive_task_templates (
-        title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
         should_be_scored, created_at, modified_at, space_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     const params = [
+      newId,
       repetitiveTaskTemplateData.title,
       repetitiveTaskTemplateData.description,
       repetitiveTaskTemplateData.schedule,
@@ -688,7 +693,7 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   async getRepetitiveTaskTemplateById(
-    templateId: number,
+    templateId: string,
   ): Promise<RepetitiveTaskTemplate | null> {
     const sql = `
       SELECT
@@ -719,7 +724,7 @@ export class RepetitiveTaskTemplateRepository {
 
         if (row) {
           const repetitiveTaskTemplate: RepetitiveTaskTemplate = {
-            id: row.id as number,
+            id: row.id as string,
             title: row.title as string,
             isActive: (row.is_active === 1) as boolean,
             description: row.description as string | null,
@@ -739,7 +744,7 @@ export class RepetitiveTaskTemplateRepository {
             sunday: (row.sunday === 1) as boolean | null,
             createdAt: row.created_at as string,
             modifiedAt: row.modified_at as string,
-            spaceId: row.space_id as number | null,
+            spaceId: row.space_id as string | null,
           };
 
           return repetitiveTaskTemplate;
@@ -761,7 +766,7 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   async updateRepetitiveTaskTemplateById(
-    templateId: number,
+    templateId: string,
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
   ): Promise<QueryResult> {
     const now = new Date().toISOString();
@@ -870,7 +875,7 @@ export class RepetitiveTaskTemplateRepository {
           const repetitiveTaskTemplate = resultSet.rows.item(i);
           if (repetitiveTaskTemplate) {
             const transformedRepetitiveTaskTemplate: RepetitiveTaskTemplate = {
-              id: repetitiveTaskTemplate.id as number,
+              id: repetitiveTaskTemplate.id as string,
               title: repetitiveTaskTemplate.title as string,
               isActive: (repetitiveTaskTemplate.is_active === 1) as boolean,
               description: repetitiveTaskTemplate.description as string | null,
@@ -898,7 +903,7 @@ export class RepetitiveTaskTemplateRepository {
                   | null,
               createdAt: repetitiveTaskTemplate.created_at as string,
               modifiedAt: repetitiveTaskTemplate.modified_at as string,
-              spaceId: repetitiveTaskTemplate.space_id as number | null,
+              spaceId: repetitiveTaskTemplate.space_id as string | null,
             };
 
             repetitiveTaskTemplates.push(transformedRepetitiveTaskTemplate);
@@ -939,7 +944,7 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   async getActiveDailyRepetitiveTaskTemplatesBySpace(
-    spaceId: number,
+    spaceId: string,
   ): Promise<RepetitiveTaskTemplate[]> {
     return this._getAllActiveRepetitiveTaskTemplatesByCondition(
       'schedule = ? AND space_id = ?',
@@ -948,7 +953,7 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   async getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
-    spaceId: number,
+    spaceId: string,
   ): Promise<RepetitiveTaskTemplate[]> {
     return this._getAllActiveRepetitiveTaskTemplatesByCondition(
       'schedule = ? AND space_id = ?',
@@ -1009,7 +1014,7 @@ export class RepetitiveTaskTemplateRepository {
     };
   }
 
-  async countActiveRepetitiveTasksBySpaceId(spaceId: number) {
+  async countActiveRepetitiveTasksBySpaceId(spaceId: string) {
     const whereClause = 'schedule = ? AND space_id = ?';
 
     const countOfDailyTasks = await this._countActiveTasksByCondition(
@@ -1031,7 +1036,7 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   async updateLastDateOfTaskGeneration(
-    templateId: number,
+    templateId: string,
     lastDate: string,
   ): Promise<QueryResult> {
     const sql =
@@ -1093,7 +1098,7 @@ export class RepetitiveTaskTemplateRepository {
           const rtt = resultSet.rows.item(i);
           if (rtt) {
             dueRepetitiveTaskTemplates.push({
-              id: rtt.id as number,
+              id: rtt.id as string,
               title: rtt.title as string,
               isActive: (rtt.is_active === 1) as boolean,
               description: rtt.description as string | null,
@@ -1113,7 +1118,7 @@ export class RepetitiveTaskTemplateRepository {
                 | null,
               createdAt: rtt.created_at as string,
               modifiedAt: rtt.modified_at as string,
-              spaceId: rtt.space_id as number | null,
+              spaceId: rtt.space_id as string | null,
             });
           }
         }
@@ -1174,9 +1179,7 @@ export class RepetitiveTaskTemplateRepository {
             timeOfDay: template.timeOfDay,
             repetitiveTaskTemplateId: template.id,
             shouldBeScored: template.shouldBeScored ? 1 : 0,
-            space: template.spaceId
-              ? ({ id: template.spaceId } as Space)
-              : null,
+            spaceId: template.spaceId || null,
           };
 
           try {
@@ -1198,7 +1201,7 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async stopRepetitiveTask(repetitiveTaskId: number): Promise<void> {
+  async stopRepetitiveTask(repetitiveTaskId: string): Promise<void> {
     const sql = `
       UPDATE repetitive_task_templates
       SET is_active = 0
@@ -1229,7 +1232,7 @@ export class SpaceRepository {
     this.db = database;
   }
 
-  async getSpaceById(spaceId: number): Promise<Space | null> {
+  async getSpaceById(spaceId: string): Promise<Space | null> {
     const sql = `
       SELECT id, name, created_at, modified_at FROM spaces WHERE id = ?;
     `;
@@ -1249,7 +1252,7 @@ export class SpaceRepository {
         const space = resultSet.rows.item(0);
         if (space) {
           const transformedSpace: Space = {
-            id: space.id as number,
+            id: space.id as string,
             name: space.name as string,
             createdAt: space.created_at as string,
             modifiedAt: space.modified_at as string,
@@ -1288,7 +1291,7 @@ export class SpaceRepository {
           const space = resultSet.rows.item(i);
           if (space) {
             const transformedSpace: Space = {
-              id: space.id as number,
+              id: space.id as string,
               name: space.name as string,
               createdAt: space.created_at as string,
               modifiedAt: space.modified_at as string,
@@ -1310,13 +1313,14 @@ export class SpaceRepository {
 
   async addSpace(name: string): Promise<QueryResult> {
     const now = new Date().toISOString();
+    const newId = uuid.v4() as string;
     const sql = `
       INSERT INTO spaces (
-        name, created_at, modified_at
-      ) VALUES (?, ?, ?);
+        id, name, created_at, modified_at
+      ) VALUES (?, ?, ?, ?);
     `;
 
-    const params = [name, now, now];
+    const params = [newId, name, now, now];
 
     console.log('[DB Repo] Attempting to INSERT Space:', { sql, params });
 

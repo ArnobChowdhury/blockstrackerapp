@@ -228,7 +228,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
           dueDate: selectedDate,
           timeOfDay: selectedTimeOfDay,
           shouldBeScored: finalShouldBeScored,
-          space: selectedSpace,
+          spaceId: selectedSpace && selectedSpace.id,
         });
       } else {
         await repetitiveTaskTemplateRepository.addRepetitiveTaskTemplate({
@@ -333,7 +333,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   );
 
   const handleSpaceSelect = useCallback(
-    (spaceId: number | null) => {
+    (spaceId: string | null) => {
       if (!spaceId) {
         setSelectedSpace(null);
         return;

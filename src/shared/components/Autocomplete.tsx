@@ -26,7 +26,7 @@ interface Layout {
 }
 
 interface Option {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -35,7 +35,7 @@ interface AutocompleteInputProps {
   query: string;
   setQuery: (query: string) => void;
   options: Option[];
-  onSelect: (optionId: number | null) => void;
+  onSelect: (optionId: string | null) => void;
   loading: boolean;
   onLoadSuggestions: () => void;
   onAddOption: (name: string) => void;

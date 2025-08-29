@@ -19,7 +19,7 @@ export enum TaskCompletionStatusEnum {
 }
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   isActive: boolean;
   description: string | null;
@@ -31,12 +31,12 @@ export interface Task {
   completionStatus: TaskCompletionStatusEnum;
   createdAt: string;
   modifiedAt: string;
-  repetitiveTaskTemplateId: number | null;
-  spaceId: number | null;
+  repetitiveTaskTemplateId: string | null;
+  spaceId: string | null;
 }
 
 export interface RepetitiveTaskTemplate {
-  id: number;
+  id: string;
   isActive: boolean;
   title: string;
   description: string | null;
@@ -54,11 +54,11 @@ export interface RepetitiveTaskTemplate {
   lastDateOfTaskGeneration: string | null;
   createdAt: string;
   modifiedAt: string;
-  spaceId: number | null;
+  spaceId: string | null;
 }
 
 export interface Space {
-  id: number;
+  id: string;
   name: string;
   createdAt: string;
   modifiedAt: string;

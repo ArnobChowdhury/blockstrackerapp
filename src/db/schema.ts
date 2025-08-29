@@ -8,7 +8,7 @@ export const V1_SCHEMA = `
   -- Spaces Table (Equivalent to Space model)
   -- =============================================
   CREATE TABLE IF NOT EXISTS spaces (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL
@@ -18,7 +18,7 @@ export const V1_SCHEMA = `
   -- Tags Table (Equivalent to Tag model)
   -- =============================================
   CREATE TABLE IF NOT EXISTS tags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE, -- Assuming tag names should be unique
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL
@@ -29,7 +29,7 @@ export const V1_SCHEMA = `
   -- (Equivalent to RepetitiveTaskTemplate model)
   -- =============================================
   CREATE TABLE IF NOT EXISTS repetitive_task_templates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     is_active INTEGER NOT NULL DEFAULT 1, -- Boolean: 1 for true, 0 for false
     title TEXT NOT NULL,
     description TEXT, -- Optional
@@ -47,7 +47,7 @@ export const V1_SCHEMA = `
     last_date_of_task_generation TEXT, -- Optional DateTime (ISO String)
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
-    space_id INTEGER, -- Foreign key column (optional)
+    space_id TEXT, -- Foreign key column (optional)
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL -- Or CASCADE/RESTRICT depending on desired behavior
   );
   -- Index for foreign key
@@ -57,7 +57,7 @@ export const V1_SCHEMA = `
   -- Tasks Table (Equivalent to Task model)
   -- =============================================
   CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     is_active INTEGER NOT NULL DEFAULT 1, -- Boolean
     title TEXT NOT NULL,
     description TEXT, -- Optional
@@ -68,10 +68,10 @@ export const V1_SCHEMA = `
     should_be_scored INTEGER, -- Optional Boolean
     score INTEGER, -- Optional
     time_of_day TEXT, -- Optional
-    repetitive_task_template_id INTEGER, -- Foreign key column (optional)
+    repetitive_task_template_id TEXT, -- Foreign key column (optional)
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
-    space_id INTEGER, -- Foreign key column (optional)
+    space_id TEXT, -- Foreign key column (optional)
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL, -- Or CASCADE/RESTRICT
     FOREIGN KEY (repetitive_task_template_id) REFERENCES repetitive_task_templates(id) ON DELETE CASCADE, -- Matches Prisma schema
     UNIQUE (repetitive_task_template_id, due_date) -- Matches Prisma @@unique
@@ -86,8 +86,8 @@ export const V1_SCHEMA = `
   -- Join Table for Tasks and Tags (Many-to-Many)
   -- =============================================
   CREATE TABLE IF NOT EXISTS tasks_tags (
-    task_id INTEGER NOT NULL,
-    tag_id INTEGER NOT NULL,
+    task_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
     PRIMARY KEY (task_id, tag_id),
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE, -- If task deleted, remove association
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE   -- If tag deleted, remove association
@@ -101,8 +101,8 @@ export const V1_SCHEMA = `
   -- Join Table for Repetitive Task Templates and Tags (Many-to-Many)
   -- =============================================
   CREATE TABLE IF NOT EXISTS repetitive_task_templates_tags (
-    repetitive_task_template_id INTEGER NOT NULL,
-    tag_id INTEGER NOT NULL,
+    repetitive_task_template_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
     PRIMARY KEY (repetitive_task_template_id, tag_id),
     FOREIGN KEY (repetitive_task_template_id) REFERENCES repetitive_task_templates(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
