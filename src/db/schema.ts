@@ -111,6 +111,22 @@ export const V1_SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_rep_task_templates_tags_template_id ON repetitive_task_templates_tags(repetitive_task_template_id);
   CREATE INDEX IF NOT EXISTS idx_rep_task_templates_tags_tag_id ON repetitive_task_templates_tags(tag_id);
 
+  -- =============================================
+  -- Outbox Table for Syncing Operations
+  -- =============================================
+  CREATE TABLE IF NOT EXISTS pending_operations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_type TEXT NOT NULL, -- 'create', 'update', 'delete'
+    entity_type TEXT NOT NULL,    -- 'task', 'space', 'tag', 'repetitive_task_template'
+    entity_id TEXT NOT NULL,      -- The UUID of the entity that was changed
+    payload TEXT NOT NULL,        -- A JSON string of the full object to be sent to the server
+    status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'failed'
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  -- Index for fetching pending operations efficiently
+  CREATE INDEX IF NOT EXISTS idx_pending_operations_status ON pending_operations(status);
+
   -- Set initial schema version
   PRAGMA user_version = 1;
 `;
