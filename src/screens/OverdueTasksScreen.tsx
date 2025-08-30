@@ -33,7 +33,7 @@ import {
 } from '../shared/hooks';
 import { formatDate, truncateString } from '../shared/utils';
 import TaskScoring from '../shared/components/TaskScoring';
-import { TaskRepository } from '../services/database/repository';
+import { TaskRepository } from '../db/repository';
 import { Task, TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
 
@@ -80,7 +80,7 @@ const OverdueScreen = ({ navigation }: Props) => {
   const [showSnackbar, setShowSnackbar] = useState(false);
 
   const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
-    number | null
+    string | null
   >(null);
   const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
     useState<Date>();
@@ -548,7 +548,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                 }
 
                 onToggleTaskCompletionStatus(
-                  taskToBeCompleted.id as number,
+                  taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
                   scoreForTaskToBeCompleted,
                 );

@@ -25,7 +25,7 @@ import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
   SpaceRepository,
-} from '../services/database/repository';
+} from '../db/repository';
 import {
   useDatabase,
   useToggleTaskCompletionStatus,
@@ -188,7 +188,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   const [showSnackbar, setShowSnackbar] = useState(false);
 
   const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
-    number | null
+    string | null
   >(null);
   const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
     useState<Date>();
@@ -227,7 +227,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   );
 
   const handleStoppingRepetitiveTaskTemplate = async (
-    repetitiveTaskTemplateId: number,
+    repetitiveTaskTemplateId: string,
   ) => {
     await repetitiveTaskTemplateRepository?.stopRepetitiveTask(
       repetitiveTaskTemplateId,

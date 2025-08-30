@@ -23,7 +23,7 @@ import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
   SpaceRepository,
-} from '../services/database/repository';
+} from '../db/repository';
 import AutocompleteInput, {
   AutocompleteInputHandles,
 } from '../shared/components/Autocomplete';
@@ -68,7 +68,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const theme = useTheme();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [isRepetitiveTask, setIsRepetitiveTask] = useState<boolean>(false);
-  const [taskTemplateId, setTaskTemplateId] = useState<number | null>(null);
+  const [taskTemplateId, setTaskTemplateId] = useState<string | null>(null);
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState<string | null>('');
   const [selectedScheduleType, setSelectedScheduleType] =
@@ -132,7 +132,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   }, [db, dbError, isDbLoading]);
 
   const fetchSpace = useCallback(
-    async (spaceId: number) => {
+    async (spaceId: string) => {
       if (!spaceRepository) {
         return;
       }
@@ -292,7 +292,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
           dueDate: selectedDate,
           timeOfDay: selectedTimeOfDay,
           shouldBeScored: shouldBeScored ? 1 : 0,
-          space: selectedSpace,
+          spaceId: selectedSpace && selectedSpace.id,
         });
       } else {
         await repetitiveTaskTemplateRepository.updateRepetitiveTaskTemplateById(
@@ -410,7 +410,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   );
 
   const handleSpaceSelect = useCallback(
-    (spaceId: number | null) => {
+    (spaceId: string | null) => {
       if (!spaceId) {
         setSelectedSpace(null);
         return;

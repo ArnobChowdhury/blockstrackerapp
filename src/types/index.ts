@@ -73,3 +73,24 @@ export enum DaysInAWeek {
   Friday = 'friday',
   Saturday = 'saturday',
 }
+
+export interface NewTaskData {
+  title: string;
+  description?: string;
+  schedule: TaskScheduleTypeEnum;
+  dueDate?: Date;
+  timeOfDay: TimeOfDay | null;
+  repetitiveTaskTemplateId?: string;
+  shouldBeScored: number;
+  spaceId: string | null;
+}
+
+export interface NewRepetitiveTaskTemplateData {
+  title: string;
+  description?: string;
+  schedule: TaskScheduleTypeEnum;
+  timeOfDay: TimeOfDay | null;
+  days: DaysInAWeek[];
+  shouldBeScored: number;
+  space: Space | null;
+}

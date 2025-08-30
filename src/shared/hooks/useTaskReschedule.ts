@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useState } from 'react';
-import { TaskRepository } from '../../services/database/repository';
+import { TaskRepository } from '../../db/repository';
 
 export const useTaskReschedule = (
   taskRepository: TaskRepository | null,
@@ -10,7 +10,7 @@ export const useTaskReschedule = (
   const [error, setError] = useState('');
 
   const onTaskReschedule = useCallback(
-    async (taskId: number, rescheduledTime: Date) => {
+    async (taskId: string, rescheduledTime: Date) => {
       if (!taskRepository) {
         setError('Database service not ready.');
         return;

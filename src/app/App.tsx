@@ -24,7 +24,7 @@ import { CombinedLightTheme, CombinedDarkTheme } from './theme/theme';
 import { AppProvider, useAppContext } from '../shared/contexts/useAppContext';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 import { en, registerTranslation } from 'react-native-paper-dates';
-import { configureGoogleSignIn } from '../services/googleSignIn';
+import { configureGoogleSignIn } from '../lib/googleAuth';
 
 configureGoogleSignIn();
 enableSimpleNullHandling();

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TaskCompletionStatusEnum } from '../../types';
-import { TaskRepository } from '../../services/database/repository';
+import { TaskRepository } from '../../db/repository';
 
 export const useToggleTaskCompletionStatus = (
   taskRepository: TaskRepository | null,
@@ -10,7 +10,7 @@ export const useToggleTaskCompletionStatus = (
   const [error, setError] = useState('');
 
   const onToggleTaskCompletionStatus = async (
-    id: number,
+    id: string,
     status: TaskCompletionStatusEnum,
     taskScore?: number | null,
   ) => {

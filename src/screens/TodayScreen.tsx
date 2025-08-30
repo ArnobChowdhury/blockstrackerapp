@@ -32,7 +32,7 @@ import TaskScoring from '../shared/components/TaskScoring';
 import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
-} from '../services/database/repository';
+} from '../db/repository';
 import {
   Task,
   TimeOfDay,
@@ -138,7 +138,7 @@ const TodayScreen = ({ navigation }: Props) => {
   const [showSnackbar, setShowSnackbar] = useState(false);
 
   const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
-    number | null
+    string | null
   >(null);
   const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
     useState<Date>();
@@ -649,7 +649,7 @@ const TodayScreen = ({ navigation }: Props) => {
                 }
 
                 onToggleTaskCompletionStatus(
-                  taskToBeCompleted.id as number,
+                  taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
                   scoreForTaskToBeCompleted,
                 );

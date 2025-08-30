@@ -22,7 +22,7 @@ import { RepetitiveTaskTemplate, Task } from '../types';
 import {
   RepetitiveTaskTemplateRepository,
   TaskRepository,
-} from '../services/database/repository';
+} from '../db/repository';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
 import { useAppContext } from '../shared/contexts/useAppContext';
 
@@ -195,7 +195,7 @@ const HabitsScreen = ({ navigation }: Props) => {
     }, [fetchHabits, repetitiveTaskTemplateRepository]),
   );
 
-  const [viewableItems, setViewableItems] = useState<number[]>([]);
+  const [viewableItems, setViewableItems] = useState<string[]>([]);
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 50,
   };

@@ -36,7 +36,7 @@ import { useAppContext } from '../shared/contexts/useAppContext';
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
-  ActiveTaskList: { category: TaskScheduleTypeEnum; spaceId?: number };
+  ActiveTaskList: { category: TaskScheduleTypeEnum; spaceId?: string };
 };
 
 export type TrackerStackParamList = {
@@ -53,7 +53,7 @@ export type BottomTabParamList = {
 
 export type RootStackParamList = {
   EditTask: {
-    taskId?: number;
+    taskId?: string;
     isRepetitiveTaskTemplate?: boolean;
     isToday?: boolean;
     updatedDescription?: string;

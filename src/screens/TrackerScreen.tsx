@@ -13,7 +13,7 @@ import type { TrackerStackParamList } from '../navigation/RootNavigator';
 import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
-} from '../services/database/repository';
+} from '../db/repository';
 import { useDatabase } from '../shared/hooks';
 import { Task } from '../types';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
@@ -64,7 +64,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
   }, [db, dbError, isDbLoading]);
 
   const fetchTaskOfHabit = useCallback(
-    async (repetitiveTaskTemplateId: number) => {
+    async (repetitiveTaskTemplateId: string) => {
       if (!taskRepository) {
         console.log(
           `[Tracker-${habit.id}] fetchTasks called, but repository not ready.`,

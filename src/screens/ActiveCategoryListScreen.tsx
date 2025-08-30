@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View } from 'react-native';
-import { SpaceRepository } from '../services/database/repository';
 import {
   Text,
   List,
@@ -19,7 +18,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
-} from '../services/database/repository';
+  SpaceRepository,
+} from '../db/repository';
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveCategoryList'>;
 
@@ -83,7 +83,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   const handleCategoryPressOfSpace = (
     category: TaskScheduleTypeEnum,
-    spaceId: number,
+    spaceId: string,
   ) => {
     console.log(
       `[CategoryList] Navigating to tasks for space ${spaceId} for: ${category}`,
@@ -153,7 +153,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     useState<Record<TaskScheduleTypeEnum, number>>();
 
   const getCountForSpace = useCallback(
-    async (spaceId: number) => {
+    async (spaceId: string) => {
       if (!taskRepository || !repetitiveTaskTemplateRepository) {
         return;
       }

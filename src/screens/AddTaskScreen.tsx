@@ -21,7 +21,7 @@ import {
   TaskRepository,
   RepetitiveTaskTemplateRepository,
   SpaceRepository,
-} from '../services/database/repository';
+} from '../db/repository';
 import AutocompleteInput, {
   AutocompleteInputHandles,
 } from '../shared/components/Autocomplete';
