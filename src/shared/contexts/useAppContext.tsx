@@ -44,27 +44,26 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const colorScheme = useColorScheme();
 
-  readData('theme').then(theme => {
-    if (theme) {
-      setUserPreferredTheme(theme as 'light' | 'dark' | 'system');
-      setIsDarkMode(getIsDarkMode(theme, colorScheme));
-    }
-  });
-
-  const changeTheme = useCallback(
-    async (theme: string) => {
-      if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
-        console.error('Invalid theme:', theme);
-        return;
+  useEffect(() => {
+    const loadTheme = async () => {
+      const theme = await readData('theme');
+      if (theme) {
+        setUserPreferredTheme(theme as 'light' | 'dark' | 'system');
       }
+    };
+    loadTheme();
+  }, []);
 
-      await storeData('theme', theme);
-      console.log('Changing theme to', theme);
-      setUserPreferredTheme(theme);
-      setIsDarkMode(getIsDarkMode(theme, colorScheme));
-    },
-    [colorScheme],
-  );
+  const changeTheme = useCallback(async (theme: string) => {
+    if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
+      console.error('Invalid theme:', theme);
+      return;
+    }
+
+    await storeData('theme', theme);
+    console.log('Changing theme to', theme);
+    setUserPreferredTheme(theme);
+  }, []);
 
   const [userToken, setUserToken] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(true);
@@ -88,6 +87,10 @@ export const AppProvider = ({ children }: AppProviderProps) => {
 
     loadToken();
   }, []);
+
+  useEffect(() => {
+    setIsDarkMode(getIsDarkMode(userPreferredTheme, colorScheme));
+  }, [userPreferredTheme, colorScheme]);
 
   const signIn = useCallback(async (token: string) => {
     setIsSigningIn(true);
