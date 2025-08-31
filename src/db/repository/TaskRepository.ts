@@ -6,9 +6,8 @@ import {
   TaskScheduleTypeEnum,
   TimeOfDay,
   TaskCompletionStatusEnum,
-  Task,
-  NewTaskData,
 } from '../../types';
+import type { Task, NewTaskData } from '../../types';
 
 export class TaskRepository {
   private db: NitroSQLiteConnection;
@@ -25,9 +24,26 @@ export class TaskRepository {
     return null;
   }
 
-  async addTask(taskData: NewTaskData): Promise<QueryResult> {
-    const now = new Date().toISOString();
+  /**
+   * Creates a new task with a generated UUID. Ideal for simple, non-transactional writes.
+   * @param taskData The data for the new task.
+   * @returns The UUID of the newly created task.
+   */
+  async createTask(taskData: NewTaskData): Promise<string> {
     const newId = uuid.v4() as string;
+    await this._internalAddTask({ ...taskData, id: newId });
+    return newId;
+  }
+
+  /**
+   * Internal method to add a task with a pre-defined ID.
+   * This should be used within a transaction managed by a service.
+   * @param taskData The data for the new task, including its ID.
+   */
+  async _internalAddTask(
+    taskData: NewTaskData & { id: string },
+  ): Promise<void> {
+    const now = new Date().toISOString();
     const sql = `
       INSERT INTO tasks (
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
@@ -36,7 +52,7 @@ export class TaskRepository {
     `;
 
     const params = [
-      newId,
+      taskData.id,
       taskData.title,
       taskData.description,
       taskData.schedule,
@@ -46,15 +62,14 @@ export class TaskRepository {
       taskData.shouldBeScored,
       now,
       now,
-      taskData.spaceId || null,
+      taskData.spaceId,
     ];
 
     console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
 
     try {
-      const result: QueryResult = await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Task INSERT successful:', result);
-      return result;
+      await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Task INSERT successful for id:', taskData.id);
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT task:', error);
       throw new Error(
@@ -90,22 +105,15 @@ export class TaskRepository {
       taskData.timeOfDay,
       taskData.shouldBeScored,
       now,
-      taskData.spaceId || null,
+      taskData.spaceId,
       taskId,
     ];
 
     console.log('[DB Repo] Attempting to UPDATE Task:', { sql, params });
 
-    try {
-      const result: QueryResult = await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Task UPDATE successful:', result);
-      return result;
-    } catch (error: any) {
-      console.error('[DB Repo] Failed to UPDATE task:', error);
-      throw new Error(
-        `Failed to update the task: ${error.message || 'Unknown error'}`,
-      );
-    }
+    const result: QueryResult = await this.db.executeAsync(sql, params);
+    console.log('[DB Repo] Task UPDATE successful:', result);
+    return result;
   }
 
   async getAllOverdueTasks(): Promise<Task[]> {
