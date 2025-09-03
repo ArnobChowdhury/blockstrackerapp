@@ -88,24 +88,27 @@ export class SpaceRepository {
     }
   }
 
-  async addSpace(name: string): Promise<QueryResult> {
-    const now = new Date().toISOString();
+  async createSpace(name: string): Promise<string> {
     const newId = uuid.v4() as string;
+    await this._internalAddSpace(newId, name);
+    return newId;
+  }
+
+  async _internalAddSpace(id: string, name: string): Promise<void> {
+    const now = new Date().toISOString();
     const sql = `
       INSERT INTO spaces (
         id, name, created_at, modified_at
       ) VALUES (?, ?, ?, ?);
     `;
 
-    const params = [newId, name, now, now];
+    const params = [id, name, now, now];
 
     console.log('[DB Repo] Attempting to INSERT Space:', { sql, params });
 
     try {
-      const result: QueryResult = await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Space INSERT successful:', result);
-
-      return result;
+      await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Space INSERT successful for id:', id);
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT space:', error);
       throw new Error(

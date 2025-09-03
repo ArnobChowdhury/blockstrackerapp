@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpaceRepository } from '../db/repository';
 import { TaskService } from '../services/TaskService';
+import { SpaceService } from '../services/SpaceService';
 import AutocompleteInput, {
   AutocompleteInputHandles,
 } from '../shared/components/Autocomplete';
@@ -60,6 +61,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
   const theme = useTheme();
   const { userToken } = useAppContext();
+  const isLoggedIn = !!userToken;
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
@@ -93,6 +95,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     () => new RepetitiveTaskTemplateService(),
     [],
   );
+  const spaceService = useMemo(() => new SpaceService(), []);
 
   useEffect(() => {
     if (isTodaysTask) {
@@ -184,8 +187,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek;
 
     const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
-
-    const isLoggedIn = !!userToken;
 
     try {
       if (!isRepetitiveTask) {
@@ -286,13 +287,8 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
   const handleAddSpace = useCallback(
     async (spaceName: string) => {
-      if (!spaceRepository) {
-        return;
-      }
-
-      // TODO: This should also be moved to a SpaceService to handle the outbox pattern.
       try {
-        await spaceRepository.addSpace(spaceName);
+        await spaceService.createSpace(spaceName, isLoggedIn);
         handleLoadSpace();
       } catch (error: any) {
         Alert.alert(
@@ -304,7 +300,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
         console.error('[DB] Failed to add space:', error);
       }
     },
-    [spaceRepository, handleLoadSpace],
+    [isLoggedIn, spaceService, handleLoadSpace],
   );
 
   const handleSpaceSelect = useCallback(
