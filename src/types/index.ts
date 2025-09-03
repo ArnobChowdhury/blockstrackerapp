@@ -92,5 +92,5 @@ export interface NewRepetitiveTaskTemplateData {
   timeOfDay: TimeOfDay | null;
   days: DaysInAWeek[];
   shouldBeScored: number;
-  space: Space | null;
+  spaceId: string | null;
 }

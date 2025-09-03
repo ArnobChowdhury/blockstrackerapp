@@ -17,11 +17,8 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  TaskRepository,
-  RepetitiveTaskTemplateRepository,
-  SpaceRepository,
-} from '../db/repository';
+import { SpaceRepository } from '../db/repository';
+import { TaskService } from '../services/TaskService';
 import AutocompleteInput, {
   AutocompleteInputHandles,
 } from '../shared/components/Autocomplete';
@@ -47,6 +44,8 @@ import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
 import type { Space } from '../types';
 import { capitalize } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
+import { useAppContext } from '../shared/contexts/useAppContext';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { DatePickerModal } from 'react-native-paper-dates';
 import RenderHtml from 'react-native-render-html';
 import dayjs from 'dayjs';
@@ -60,6 +59,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   const isTodaysTask = route.params?.isToday;
 
   const theme = useTheme();
+  const { userToken } = useAppContext();
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
@@ -80,19 +80,19 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
 
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
   const [spaceRepository, setSpaceRepository] =
     useState<SpaceRepository | null>(null);
 
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const autocompleteInputRef = useRef<AutocompleteInputHandles>(null);
+
+  // Services should be memoized to avoid re-creating them on every render.
+  const taskService = useMemo(() => new TaskService(), []);
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
 
   useEffect(() => {
     if (isTodaysTask) {
@@ -101,24 +101,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
       navigation.setParams({ isToday: false });
     }
   }, [isTodaysTask, navigation]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
@@ -194,22 +176,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
       return;
     }
 
-    if (!taskRepository) {
-      Alert.alert(
-        'Database Error',
-        'The database repository is not ready. Please wait or restart the app.',
-      );
-      return;
-    }
-
-    if (!repetitiveTaskTemplateRepository) {
-      Alert.alert(
-        'Database Error',
-        'The database repository is not ready. Please wait or restart the app.',
-      );
-      return;
-    }
-
     setIsSaving(true);
 
     const trimmedDescription = taskDescription.trim();
@@ -219,34 +185,42 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
     const finalShouldBeScored = isRepetitiveTask ? (shouldBeScored ? 1 : 0) : 0;
 
+    const isLoggedIn = !!userToken;
+
     try {
       if (!isRepetitiveTask) {
-        await taskRepository.addTask({
-          title: trimmedTaskName,
-          description: trimmedDescription,
-          schedule: selectedScheduleType,
-          dueDate: selectedDate,
-          timeOfDay: selectedTimeOfDay,
-          shouldBeScored: finalShouldBeScored,
-          spaceId: selectedSpace && selectedSpace.id,
-        });
+        await taskService.createTask(
+          {
+            title: trimmedTaskName,
+            description: trimmedDescription,
+            schedule: selectedScheduleType,
+            dueDate: selectedDate,
+            timeOfDay: selectedTimeOfDay,
+            shouldBeScored: finalShouldBeScored,
+            spaceId: selectedSpace && selectedSpace.id,
+          },
+          isLoggedIn,
+        );
       } else {
-        await repetitiveTaskTemplateRepository.addRepetitiveTaskTemplate({
-          title: trimmedTaskName,
-          description: trimmedDescription,
-          schedule: selectedScheduleType,
-          days: selectedDays,
-          timeOfDay: selectedTimeOfDay,
-          shouldBeScored: finalShouldBeScored,
-          space: selectedSpace,
-        });
+        await repetitiveTaskTemplateService.createRepetitiveTaskTemplate(
+          {
+            title: trimmedTaskName,
+            description: trimmedDescription,
+            schedule: selectedScheduleType,
+            days: selectedDays,
+            timeOfDay: selectedTimeOfDay,
+            shouldBeScored: finalShouldBeScored,
+            spaceId: selectedSpace && selectedSpace.id,
+          },
+          isLoggedIn,
+        );
       }
 
       setSnackbarMessage('Task added successfully!');
       setSnackbarVisible(true);
       resetForm();
     } catch (error: any) {
-      console.error('[DB] Failed to INSERT task:', error);
+      console.error('[AddTaskScreen] Failed to add task:', error);
       Alert.alert(
         'Database Error',
         `Failed to save the task: ${error.message || 'Unknown error'}`,
@@ -316,6 +290,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
         return;
       }
 
+      // TODO: This should also be moved to a SpaceService to handle the outbox pattern.
       try {
         await spaceRepository.addSpace(spaceName);
         handleLoadSpace();
