@@ -1,5 +1,6 @@
 import { db } from '../db';
 import { SpaceRepository, PendingOperationRepository } from '../db/repository';
+import type { Space } from '../types';
 import uuid from 'react-native-uuid';
 
 export class SpaceService {
@@ -9,6 +10,10 @@ export class SpaceService {
   constructor() {
     this.spaceRepo = new SpaceRepository(db);
     this.pendingOpRepo = new PendingOperationRepository(db);
+  }
+
+  async getAllSpaces(): Promise<Space[]> {
+    return this.spaceRepo.getAllSpaces();
   }
 
   async createSpace(name: string, isLoggedIn: boolean): Promise<string> {

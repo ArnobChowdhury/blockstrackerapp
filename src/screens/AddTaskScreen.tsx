@@ -17,7 +17,6 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SpaceRepository } from '../db/repository';
 import { TaskService } from '../services/TaskService';
 import { SpaceService } from '../services/SpaceService';
 import AutocompleteInput, {
@@ -62,7 +61,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   const theme = useTheme();
   const { userToken } = useAppContext();
   const isLoggedIn = !!userToken;
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
+  const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [selectedScheduleType, setSelectedScheduleType] =
@@ -81,9 +80,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   const [selectedDays, setSelectedDays] = useState<DaysInAWeek[]>([]);
 
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
-
-  const [spaceRepository, setSpaceRepository] =
-    useState<SpaceRepository | null>(null);
 
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
@@ -104,14 +100,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
       navigation.setParams({ isToday: false });
     }
   }, [isTodaysTask, navigation]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setSpaceRepository(new SpaceRepository(db));
-    } else {
-      setSpaceRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
 
   useEffect(() => {
     if (route.params?.updatedDescription) {
@@ -264,14 +252,10 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   };
 
   const handleLoadSpace = useCallback(async () => {
-    if (!spaceRepository) {
-      return;
-    }
-
     setIsLoadingSpaces(true);
 
     try {
-      const spaces = await spaceRepository.getAllSpaces();
+      const spaces = await spaceService.getAllSpaces();
       setAllSpaces(spaces);
     } catch (error: any) {
       setSnackbarVisible(true);
@@ -283,7 +267,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [spaceRepository]);
+  }, [spaceService]);
 
   const handleAddSpace = useCallback(
     async (spaceName: string) => {
