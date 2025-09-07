@@ -16,6 +16,10 @@ export class SpaceService {
     return this.spaceRepo.getAllSpaces();
   }
 
+  async getSpaceById(id: string): Promise<Space | null> {
+    return this.spaceRepo.getSpaceById(id);
+  }
+
   async createSpace(name: string, isLoggedIn: boolean): Promise<string> {
     if (!isLoggedIn) {
       console.log('[SpaceService] Offline user. Writing to local DB only.');
@@ -27,7 +31,6 @@ export class SpaceService {
     const now = new Date();
     const newId = uuid.v4() as string;
 
-    // Payload for the remote API, matching the backend's SpaceRequest model
     const remotePayload = {
       id: newId,
       name: name,

@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { TaskRepository, PendingOperationRepository } from '../db/repository';
-import type { NewTaskData } from '../types';
+import type { NewTaskData, Task } from '../types';
 import uuid from 'react-native-uuid';
 import { TaskCompletionStatusEnum } from '../types';
 
@@ -11,6 +11,10 @@ export class TaskService {
   constructor() {
     this.taskRepo = new TaskRepository(db);
     this.pendingOpRepo = new PendingOperationRepository(db);
+  }
+
+  async getTaskById(id: string): Promise<Task | null> {
+    return this.taskRepo.getTaskById(id);
   }
 
   /**
@@ -27,8 +31,7 @@ export class TaskService {
   ): Promise<string> {
     if (!isLoggedIn) {
       console.log('[TaskService] Offline user. Writing to local DB only.');
-      const newTaskId = await this.taskRepo.createTask(taskData);
-      return newTaskId;
+      return await this.taskRepo.createTask(taskData);
     }
 
     console.log('[TaskService] Logged-in user. Using transactional outbox.');
@@ -78,6 +81,72 @@ export class TaskService {
     } catch (error) {
       console.error(
         `[TaskService] Transaction for creating task ${newId} failed. Rolling back.`,
+        error,
+      );
+      await db.executeAsync('ROLLBACK;');
+      throw error;
+    }
+  }
+
+  async updateTask(
+    taskId: string,
+    taskData: NewTaskData,
+    isLoggedIn: boolean,
+  ): Promise<void> {
+    if (!isLoggedIn) {
+      console.log('[TaskService] Offline user. Updating local DB only.');
+      await this.taskRepo.updateTaskById(taskId, taskData);
+      return;
+    }
+
+    console.log(
+      '[TaskService] Logged-in user. Using transactional outbox for update.',
+    );
+
+    const now = new Date();
+
+    const originalTask = await this.taskRepo.getTaskById(taskId);
+    if (!originalTask) {
+      throw new Error(
+        `[TaskService] Cannot update non-existent task with ID ${taskId}`,
+      );
+    }
+
+    const remoteTaskPayload = {
+      id: taskId,
+      isActive: true,
+      title: taskData.title,
+      description: taskData.description || '',
+      schedule: taskData.schedule,
+      priority: 3,
+      completionStatus: TaskCompletionStatusEnum.INCOMPLETE,
+      dueDate: taskData.dueDate ? taskData.dueDate.toISOString() : null,
+      shouldBeScored: taskData.shouldBeScored === 1,
+      score: null,
+      timeOfDay: taskData.timeOfDay,
+      repetitiveTaskTemplateId: taskData.repetitiveTaskTemplateId || null,
+      createdAt: originalTask.createdAt,
+      modifiedAt: now.toISOString(),
+      tags: [],
+      spaceId: taskData.spaceId,
+    };
+
+    try {
+      await db.executeAsync('BEGIN TRANSACTION;');
+      await this.taskRepo.updateTaskById(taskId, taskData);
+      await this.pendingOpRepo.enqueueOperation({
+        operation_type: 'update',
+        entity_type: 'task',
+        entity_id: taskId,
+        payload: JSON.stringify(remoteTaskPayload),
+      });
+      await db.executeAsync('COMMIT;');
+      console.log(
+        `[TaskService] Transaction for updating task ${taskId} committed.`,
+      );
+    } catch (error) {
+      console.error(
+        `[TaskService] Transaction for updating task ${taskId} failed. Rolling back.`,
         error,
       );
       await db.executeAsync('ROLLBACK;');

@@ -19,11 +19,9 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  TaskRepository,
-  RepetitiveTaskTemplateRepository,
-  SpaceRepository,
-} from '../db/repository';
+import { TaskService } from '../services/TaskService';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
+import { SpaceService } from '../services/SpaceService';
 import AutocompleteInput, {
   AutocompleteInputHandles,
 } from '../shared/components/Autocomplete';
@@ -49,6 +47,7 @@ import {
   getScheduledWeekDaysFromRepetitiveTask,
 } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
+import { useAppContext } from '../shared/contexts/useAppContext';
 import { DatePickerModal } from 'react-native-paper-dates';
 import RenderHtml from 'react-native-render-html';
 import dayjs from 'dayjs';
@@ -66,7 +65,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   }, [navigation]);
 
   const theme = useTheme();
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
+  const { userToken } = useAppContext();
+  const isLoggedIn = !!userToken;
+  const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [isRepetitiveTask, setIsRepetitiveTask] = useState<boolean>(false);
   const [taskTemplateId, setTaskTemplateId] = useState<string | null>(null);
   const [taskName, setTaskName] = useState('');
@@ -88,57 +89,22 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
 
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
-  const [spaceRepository, setSpaceRepository] =
-    useState<SpaceRepository | null>(null);
-
   const [isLoadingTask, setIsLoadingTask] = useState(true);
   const [errorLoadingTask, setErrorLoadingTask] = useState<string | null>(null);
-
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const autocompleteInputRef = useRef<AutocompleteInputHandles>(null);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setSpaceRepository(new SpaceRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
+  const taskService = useMemo(() => new TaskService(), []);
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
+  const spaceService = useMemo(() => new SpaceService(), []);
 
   const fetchSpace = useCallback(
     async (spaceId: string) => {
-      if (!spaceRepository) {
-        return;
-      }
-
       try {
-        const space = await spaceRepository.getSpaceById(spaceId);
+        const space = await spaceService.getSpaceById(spaceId);
         if (!space) {
           throw new Error(`Space with ID ${spaceId} not found.`);
         }
@@ -147,17 +113,10 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         console.error('[EditTaskScreen] Failed to fetch space');
       }
     },
-    [spaceRepository],
+    [spaceService],
   );
 
   const fetchTaskOrTemplate = useCallback(async () => {
-    if (!taskRepository || !repetitiveTaskTemplateRepository) {
-      console.log(
-        '[EditTaskScreen] taskRepository or repetitiveTaskTemplateRepository is null',
-      );
-      return;
-    }
-
     if (!route.params.taskId) {
       console.log('[EditTaskScreen] No task ID provided');
       setErrorLoadingTask('No task ID provided');
@@ -171,7 +130,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       let fetchedTaskOrTemplate: Task | RepetitiveTaskTemplate | null;
 
       if (!isRepetitiveTaskTemplate) {
-        const task = await taskRepository.getTaskById(route.params.taskId);
+        const task = await taskService.getTaskById(route.params.taskId);
         if (!task) {
           throw new Error(`Task with ID ${route.params.taskId} not found.`);
         }
@@ -187,7 +146,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         fetchedTaskOrTemplate = task;
       } else {
         const repetitiveTaskTemplate =
-          await repetitiveTaskTemplateRepository.getRepetitiveTaskTemplateById(
+          await repetitiveTaskTemplateService.getRepetitiveTaskTemplateById(
             route.params.taskId,
           );
         if (!repetitiveTaskTemplate) {
@@ -222,8 +181,8 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       setIsLoadingTask(false);
     }
   }, [
-    taskRepository,
-    repetitiveTaskTemplateRepository,
+    taskService,
+    repetitiveTaskTemplateService,
     route.params.taskId,
     isRepetitiveTaskTemplate,
     fetchSpace,
@@ -255,22 +214,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       return;
     }
 
-    if (!taskRepository) {
-      Alert.alert(
-        'Database Error',
-        'The database repository is not ready. Please wait or restart the app.',
-      );
-      return;
-    }
-
-    if (!repetitiveTaskTemplateRepository) {
-      Alert.alert(
-        'Database Error',
-        'The database repository is not ready. Please wait or restart the app.',
-      );
-      return;
-    }
-
     if (!route.params.taskId) {
       Alert.alert(
         'Something went wrong',
@@ -285,27 +228,32 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
     try {
       if (!isRepetitiveTaskTemplate) {
-        await taskRepository.updateTaskById(route.params.taskId, {
-          title: trimmedTaskName,
-          description: trimmedDescription,
-          schedule: selectedScheduleType,
-          dueDate: selectedDate,
-          timeOfDay: selectedTimeOfDay,
-          shouldBeScored: shouldBeScored ? 1 : 0,
-          spaceId: selectedSpace && selectedSpace.id,
-        });
-      } else {
-        await repetitiveTaskTemplateRepository.updateRepetitiveTaskTemplateById(
+        await taskService.updateTask(
           route.params.taskId,
           {
             title: trimmedTaskName,
             description: trimmedDescription,
             schedule: selectedScheduleType,
+            dueDate: selectedDate,
             timeOfDay: selectedTimeOfDay,
-            days: selectedDays,
             shouldBeScored: shouldBeScored ? 1 : 0,
-            space: selectedSpace,
+            spaceId: selectedSpace && selectedSpace.id,
           },
+          isLoggedIn,
+        );
+      } else {
+        await repetitiveTaskTemplateService.updateRepetitiveTaskTemplate(
+          route.params.taskId,
+          {
+            title: trimmedTaskName,
+            description: trimmedDescription,
+            schedule: selectedScheduleType,
+            days: selectedDays,
+            timeOfDay: selectedTimeOfDay,
+            shouldBeScored: shouldBeScored ? 1 : 0,
+            spaceId: selectedSpace && selectedSpace.id,
+          },
+          isLoggedIn,
         );
       }
 
@@ -366,14 +314,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   };
 
   const handleLoadSpace = useCallback(async () => {
-    if (!spaceRepository) {
-      return;
-    }
-
     setIsLoadingSpaces(true);
-
     try {
-      const spaces = await spaceRepository.getAllSpaces();
+      const spaces = await spaceService.getAllSpaces();
       setAllSpaces(spaces);
     } catch (error: any) {
       setSnackbarVisible(true);
@@ -385,16 +328,12 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [spaceRepository]);
+  }, [spaceService]);
 
   const handleAddSpace = useCallback(
     async (spaceName: string) => {
-      if (!spaceRepository) {
-        return;
-      }
-
       try {
-        await spaceRepository.addSpace(spaceName);
+        await spaceService.createSpace(spaceName, isLoggedIn);
         handleLoadSpace();
       } catch (error: any) {
         Alert.alert(
@@ -406,7 +345,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         console.error('[DB] Failed to add space:', error);
       }
     },
-    [spaceRepository, handleLoadSpace],
+    [isLoggedIn, spaceService, handleLoadSpace],
   );
 
   const handleSpaceSelect = useCallback(
