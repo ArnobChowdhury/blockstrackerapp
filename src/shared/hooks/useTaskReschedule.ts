@@ -1,9 +1,10 @@
 import { useCallback } from 'react';
 import { useState } from 'react';
-import { TaskRepository } from '../../db/repository';
+import { TaskService } from '../../services/TaskService';
 
 export const useTaskReschedule = (
-  taskRepository: TaskRepository | null,
+  taskService: TaskService,
+  isLoggedIn: boolean,
   cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
@@ -11,15 +12,14 @@ export const useTaskReschedule = (
 
   const onTaskReschedule = useCallback(
     async (taskId: string, rescheduledTime: Date) => {
-      if (!taskRepository) {
-        setError('Database service not ready.');
-        return;
-      }
-
       setError('');
       setRequestOnGoing(true);
       try {
-        await taskRepository?.updateTaskDueDate(taskId, rescheduledTime);
+        await taskService.updateTaskDueDate(
+          taskId,
+          rescheduledTime,
+          isLoggedIn,
+        );
 
         if (cb) {
           await cb();
@@ -30,7 +30,7 @@ export const useTaskReschedule = (
         setRequestOnGoing(false);
       }
     },
-    [cb, taskRepository],
+    [cb, taskService, isLoggedIn],
   );
 
   return {

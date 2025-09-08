@@ -31,7 +31,6 @@ import { TaskService } from '../services/TaskService';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { Logo } from '../shared/components/icons';
 import TaskScoring from '../shared/components/TaskScoring';
-import { TaskRepository } from '../db/repository';
 import {
   Task,
   TimeOfDay,
@@ -123,10 +122,7 @@ const TodayScreen = ({ navigation }: Props) => {
   );
   const taskService = useMemo(() => new TaskService(), []);
 
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
+  const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [displayDate, setDisplayDate] = useState(() => dayjs().startOf('day'));
   const [newDayBannerVisible, setNewDayBannerVisible] = useState(false);
 
@@ -146,21 +142,8 @@ const TodayScreen = ({ navigation }: Props) => {
   const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
     useState<Date>();
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
   const fetchTasksForDate = useCallback(
     async (dateToFetch: dayjs.Dayjs) => {
-      if (!taskRepository) {
-        console.log('[TodayScreen] taskRepository is null');
-        return;
-      }
-
       console.log(
         `[TodayScreen] Fetching tasks for ${dateToFetch.format(
           'YYYY-MM-DD',
@@ -189,7 +172,7 @@ const TodayScreen = ({ navigation }: Props) => {
         setIsLoadingTasks(false);
       }
     },
-    [taskRepository, repetitiveTaskTemplateService, taskService, isLoggedIn],
+    [repetitiveTaskTemplateService, taskService, isLoggedIn],
   );
 
   const refreshCurrentView = useCallback(async () => {
@@ -197,10 +180,10 @@ const TodayScreen = ({ navigation }: Props) => {
   }, [fetchTasksForDate, displayDate]);
 
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskRepository, refreshCurrentView);
+    useToggleTaskCompletionStatus(taskService, isLoggedIn, refreshCurrentView);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskRepository, refreshCurrentView);
+    useTaskReschedule(taskService, isLoggedIn, refreshCurrentView);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -218,10 +201,10 @@ const TodayScreen = ({ navigation }: Props) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (taskRepository && !newDayBannerVisible) {
+      if (!isDbLoading && !newDayBannerVisible) {
         fetchTasksForDate(displayDate);
       }
-    }, [taskRepository, fetchTasksForDate, displayDate, newDayBannerVisible]),
+    }, [isDbLoading, fetchTasksForDate, displayDate, newDayBannerVisible]),
   );
 
   useEffect(() => {

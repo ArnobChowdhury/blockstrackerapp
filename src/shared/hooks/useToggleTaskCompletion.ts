@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { TaskCompletionStatusEnum } from '../../types';
-import { TaskRepository } from '../../db/repository';
+import { TaskService } from '../../services/TaskService';
 
 export const useToggleTaskCompletionStatus = (
-  taskRepository: TaskRepository | null,
+  taskService: TaskService,
+  isLoggedIn: boolean,
   cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
@@ -14,15 +15,15 @@ export const useToggleTaskCompletionStatus = (
     status: TaskCompletionStatusEnum,
     taskScore?: number | null,
   ) => {
-    if (!taskRepository) {
-      setError('Database service not ready.');
-      return;
-    }
-
     setError('');
     setRequestOnGoing(true);
     try {
-      await taskRepository.updateTaskCompletionStatus(id, status, taskScore);
+      await taskService.updateTaskCompletionStatus(
+        id,
+        status,
+        isLoggedIn,
+        taskScore,
+      );
 
       if (cb) {
         cb();
