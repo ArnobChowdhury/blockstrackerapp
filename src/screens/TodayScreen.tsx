@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { StyleSheet, View, SectionList, ActivityIndicator } from 'react-native';
 import {
@@ -27,6 +27,7 @@ import {
   useTaskReschedule,
 } from '../shared/hooks';
 import { formatDate, capitalize, truncateString } from '../shared/utils';
+import { TaskService } from '../services/TaskService';
 import { Logo } from '../shared/components/icons';
 import TaskScoring from '../shared/components/TaskScoring';
 import {
@@ -115,6 +116,8 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
+  const taskService = useMemo(() => new TaskService(), []);
+
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
@@ -185,8 +188,7 @@ const TodayScreen = ({ navigation }: Props) => {
         const countOfTaskOverdue =
           await taskRepository.getCountOfTasksOverdue();
         setNumberOfTaskOverdue(countOfTaskOverdue);
-
-        const fetchedTasks = await taskRepository.getTasksForDate(
+        const fetchedTasks = await taskService.getTasksForDate(
           dateToFetch.toDate(),
         );
         setTaskSections(groupTasks(fetchedTasks));
@@ -200,7 +202,7 @@ const TodayScreen = ({ navigation }: Props) => {
         setIsLoadingTasks(false);
       }
     },
-    [taskRepository, repetitiveTaskTemplateRepository],
+    [taskRepository, repetitiveTaskTemplateRepository, taskService],
   );
 
   const refreshCurrentView = useCallback(async () => {

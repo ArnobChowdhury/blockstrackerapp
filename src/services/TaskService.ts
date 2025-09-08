@@ -17,6 +17,10 @@ export class TaskService {
     return this.taskRepo.getTaskById(id);
   }
 
+  async getTasksForDate(date: Date): Promise<Task[]> {
+    return this.taskRepo.getTasksForDate(date);
+  }
+
   /**
    * Creates a new task.
    * If the user is logged in, it uses the Outbox Pattern to ensure the local
