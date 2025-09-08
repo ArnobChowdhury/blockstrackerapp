@@ -173,8 +173,7 @@ const TodayScreen = ({ navigation }: Props) => {
           isLoggedIn,
         );
 
-        const countOfTaskOverdue =
-          await taskRepository.getCountOfTasksOverdue();
+        const countOfTaskOverdue = await taskService.getCountOfTasksOverdue();
         setNumberOfTaskOverdue(countOfTaskOverdue);
         const fetchedTasks = await taskService.getTasksForDate(
           dateToFetch.toDate(),

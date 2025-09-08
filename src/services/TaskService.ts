@@ -21,6 +21,10 @@ export class TaskService {
     return this.taskRepo.getTasksForDate(date);
   }
 
+  async getCountOfTasksOverdue(): Promise<number> {
+    return this.taskRepo.getCountOfTasksOverdue();
+  }
+
   /**
    * Creates a new task.
    * If the user is logged in, it uses the Outbox Pattern to ensure the local
