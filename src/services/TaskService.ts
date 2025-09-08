@@ -254,4 +254,14 @@ export class TaskService {
       throw error;
     }
   }
+
+  async getActiveTasksByRepetitiveTaskTemplateId(
+    templateId: string,
+    days?: number,
+  ): Promise<Task[]> {
+    return this.taskRepo.getActiveTasksByRepetitiveTaskTemplateId(
+      templateId,
+      days,
+    );
+  }
 }

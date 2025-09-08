@@ -1,20 +1,11 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useLayoutEffect,
-} from 'react';
+import React, { useState, useMemo, useCallback, useLayoutEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator, ScrollView } from 'react-native';
 import { Text, IconButton, Snackbar } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { TaskService } from '../services/TaskService';
 import type { TrackerStackParamList } from '../navigation/RootNavigator';
-import {
-  TaskRepository,
-  RepetitiveTaskTemplateRepository,
-} from '../db/repository';
-import { useDatabase } from '../shared/hooks';
 import { Task } from '../types';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
 
@@ -24,15 +15,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
   const { habit } = route.params;
   console.log('[Tracker] Habit:', habit.title);
 
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
-
+  const taskService = useMemo(() => new TaskService(), []);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
@@ -45,46 +28,14 @@ const TrackerScreen = ({ route, navigation }: Props) => {
     });
   }, [navigation, habit]);
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
   const fetchTaskOfHabit = useCallback(
     async (repetitiveTaskTemplateId: string) => {
-      if (!taskRepository) {
-        console.log(
-          `[Tracker-${habit.id}] fetchTasks called, but repository not ready.`,
-        );
-        return;
-      }
-
-      if (!repetitiveTaskTemplateRepository) {
-        console.log(
-          `[Tracker-${habit.id}] fetchTasks called, but repository not ready.`,
-        );
-        return;
-      }
-
       console.log(`[Tracker-${habit.id}] Fetching tasks...`);
       setErrorLoadingTasks(null);
 
       try {
         const fetchedTasks: Task[] =
-          await taskRepository.getActiveTasksByRepetitiveTaskTemplateId(
+          await taskService.getActiveTasksByRepetitiveTaskTemplateId(
             repetitiveTaskTemplateId,
           );
 
@@ -103,7 +54,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
         setIsLoadingTasks(false);
       }
     },
-    [taskRepository, repetitiveTaskTemplateRepository, habit],
+    [taskService, habit],
   );
 
   const [screenRequestError, setScreenRequestError] = useState('');
@@ -112,39 +63,15 @@ const TrackerScreen = ({ route, navigation }: Props) => {
   useFocusEffect(
     useCallback(() => {
       console.log(`[Tracker-${habit.id}] Screen focused.`);
-      if (taskRepository) {
-        fetchTaskOfHabit(habit.id);
-      } else {
-        console.log(
-          `[Tracker-${habit.id}] Screen focused, but repository not ready yet.`,
-        );
-      }
-    }, [fetchTaskOfHabit, taskRepository, habit]),
+      fetchTaskOfHabit(habit.id);
+    }, [fetchTaskOfHabit, habit]),
   );
-
   const handleSnackbarDismiss = () => {
     setShowSnackbar(false);
     setTimeout(() => {
       setScreenRequestError('');
     }, 1000);
   };
-
-  if (isDbLoading) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>Connecting to Database...</Text>
-      </SafeAreaView>
-    );
-  }
-  if (dbError) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <Text style={styles.errorText}>Database Connection Error</Text>
-        <Text style={styles.errorText}>{dbError.message}</Text>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']}>
