@@ -7,16 +7,22 @@ import {
   NewRepetitiveTaskTemplateData,
   DaysInAWeek,
   RepetitiveTaskTemplate,
+  NewTaskData,
+  TaskScheduleTypeEnum,
 } from '../types';
 import uuid from 'react-native-uuid';
+import { TaskService } from './TaskService';
+import dayjs, { Dayjs } from 'dayjs';
 
 export class RepetitiveTaskTemplateService {
   private rttRepo: RepetitiveTaskTemplateRepository;
   private pendingOpRepo: PendingOperationRepository;
+  private taskService: TaskService;
 
   constructor() {
     this.rttRepo = new RepetitiveTaskTemplateRepository(db);
     this.pendingOpRepo = new PendingOperationRepository(db);
+    this.taskService = new TaskService();
   }
 
   async getRepetitiveTaskTemplateById(
@@ -162,6 +168,93 @@ export class RepetitiveTaskTemplateService {
         error,
       );
       await db.executeAsync('ROLLBACK;');
+      throw error;
+    }
+  }
+
+  async generateDueRepetitiveTasks(isLoggedIn: boolean): Promise<void> {
+    console.log('[RepetitiveTaskTemplateService] Generating due tasks...');
+    const todayStart = dayjs().startOf('day');
+
+    try {
+      const dueTemplates = await this.rttRepo.getDueRepetitiveTaskTemplates();
+
+      if (dueTemplates.length === 0) {
+        console.log(
+          '[RepetitiveTaskTemplateService] No due templates to process.',
+        );
+        return;
+      }
+
+      for (const template of dueTemplates) {
+        let lastGenDateOrCreatedAt: Dayjs | string =
+          template.lastDateOfTaskGeneration || template.createdAt;
+
+        if (!template.lastDateOfTaskGeneration) {
+          const templateCreationDate = dayjs(template.createdAt)
+            .startOf('day')
+            .toISOString();
+          if (templateCreationDate === todayStart.toISOString()) {
+            lastGenDateOrCreatedAt = todayStart.subtract(1, 'day');
+          }
+        }
+
+        const daysToGenerate = todayStart.diff(
+          dayjs(lastGenDateOrCreatedAt).startOf('day'),
+          'day',
+        );
+
+        for (let i = 0; i < daysToGenerate; i++) {
+          const targetDueDate = dayjs(lastGenDateOrCreatedAt)
+            .startOf('day')
+            .add(i + 1, 'day');
+          const dayOfWeekLowercase = targetDueDate
+            .format('dddd')
+            .toLowerCase() as keyof RepetitiveTaskTemplate;
+
+          let shouldGenerateTask = false;
+          if (template.schedule === TaskScheduleTypeEnum.Daily) {
+            shouldGenerateTask = true;
+          } else if (
+            template.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
+          ) {
+            shouldGenerateTask = !!template[dayOfWeekLowercase];
+          }
+
+          if (shouldGenerateTask) {
+            const newTaskData: NewTaskData = {
+              title: template.title,
+              description: template.description || undefined,
+              schedule: template.schedule,
+              dueDate: targetDueDate.toDate(),
+              timeOfDay: template.timeOfDay,
+              repetitiveTaskTemplateId: template.id,
+              shouldBeScored: template.shouldBeScored ? 1 : 0,
+              spaceId: template.spaceId || null,
+            };
+
+            try {
+              await this.taskService.createTask(newTaskData, isLoggedIn);
+              await this.rttRepo.updateLastDateOfTaskGeneration(
+                template.id,
+                targetDueDate.toISOString(),
+              );
+            } catch (error) {
+              console.error(
+                `[RepetitiveTaskTemplateService] Error processing template ${
+                  template.id
+                } for date ${targetDueDate.toISOString()}:`,
+                error,
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        '[RepetitiveTaskTemplateService] Failed to generate due tasks:',
+        error,
+      );
       throw error;
     }
   }

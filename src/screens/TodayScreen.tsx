@@ -28,12 +28,10 @@ import {
 } from '../shared/hooks';
 import { formatDate, capitalize, truncateString } from '../shared/utils';
 import { TaskService } from '../services/TaskService';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { Logo } from '../shared/components/icons';
 import TaskScoring from '../shared/components/TaskScoring';
-import {
-  TaskRepository,
-  RepetitiveTaskTemplateRepository,
-} from '../db/repository';
+import { TaskRepository } from '../db/repository';
 import {
   Task,
   TimeOfDay,
@@ -43,6 +41,7 @@ import {
 import { DatePickerModal } from 'react-native-paper-dates';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { DrawerActions } from '@react-navigation/native';
+import { useAppContext } from '../shared/contexts/useAppContext';
 import { CombinedLightTheme } from '../app/theme/theme';
 
 type Props = CompositeScreenProps<
@@ -116,17 +115,18 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
+  const { userToken } = useAppContext();
+  const isLoggedIn = !!userToken;
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
   const taskService = useMemo(() => new TaskService(), []);
 
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
     null,
   );
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
-
   const [displayDate, setDisplayDate] = useState(() => dayjs().startOf('day'));
   const [newDayBannerVisible, setNewDayBannerVisible] = useState(false);
 
@@ -154,22 +154,10 @@ const TodayScreen = ({ navigation }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
   const fetchTasksForDate = useCallback(
     async (dateToFetch: dayjs.Dayjs) => {
-      if (!taskRepository || !repetitiveTaskTemplateRepository) {
-        console.log(
-          '[TodayScreen] taskRepository or repetitiveTaskTemplateRepository is null',
-        );
+      if (!taskRepository) {
+        console.log('[TodayScreen] taskRepository is null');
         return;
       }
 
@@ -181,8 +169,8 @@ const TodayScreen = ({ navigation }: Props) => {
       setErrorLoadingTasks(null);
 
       try {
-        await repetitiveTaskTemplateRepository.generateDueRepetitiveTasks(
-          taskRepository,
+        await repetitiveTaskTemplateService.generateDueRepetitiveTasks(
+          isLoggedIn,
         );
 
         const countOfTaskOverdue =
@@ -202,7 +190,7 @@ const TodayScreen = ({ navigation }: Props) => {
         setIsLoadingTasks(false);
       }
     },
-    [taskRepository, repetitiveTaskTemplateRepository, taskService],
+    [taskRepository, repetitiveTaskTemplateService, taskService, isLoggedIn],
   );
 
   const refreshCurrentView = useCallback(async () => {

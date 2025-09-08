@@ -6,10 +6,7 @@ import {
   DaysInAWeek,
   RepetitiveTaskTemplate,
   NewRepetitiveTaskTemplateData,
-  NewTaskData,
 } from '../../types';
-import { TaskRepository } from './TaskRepository';
-import dayjs, { Dayjs } from 'dayjs';
 
 export class RepetitiveTaskTemplateRepository {
   private db: NitroSQLiteConnection;
@@ -453,37 +450,30 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async generateDueRepetitiveTasks(
-    taskRepository: TaskRepository,
-  ): Promise<void> {
-    const todayStart = dayjs().startOf('day');
-    const todayStartAsString = todayStart.toISOString();
-
-    const fetchTemplatesSql = `
+  async getDueRepetitiveTaskTemplates(): Promise<RepetitiveTaskTemplate[]> {
+    const sql = `
       SELECT
-        id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday, priority,
         created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
       FROM repetitive_task_templates
       WHERE is_active = 1 AND (
-        (DATE(last_date_of_task_generation, 'localtime') < DATE('now', 'localtime')) OR
+        (DATE(last_date_of_task_generation, 'localtime') < DATE('now', 'localtime')) OR 
         last_date_of_task_generation IS NULL
       )
     `;
 
     console.log(
       '[DB Repo] Attempting to SELECT due repetitive task templates:',
-      { sql: fetchTemplatesSql },
+      { sql },
     );
-    let dueRepetitiveTaskTemplates: RepetitiveTaskTemplate[] = [];
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(
-        fetchTemplatesSql,
-      );
+      const resultSet: QueryResult = await this.db.executeAsync(sql);
+      const dueTemplates: RepetitiveTaskTemplate[] = [];
       if (resultSet.rows) {
         for (let i = 0; i < resultSet.rows.length; i++) {
           const rtt = resultSet.rows.item(i);
           if (rtt) {
-            dueRepetitiveTaskTemplates.push({
+            dueTemplates.push({
               id: rtt.id as string,
               title: rtt.title as string,
               isActive: (rtt.is_active === 1) as boolean,
@@ -509,6 +499,7 @@ export class RepetitiveTaskTemplateRepository {
           }
         }
       }
+      return dueTemplates;
     } catch (error: any) {
       console.error(
         '[DB Repo] Failed to SELECT due repetitive task templates:',
@@ -519,71 +510,6 @@ export class RepetitiveTaskTemplateRepository {
           error.message || 'Unknown error'
         }`,
       );
-    }
-
-    for (const template of dueRepetitiveTaskTemplates) {
-      let lastGenDateOrCreatedAt: Dayjs | string =
-        template.lastDateOfTaskGeneration || template.createdAt;
-
-      if (!template.lastDateOfTaskGeneration) {
-        const templateCreationDate = dayjs(template.createdAt)
-          .startOf('day')
-          .toISOString();
-        if (templateCreationDate === todayStartAsString) {
-          lastGenDateOrCreatedAt = todayStart.subtract(1, 'day');
-        }
-      }
-
-      const daysToGenerate = todayStart.diff(
-        dayjs(lastGenDateOrCreatedAt).startOf('day'),
-        'day',
-      );
-
-      for (let i = 0; i < daysToGenerate; i++) {
-        const targetDueDate = dayjs(lastGenDateOrCreatedAt)
-          .startOf('day')
-          .add(i + 1, 'day');
-        const dayOfWeekLowercase = targetDueDate
-          .format('dddd')
-          .toLowerCase() as keyof RepetitiveTaskTemplate;
-
-        let shouldGenerateTask = false;
-        if (template.schedule === TaskScheduleTypeEnum.Daily) {
-          shouldGenerateTask = true;
-        } else if (
-          template.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
-        ) {
-          shouldGenerateTask = !!template[dayOfWeekLowercase];
-        }
-
-        if (shouldGenerateTask) {
-          const newTaskData: NewTaskData = {
-            title: template.title,
-            description: template.description || undefined,
-            schedule: template.schedule,
-            dueDate: targetDueDate.toDate(),
-            timeOfDay: template.timeOfDay,
-            repetitiveTaskTemplateId: template.id,
-            shouldBeScored: template.shouldBeScored ? 1 : 0,
-            spaceId: template.spaceId || null,
-          };
-
-          try {
-            await taskRepository.createTask(newTaskData);
-            await this.updateLastDateOfTaskGeneration(
-              template.id,
-              targetDueDate.toISOString(),
-            );
-          } catch (error) {
-            console.error(
-              `[DB Repo] Error processing template ${
-                template.id
-              } for date ${targetDueDate.toISOString()}:`,
-              error,
-            );
-          }
-        }
-      }
     }
   }
 
