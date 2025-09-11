@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { StyleSheet, ScrollView, View } from 'react-native';
 import {
   Text,
@@ -16,10 +16,10 @@ import { TaskScheduleTypeEnum, Space } from '../types';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  TaskRepository,
   RepetitiveTaskTemplateRepository,
-  SpaceRepository,
+  TaskRepository,
 } from '../db/repository';
+import { SpaceService } from '../services/SpaceService';
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveCategoryList'>;
 
@@ -32,8 +32,7 @@ const categoriesToDisplay: TaskScheduleTypeEnum[] = [
 
 const ActiveCategoryListScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const [spaceRepository, setSpaceRepository] =
-    useState<SpaceRepository | null>(null);
+  const spaceService = useMemo(() => new SpaceService(), []);
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -68,14 +67,6 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     }
   }, [db, dbError, isDbLoading]);
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setSpaceRepository(new SpaceRepository(db));
-    } else {
-      setSpaceRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
   const handleCategoryPress = (category: TaskScheduleTypeEnum) => {
     console.log(`[CategoryList] Navigating to tasks for: ${category}`);
     navigation.navigate('ActiveTaskList', { category });
@@ -92,14 +83,10 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
   };
 
   const loadAllSpaces = useCallback(async () => {
-    if (!spaceRepository) {
-      return;
-    }
-
     setIsLoadingSpaces(true);
 
     try {
-      const spaces = await spaceRepository.getAllSpaces();
+      const spaces = await spaceService.getAllSpaces();
       setAllSpaces(spaces);
     } catch (error: any) {
       setSnackbarVisible(true);
@@ -111,7 +98,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [spaceRepository]);
+  }, [spaceService]);
 
   const [countForCategories, setCountForCategories] =
     useState<Record<TaskScheduleTypeEnum, number>>();
@@ -135,11 +122,11 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (spaceRepository) {
+      if (!isDbLoading) {
         getCountForAllCategory();
         loadAllSpaces();
       }
-    }, [spaceRepository, getCountForAllCategory, loadAllSpaces]),
+    }, [isDbLoading, getCountForAllCategory, loadAllSpaces]),
   );
 
   const onDismissSnackBar = () => {
