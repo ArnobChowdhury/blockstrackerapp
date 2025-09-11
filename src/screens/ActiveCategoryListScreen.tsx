@@ -15,11 +15,9 @@ import type { ActiveStackParamList } from '../navigation/RootNavigator';
 import { TaskScheduleTypeEnum, Space } from '../types';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  RepetitiveTaskTemplateRepository,
-  TaskRepository,
-} from '../db/repository';
+import { RepetitiveTaskTemplateRepository } from '../db/repository';
 import { SpaceService } from '../services/SpaceService';
+import { TaskService } from '../services/TaskService';
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveCategoryList'>;
 
@@ -33,6 +31,7 @@ const categoriesToDisplay: TaskScheduleTypeEnum[] = [
 const ActiveCategoryListScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const spaceService = useMemo(() => new SpaceService(), []);
+  const taskService = useMemo(() => new TaskService(), []);
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -41,21 +40,10 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
 
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
   const [
     repetitiveTaskTemplateRepository,
     setRepetitiveTaskTemplateRepository,
   ] = useState<RepetitiveTaskTemplateRepository | null>(null);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
 
   useEffect(() => {
     if (db && !dbError && !isDbLoading) {
@@ -104,11 +92,11 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     useState<Record<TaskScheduleTypeEnum, number>>();
 
   const getCountForAllCategory = useCallback(async () => {
-    if (!taskRepository || !repetitiveTaskTemplateRepository) {
+    if (!repetitiveTaskTemplateRepository) {
       return;
     }
     const countForNonRepetitiveTasks =
-      await taskRepository.countAllActiveTasksByCategory();
+      await taskService.countAllActiveTasksByCategory();
     const countForRepetitiveTasks =
       await repetitiveTaskTemplateRepository.countAllActiveRepetitiveTasksByCategory();
 
@@ -118,7 +106,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     };
 
     setCountForCategories(counts);
-  }, [repetitiveTaskTemplateRepository, taskRepository]);
+  }, [repetitiveTaskTemplateRepository, taskService]);
 
   useFocusEffect(
     useCallback(() => {
@@ -141,11 +129,11 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   const getCountForSpace = useCallback(
     async (spaceId: string) => {
-      if (!taskRepository || !repetitiveTaskTemplateRepository) {
+      if (!repetitiveTaskTemplateRepository) {
         return;
       }
       const countForNonRepetitiveTasks =
-        await taskRepository.countActiveTasksBySpaceId(spaceId);
+        await taskService.countActiveTasksBySpaceId(spaceId);
       const countForRepetitiveTasks =
         await repetitiveTaskTemplateRepository.countActiveRepetitiveTasksBySpaceId(
           spaceId,
@@ -158,7 +146,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
       setCountForSpace(counts);
     },
-    [repetitiveTaskTemplateRepository, taskRepository],
+    [repetitiveTaskTemplateRepository, taskService],
   );
 
   const handleSpaceExpansion = async (expandedId: string | number) => {

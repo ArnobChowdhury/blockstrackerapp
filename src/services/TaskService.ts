@@ -264,4 +264,12 @@ export class TaskService {
       days,
     );
   }
+
+  async countAllActiveTasksByCategory() {
+    return this.taskRepo.countAllActiveTasksByCategory();
+  }
+
+  async countActiveTasksBySpaceId(spaceId: string) {
+    return this.taskRepo.countActiveTasksBySpaceId(spaceId);
+  }
 }
