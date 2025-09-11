@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { StyleSheet, ScrollView, View } from 'react-native';
 import {
   Text,
@@ -15,8 +15,8 @@ import type { ActiveStackParamList } from '../navigation/RootNavigator';
 import { TaskScheduleTypeEnum, Space } from '../types';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useFocusEffect } from '@react-navigation/native';
-import { RepetitiveTaskTemplateRepository } from '../db/repository';
 import { SpaceService } from '../services/SpaceService';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { TaskService } from '../services/TaskService';
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveCategoryList'>;
@@ -32,28 +32,17 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const spaceService = useMemo(() => new SpaceService(), []);
   const taskService = useMemo(() => new TaskService(), []);
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
+
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
-
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
-
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
+  const { isLoading: isDbLoading } = useDatabase();
 
   const handleCategoryPress = (category: TaskScheduleTypeEnum) => {
     console.log(`[CategoryList] Navigating to tasks for: ${category}`);
@@ -92,13 +81,10 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     useState<Record<TaskScheduleTypeEnum, number>>();
 
   const getCountForAllCategory = useCallback(async () => {
-    if (!repetitiveTaskTemplateRepository) {
-      return;
-    }
     const countForNonRepetitiveTasks =
       await taskService.countAllActiveTasksByCategory();
     const countForRepetitiveTasks =
-      await repetitiveTaskTemplateRepository.countAllActiveRepetitiveTasksByCategory();
+      await repetitiveTaskTemplateService.countAllActiveRepetitiveTasksByCategory();
 
     const counts = {
       ...countForNonRepetitiveTasks,
@@ -106,7 +92,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     };
 
     setCountForCategories(counts);
-  }, [repetitiveTaskTemplateRepository, taskService]);
+  }, [repetitiveTaskTemplateService, taskService]);
 
   useFocusEffect(
     useCallback(() => {
@@ -129,13 +115,10 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   const getCountForSpace = useCallback(
     async (spaceId: string) => {
-      if (!repetitiveTaskTemplateRepository) {
-        return;
-      }
       const countForNonRepetitiveTasks =
         await taskService.countActiveTasksBySpaceId(spaceId);
       const countForRepetitiveTasks =
-        await repetitiveTaskTemplateRepository.countActiveRepetitiveTasksBySpaceId(
+        await repetitiveTaskTemplateService.countActiveRepetitiveTasksBySpaceId(
           spaceId,
         );
 
@@ -146,7 +129,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
       setCountForSpace(counts);
     },
-    [repetitiveTaskTemplateRepository, taskService],
+    [repetitiveTaskTemplateService, taskService],
   );
 
   const handleSpaceExpansion = async (expandedId: string | number) => {

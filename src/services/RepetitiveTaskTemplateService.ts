@@ -258,4 +258,16 @@ export class RepetitiveTaskTemplateService {
       throw error;
     }
   }
+
+  async countAllActiveRepetitiveTasksByCategory() {
+    return this.rttRepo.countAllActiveRepetitiveTasksByCategory();
+  }
+
+  async countActiveRepetitiveTasksBySpaceId(spaceId: string) {
+    if (!spaceId) {
+      throw new Error('A spaceId must be provided.');
+    }
+
+    return this.rttRepo.countActiveRepetitiveTasksBySpaceId(spaceId);
+  }
 }
