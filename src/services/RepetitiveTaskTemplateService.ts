@@ -259,6 +259,18 @@ export class RepetitiveTaskTemplateService {
     }
   }
 
+  async getAllActiveDailyRepetitiveTaskTemplates(): Promise<
+    RepetitiveTaskTemplate[]
+  > {
+    return this.rttRepo.getAllActiveDailyRepetitiveTaskTemplates();
+  }
+
+  async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(): Promise<
+    RepetitiveTaskTemplate[]
+  > {
+    return this.rttRepo.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+  }
+
   async countAllActiveRepetitiveTasksByCategory() {
     return this.rttRepo.countAllActiveRepetitiveTasksByCategory();
   }

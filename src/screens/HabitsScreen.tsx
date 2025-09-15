@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import {
   StyleSheet,
   SectionList,
@@ -19,10 +25,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TrackerStackParamList } from '../navigation/RootNavigator';
 import { useDatabase } from '../shared/hooks';
 import { RepetitiveTaskTemplate, Task } from '../types';
-import {
-  RepetitiveTaskTemplateRepository,
-  TaskRepository,
-} from '../db/repository';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
+import { TaskService } from '../services/TaskService';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
 import { useAppContext } from '../shared/contexts/useAppContext';
 
@@ -47,26 +51,26 @@ export interface HabitsSection {
 interface HabitCardItemProps {
   habit: RepetitiveTaskTemplate;
   isViewable: boolean;
-  taskRepository: TaskRepository | null;
+  taskService: TaskService;
   onPress: () => void;
   activityBgColor?: string;
 }
 
 const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
-  ({ habit, isViewable, taskRepository, onPress, activityBgColor }) => {
+  ({ habit, isViewable, taskService, onPress, activityBgColor }) => {
     const FETCH_TASKS_LIMIT = 50;
     const [heatmapTasks, setHeatmapTasks] = useState<Task[]>([]);
     const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
     const [hasFetched, setHasFetched] = useState(false);
 
     useEffect(() => {
-      if (isViewable && taskRepository && !hasFetched && !isLoadingHeatmap) {
+      if (isViewable && !hasFetched && !isLoadingHeatmap) {
         const fetchHeatmapData = async () => {
           console.log(`[HabitCardItem-${habit.id}] Fetching heatmap data...`);
           setIsLoadingHeatmap(true);
           try {
             const fetched =
-              await taskRepository.getActiveTasksByRepetitiveTaskTemplateId(
+              await taskService.getActiveTasksByRepetitiveTaskTemplateId(
                 habit.id,
                 FETCH_TASKS_LIMIT,
               );
@@ -84,7 +88,7 @@ const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
         };
         fetchHeatmapData();
       }
-    }, [isViewable, habit.id, taskRepository, hasFetched, isLoadingHeatmap]);
+    }, [isViewable, habit.id, taskService, hasFetched, isLoadingHeatmap]);
 
     return (
       <Card style={[styles.card]} onPress={onPress}>
@@ -110,18 +114,15 @@ const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
 );
 
 const HabitsScreen = ({ navigation }: Props) => {
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
+  const { isLoading: isDbLoading, error: dbError } = useDatabase();
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
+  const taskService = useMemo(() => new TaskService(), []);
 
   const { isDarkMode } = useAppContext();
   const theme = useTheme();
-
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
@@ -129,32 +130,16 @@ const HabitsScreen = ({ navigation }: Props) => {
 
   const [habitSections, setHabitSections] = useState<HabitsSection[]>([]);
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
   const fetchHabits = useCallback(async () => {
-    if (!repetitiveTaskTemplateRepository) {
-      console.log('[Habits] fetchTasks called, but repository not ready.');
-      return;
-    }
-
     console.log('[Habits] Fetching tasks...');
 
     setErrorLoadingTasks(null);
 
     try {
       const dailies =
-        await repetitiveTaskTemplateRepository.getAllActiveDailyRepetitiveTaskTemplates();
+        await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates();
       const weeklies =
-        await repetitiveTaskTemplateRepository.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+        await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
 
       console.log('[Habits] Fetched daily tasks count:', dailies.length);
       console.log(
@@ -181,18 +166,18 @@ const HabitsScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [repetitiveTaskTemplateRepository]);
+  }, [repetitiveTaskTemplateService]);
 
   useFocusEffect(
     useCallback(() => {
       console.log('[Habits] Screen focused.');
-      if (repetitiveTaskTemplateRepository) {
+      if (!isDbLoading) {
         setHabitSections([]);
         fetchHabits();
       } else {
         console.log('[Habits] Screen focused, but repository not ready yet.');
       }
-    }, [fetchHabits, repetitiveTaskTemplateRepository]),
+    }, [fetchHabits, isDbLoading]),
   );
 
   const [viewableItems, setViewableItems] = useState<string[]>([]);
@@ -211,7 +196,7 @@ const HabitsScreen = ({ navigation }: Props) => {
           }
           habit={item}
           isViewable={isViewable}
-          taskRepository={taskRepository}
+          taskService={taskService}
           onPress={() => {
             console.log('[Habits] Navigating to Tracker screen...');
             navigation.navigate('Tracker', { habit: item });
@@ -223,7 +208,7 @@ const HabitsScreen = ({ navigation }: Props) => {
       viewableItems,
       isDarkMode,
       theme.colors.onPrimaryContainer,
-      taskRepository,
+      taskService,
       navigation,
     ],
   );
