@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useCallback,
   useLayoutEffect,
+  useMemo,
 } from 'react';
 import { StyleSheet, View, ActivityIndicator, FlatList } from 'react-native';
 import {
@@ -22,11 +23,6 @@ import type {
   RootStackParamList,
 } from '../navigation/RootNavigator';
 import {
-  TaskRepository,
-  RepetitiveTaskTemplateRepository,
-  SpaceRepository,
-} from '../db/repository';
-import {
   useDatabase,
   useToggleTaskCompletionStatus,
   useTaskReschedule,
@@ -37,8 +33,12 @@ import {
   TaskScheduleTypeEnum,
   TaskCompletionStatusEnum,
 } from '../types';
+import { SpaceService } from '../services/SpaceService';
+import { TaskService } from '../services/TaskService';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { DatePickerModal } from 'react-native-paper-dates';
 import dayjs from 'dayjs';
+import { useAppContext } from '../shared/contexts/useAppContext';
 
 const taskSeparator = () => <Divider />;
 
@@ -48,60 +48,32 @@ type Props = CompositeScreenProps<
 >;
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
+  const { userToken } = useAppContext();
+  const isLoggedIn = !!userToken;
+
   const { category, spaceId } = route.params;
   console.log(
     '[TaskList] Category:',
     TaskScheduleTypeEnum.SpecificDaysInAWeek === category,
   );
 
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
-
-  const [
-    repetitiveTaskTemplateRepository,
-    setRepetitiveTaskTemplateRepository,
-  ] = useState<RepetitiveTaskTemplateRepository | null>(null);
-
-  const [spaceRepository, setSpaceRepository] =
-    useState<SpaceRepository | null>(null);
-
+  const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [tasks, setTasks] = useState<Task[] | RepetitiveTaskTemplate[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setRepetitiveTaskTemplateRepository(
-        new RepetitiveTaskTemplateRepository(db),
-      );
-    } else {
-      setRepetitiveTaskTemplateRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
-
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setSpaceRepository(new SpaceRepository(db));
-    } else {
-      setSpaceRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
+  const spaceService = useMemo(() => new SpaceService(), []);
+  const taskService = useMemo(() => new TaskService(), []);
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
 
   useLayoutEffect(() => {
-    if (spaceId && spaceRepository) {
-      spaceRepository.getSpaceById(spaceId).then(space => {
+    if (spaceId) {
+      spaceService.getSpaceById(spaceId).then(space => {
         if (!space) {
           return;
         }
@@ -114,23 +86,9 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         title: category,
       });
     }
-  }, [navigation, category, spaceId, spaceRepository]);
+  }, [navigation, category, spaceId, spaceService]);
 
   const fetchTasksByCategory = useCallback(async () => {
-    if (!taskRepository) {
-      console.log(
-        `[TaskList-${category}] fetchTasks called, but repository not ready.`,
-      );
-      return;
-    }
-
-    if (!repetitiveTaskTemplateRepository) {
-      console.log(
-        `[TaskList-${category}] fetchTasks called, but repository not ready.`,
-      );
-      return;
-    }
-
     console.log(`[TaskList-${category}] Fetching tasks...`);
     setErrorLoadingTasks(null);
 
@@ -138,34 +96,32 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
       let fetchedTasks: Task[] | RepetitiveTaskTemplate[] = [];
       if (spaceId) {
         if (TaskScheduleTypeEnum.Unscheduled === category) {
-          fetchedTasks = await taskRepository.getActiveUnscheduledTasksBySpace(
+          fetchedTasks = await taskService.getActiveUnscheduledTasksBySpace(
             spaceId,
           );
         } else if (TaskScheduleTypeEnum.Once === category) {
-          fetchedTasks = await taskRepository.getActiveOnceTasksBySpace(
-            spaceId,
-          );
+          fetchedTasks = await taskService.getActiveOnceTasksBySpace(spaceId);
         } else if (TaskScheduleTypeEnum.Daily === category) {
           fetchedTasks =
-            await repetitiveTaskTemplateRepository.getActiveDailyRepetitiveTaskTemplatesBySpace(
+            await repetitiveTaskTemplateService.getActiveDailyRepetitiveTaskTemplatesBySpace(
               spaceId,
             );
         } else if (TaskScheduleTypeEnum.SpecificDaysInAWeek === category) {
           fetchedTasks =
-            await repetitiveTaskTemplateRepository.getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+            await repetitiveTaskTemplateService.getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
               spaceId,
             );
         }
       } else if (TaskScheduleTypeEnum.Unscheduled === category) {
-        fetchedTasks = await taskRepository.getAllActiveUnscheduledTasks();
+        fetchedTasks = await taskService.getAllActiveUnscheduledTasks();
       } else if (TaskScheduleTypeEnum.Once === category) {
-        fetchedTasks = await taskRepository.getAllActiveOnceTasks();
+        fetchedTasks = await taskService.getAllActiveOnceTasks();
       } else if (TaskScheduleTypeEnum.Daily === category) {
         fetchedTasks =
-          await repetitiveTaskTemplateRepository.getAllActiveDailyRepetitiveTaskTemplates();
+          await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates();
       } else if (TaskScheduleTypeEnum.SpecificDaysInAWeek === category) {
         fetchedTasks =
-          await repetitiveTaskTemplateRepository.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+          await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
       }
 
       console.log(
@@ -182,7 +138,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [taskRepository, repetitiveTaskTemplateRepository, category, spaceId]);
+  }, [category, spaceId, taskService, repetitiveTaskTemplateService]);
 
   const [screenRequestError, setScreenRequestError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -194,10 +150,14 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     useState<Date>();
 
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskRepository, fetchTasksByCategory);
+    useToggleTaskCompletionStatus(
+      taskService,
+      isLoggedIn,
+      fetchTasksByCategory,
+    );
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskRepository, fetchTasksByCategory);
+    useTaskReschedule(taskService, isLoggedIn, fetchTasksByCategory);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -216,21 +176,22 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   useFocusEffect(
     useCallback(() => {
       console.log(`[TaskList-${category}] Screen focused.`);
-      if (taskRepository) {
+      if (!isDbLoading) {
         fetchTasksByCategory();
       } else {
         console.log(
           `[TaskList-${category}] Screen focused, but repository not ready yet.`,
         );
       }
-    }, [category, fetchTasksByCategory, taskRepository]),
+    }, [category, fetchTasksByCategory, isDbLoading]),
   );
 
   const handleStoppingRepetitiveTaskTemplate = async (
     repetitiveTaskTemplateId: string,
   ) => {
-    await repetitiveTaskTemplateRepository?.stopRepetitiveTask(
+    await repetitiveTaskTemplateService.stopRepetitiveTask(
       repetitiveTaskTemplateId,
+      isLoggedIn,
     );
     await fetchTasksByCategory();
   };

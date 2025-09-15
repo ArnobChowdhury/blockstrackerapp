@@ -358,4 +358,28 @@ export class TaskService {
   async countActiveTasksBySpaceId(spaceId: string) {
     return this.taskRepo.countActiveTasksBySpaceId(spaceId);
   }
+
+  async getActiveUnscheduledTasksBySpace(spaceId: string): Promise<Task[]> {
+    console.log(
+      `[TaskService] Getting active unscheduled tasks for space ID: ${spaceId}`,
+    );
+    return this.taskRepo.getActiveUnscheduledTasksBySpace(spaceId);
+  }
+
+  async getActiveOnceTasksBySpace(spaceId: string): Promise<Task[]> {
+    console.log(
+      `[TaskService] Getting active 'once' tasks for space ID: ${spaceId}`,
+    );
+    return this.taskRepo.getActiveOnceTasksBySpace(spaceId);
+  }
+
+  async getAllActiveUnscheduledTasks(): Promise<Task[]> {
+    console.log('[TaskService] Getting all active unscheduled tasks');
+    return this.taskRepo.getAllActiveUnscheduledTasks();
+  }
+
+  async getAllActiveOnceTasks(): Promise<Task[]> {
+    console.log("[TaskService] Getting all active 'once' tasks");
+    return this.taskRepo.getAllActiveOnceTasks();
+  }
 }

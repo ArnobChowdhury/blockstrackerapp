@@ -172,6 +172,60 @@ export class RepetitiveTaskTemplateService {
     }
   }
 
+  async stopRepetitiveTask(
+    templateId: string,
+    isLoggedIn: boolean,
+  ): Promise<void> {
+    if (!isLoggedIn) {
+      console.log(
+        '[RepetitiveTaskTemplateService] Offline user. Stopping template locally.',
+      );
+      await this.rttRepo.stopRepetitiveTask(templateId);
+      return;
+    }
+
+    console.log(
+      '[RepetitiveTaskTemplateService] Logged-in user. Using transactional outbox to stop template.',
+    );
+
+    const originalTemplate = await this.rttRepo.getRepetitiveTaskTemplateById(
+      templateId,
+    );
+    if (!originalTemplate) {
+      throw new Error(
+        `[RepetitiveTaskTemplateService] Cannot stop non-existent template with ID ${templateId}`,
+      );
+    }
+
+    const remotePayload = {
+      ...originalTemplate,
+      isActive: false,
+      modifiedAt: new Date().toISOString(),
+    };
+
+    try {
+      await db.executeAsync('BEGIN TRANSACTION;');
+      await this.rttRepo.stopRepetitiveTask(templateId);
+      await this.pendingOpRepo.enqueueOperation({
+        operation_type: 'update',
+        entity_type: 'repetitive_task_template',
+        entity_id: templateId,
+        payload: JSON.stringify(remotePayload),
+      });
+      await db.executeAsync('COMMIT;');
+      console.log(
+        `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} committed.`,
+      );
+    } catch (error) {
+      console.error(
+        `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} failed. Rolling back.`,
+        error,
+      );
+      await db.executeAsync('ROLLBACK;');
+      throw error;
+    }
+  }
+
   async generateDueRepetitiveTasks(isLoggedIn: boolean): Promise<void> {
     console.log('[RepetitiveTaskTemplateService] Generating due tasks...');
     const todayStart = dayjs().startOf('day');
@@ -269,6 +323,20 @@ export class RepetitiveTaskTemplateService {
     RepetitiveTaskTemplate[]
   > {
     return this.rttRepo.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+  }
+
+  async getActiveDailyRepetitiveTaskTemplatesBySpace(
+    spaceId: string,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    return this.rttRepo.getActiveDailyRepetitiveTaskTemplatesBySpace(spaceId);
+  }
+
+  async getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+    spaceId: string,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    return this.rttRepo.getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+      spaceId,
+    );
   }
 
   async countAllActiveRepetitiveTasksByCategory() {
