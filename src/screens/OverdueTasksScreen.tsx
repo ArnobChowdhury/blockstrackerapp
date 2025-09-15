@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   StyleSheet,
@@ -32,10 +32,11 @@ import {
   useTaskReschedule,
 } from '../shared/hooks';
 import { formatDate, truncateString } from '../shared/utils';
+import { TaskService } from '../services/TaskService';
 import TaskScoring from '../shared/components/TaskScoring';
-import { TaskRepository } from '../db/repository';
 import { Task, TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
+import { useAppContext } from '../shared/contexts/useAppContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Overdue'>;
 
@@ -63,11 +64,9 @@ export const groupTasksByDate = (tasks: Task[]): TaskSection[] => {
 
 const OverdueScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { db, isLoading: isDbLoading, error: dbError } = useDatabase();
-  const [taskRepository, setTaskRepository] = useState<TaskRepository | null>(
-    null,
-  );
-
+  const { isLoading: isDbLoading, error: dbError } = useDatabase();
+  const { userToken } = useAppContext();
+  const isLoggedIn = !!userToken;
   const [overdueTaskSections, setOverdueTaskSections] = useState<TaskSection[]>(
     [],
   );
@@ -85,27 +84,19 @@ const OverdueScreen = ({ navigation }: Props) => {
   const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
     useState<Date>();
 
-  useEffect(() => {
-    if (db && !dbError && !isDbLoading) {
-      setTaskRepository(new TaskRepository(db));
-    } else {
-      setTaskRepository(null);
-    }
-  }, [db, dbError, isDbLoading]);
+  const taskService = useMemo(() => new TaskService(), []);
 
   const fetchOverdueTasks = useCallback(async () => {
-    if (!taskRepository) {
-      console.log(
-        '[TodayScreen] taskRepository or repetitiveTaskTemplateRepository is null',
-      );
+    if (isDbLoading) {
+      console.log('[OverdueScreen] DB not ready, skipping fetch.');
       return;
     }
 
-    console.log('[TodayScreen] Fetching overdue tasks...');
+    console.log('[OverdueScreen] Fetching overdue tasks...');
     setErrorLoadingTasks(null);
-
+    setIsLoadingTasks(true);
     try {
-      const fetchedOverdueTasks = await taskRepository.getAllOverdueTasks();
+      const fetchedOverdueTasks = await taskService.getAllOverdueTasks();
       console.log('fetchedOverdueTasks', groupTasksByDate(fetchedOverdueTasks));
 
       setOverdueTaskSections(groupTasksByDate(fetchedOverdueTasks));
@@ -118,16 +109,16 @@ const OverdueScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [taskRepository]);
+  }, [isDbLoading, taskService]);
 
   const {
     onToggleTaskCompletionStatus,
     requestOnGoing: toggleTaskCompletionRequestOnGoing,
     error: toggleTaskCompletionError,
-  } = useToggleTaskCompletionStatus(taskRepository, fetchOverdueTasks);
+  } = useToggleTaskCompletionStatus(taskService, isLoggedIn, fetchOverdueTasks);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskRepository, fetchOverdueTasks);
+    useTaskReschedule(taskService, isLoggedIn, fetchOverdueTasks);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -145,10 +136,10 @@ const OverdueScreen = ({ navigation }: Props) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (taskRepository) {
+      if (!isDbLoading) {
         fetchOverdueTasks();
       }
-    }, [taskRepository, fetchOverdueTasks]),
+    }, [isDbLoading, fetchOverdueTasks]),
   );
 
   const handleSnackbarDismiss = () => {
@@ -203,15 +194,11 @@ const OverdueScreen = ({ navigation }: Props) => {
 
   const [bulkFailureOnGoing, setBulkFailureOnGoing] = useState(false);
   const handleBulkFailures = async (data: Task[]) => {
-    if (taskRepository === null) {
-      return;
-    }
-
     const taskIds = data.map(task => task.id);
     setBulkFailureOnGoing(true);
     setScreenRequestError('');
     try {
-      await taskRepository.bulkFailTasks(taskIds);
+      await taskService.bulkFailTasks(taskIds, isLoggedIn);
       await fetchOverdueTasks();
     } catch (err) {
       setScreenRequestError(
@@ -224,13 +211,10 @@ const OverdueScreen = ({ navigation }: Props) => {
   };
 
   const handleFailAllOverdueTasksAtOnce = async () => {
-    if (taskRepository === null) {
-      return;
-    }
     setBulkFailureOnGoing(true);
     setScreenRequestError('');
     try {
-      await taskRepository.failAllOverdueTasksAtOnce();
+      await taskService.failAllOverdueTasksAtOnce(isLoggedIn);
       await fetchOverdueTasks();
     } catch (err) {
       setScreenRequestError(

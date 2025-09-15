@@ -25,6 +25,10 @@ export class TaskService {
     return this.taskRepo.getCountOfTasksOverdue();
   }
 
+  async getAllOverdueTasks(): Promise<Task[]> {
+    return this.taskRepo.getAllOverdueTasks();
+  }
+
   /**
    * Creates a new task.
    * If the user is logged in, it uses the Outbox Pattern to ensure the local
@@ -162,6 +166,89 @@ export class TaskService {
     }
   }
 
+  async bulkFailTasks(taskIds: string[], isLoggedIn: boolean): Promise<void> {
+    if (taskIds.length === 0) {
+      console.log('[TaskService] bulkFailTasks called with no task IDs.');
+      return;
+    }
+
+    if (!isLoggedIn) {
+      console.log('[TaskService] Offline user. Bulk failing tasks locally.');
+      await this.taskRepo.bulkFailTasks(taskIds);
+      return;
+    }
+
+    console.log(
+      '[TaskService] Logged-in user. Using transactional outbox for bulk fail.',
+    );
+
+    try {
+      await db.executeAsync('BEGIN TRANSACTION;');
+
+      await this.taskRepo.bulkFailTasks(taskIds);
+
+      for (const taskId of taskIds) {
+        const originalTask = await this.taskRepo.getTaskById(taskId);
+        if (originalTask) {
+          const remoteTaskPayload = {
+            ...originalTask,
+            completionStatus: TaskCompletionStatusEnum.FAILED,
+            modifiedAt: new Date().toISOString(),
+          };
+
+          await this.pendingOpRepo.enqueueOperation({
+            operation_type: 'update',
+            entity_type: 'task',
+            entity_id: taskId,
+            payload: JSON.stringify(remoteTaskPayload),
+          });
+        }
+      }
+
+      await db.executeAsync('COMMIT;');
+      console.log(
+        '[TaskService] Transaction for bulk failing tasks committed.',
+      );
+    } catch (error) {
+      console.error(
+        '[TaskService] Transaction for bulk failing tasks failed. Rolling back.',
+        error,
+      );
+      await db.executeAsync('ROLLBACK;');
+      throw error;
+    }
+  }
+
+  async failAllOverdueTasksAtOnce(isLoggedIn: boolean): Promise<void> {
+    const overdueTasks = await this.taskRepo.getAllOverdueTasks();
+    if (overdueTasks.length === 0) {
+      console.log('[TaskService] No overdue tasks to fail.');
+      return;
+    }
+
+    const taskIds = overdueTasks.map(task => task.id);
+
+    if (!isLoggedIn) {
+      console.log(
+        '[TaskService] Offline user. Failing all overdue tasks locally.',
+      );
+      await this.taskRepo.failAllOverdueTasksAtOnce();
+      return;
+    }
+
+    console.log(
+      '[TaskService] Logged-in user. Failing all overdue tasks with outbox.',
+    );
+
+    try {
+      await this.bulkFailTasks(taskIds, isLoggedIn);
+      console.log('[TaskService] All overdue tasks failed successfully.');
+    } catch (error) {
+      console.error('[TaskService] Failed to fail all overdue tasks.', error);
+      throw error;
+    }
+  }
+
   async updateTaskCompletionStatus(
     taskId: string,
     status: TaskCompletionStatusEnum,
@@ -180,7 +267,6 @@ export class TaskService {
       '[TaskService] Logged-in user. Using transactional outbox for completion status update.',
     );
 
-    // For sync, we need the full task payload for the backend.
     const originalTask = await this.taskRepo.getTaskById(taskId);
     if (!originalTask) {
       throw new Error(
