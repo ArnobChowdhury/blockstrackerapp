@@ -3,6 +3,7 @@ import { TaskRepository, PendingOperationRepository } from '../db/repository';
 import type { NewTaskData, Task } from '../types';
 import uuid from 'react-native-uuid';
 import { TaskCompletionStatusEnum } from '../types';
+import { syncService } from './SyncService';
 
 export class TaskService {
   private taskRepo: TaskRepository;
@@ -89,6 +90,8 @@ export class TaskService {
         `[TaskService] Transaction for creating task ${newId} committed successfully.`,
       );
 
+      syncService.runSync();
+
       return newId;
     } catch (error) {
       console.error(
@@ -156,6 +159,8 @@ export class TaskService {
       console.log(
         `[TaskService] Transaction for updating task ${taskId} committed.`,
       );
+
+      syncService.runSync();
     } catch (error) {
       console.error(
         `[TaskService] Transaction for updating task ${taskId} failed. Rolling back.`,
@@ -209,6 +214,8 @@ export class TaskService {
       console.log(
         '[TaskService] Transaction for bulk failing tasks committed.',
       );
+
+      syncService.runSync();
     } catch (error) {
       console.error(
         '[TaskService] Transaction for bulk failing tasks failed. Rolling back.',
@@ -291,6 +298,8 @@ export class TaskService {
         payload: JSON.stringify(remoteTaskPayload),
       });
       await db.executeAsync('COMMIT;');
+
+      syncService.runSync();
     } catch (error) {
       await db.executeAsync('ROLLBACK;');
       throw error;
@@ -335,6 +344,8 @@ export class TaskService {
         payload: JSON.stringify(remoteTaskPayload),
       });
       await db.executeAsync('COMMIT;');
+
+      syncService.runSync();
     } catch (error) {
       await db.executeAsync('ROLLBACK;');
       throw error;

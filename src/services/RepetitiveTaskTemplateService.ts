@@ -13,6 +13,7 @@ import {
 import uuid from 'react-native-uuid';
 import { TaskService } from './TaskService';
 import dayjs, { Dayjs } from 'dayjs';
+import { syncService } from './SyncService';
 
 export class RepetitiveTaskTemplateService {
   private rttRepo: RepetitiveTaskTemplateRepository;
@@ -84,6 +85,9 @@ export class RepetitiveTaskTemplateService {
         payload: JSON.stringify(remotePayload),
       });
       await db.executeAsync('COMMIT;');
+
+      syncService.runSync();
+
       return newId;
     } catch (error) {
       console.error(
@@ -162,6 +166,8 @@ export class RepetitiveTaskTemplateService {
         payload: JSON.stringify(remotePayload),
       });
       await db.executeAsync('COMMIT;');
+
+      syncService.runSync();
     } catch (error) {
       console.error(
         `[RepetitiveTaskTemplateService] Transaction for updating template ${templateId} failed. Rolling back.`,
@@ -216,6 +222,8 @@ export class RepetitiveTaskTemplateService {
       console.log(
         `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} committed.`,
       );
+
+      syncService.runSync();
     } catch (error) {
       console.error(
         `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} failed. Rolling back.`,

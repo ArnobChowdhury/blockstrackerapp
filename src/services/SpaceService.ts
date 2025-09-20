@@ -2,6 +2,7 @@ import { db } from '../db';
 import { SpaceRepository, PendingOperationRepository } from '../db/repository';
 import type { Space } from '../types';
 import uuid from 'react-native-uuid';
+import { syncService } from './SyncService';
 
 export class SpaceService {
   private spaceRepo: SpaceRepository;
@@ -54,6 +55,9 @@ export class SpaceService {
       console.log(
         `[SpaceService] Transaction for creating space ${newId} committed.`,
       );
+
+      syncService.runSync();
+
       return newId;
     } catch (error) {
       console.error(
