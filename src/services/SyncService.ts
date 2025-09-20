@@ -9,7 +9,7 @@ import { apiEndpoints } from '../config/apiRoutes';
 
 let isSyncing = false;
 
-export class SyncService {
+class SyncService {
   private pendingOpRepo: PendingOperationRepository;
 
   constructor() {
@@ -128,3 +128,5 @@ export class SyncService {
     }
   }
 }
+
+export const syncService = new SyncService();

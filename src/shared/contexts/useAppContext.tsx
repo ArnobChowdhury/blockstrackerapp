@@ -9,6 +9,7 @@ import React, {
 import { readData, storeData } from '../utils';
 import { useColorScheme } from 'react-native';
 import * as Keychain from 'react-native-keychain';
+import { syncService } from '../../services/SyncService';
 
 interface AppContextProps {
   isDarkMode: boolean;
@@ -75,6 +76,9 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         if (credentials) {
           console.log('[AuthContext] Token found in keychain.');
           setUserToken(credentials.password);
+
+          // Running sync after signing in. However, later we will also have to check if the user is premium user (though we don't have the functionality in place right now).
+          syncService.runSync();
         } else {
           console.log('[AuthContext] No token found in keychain.');
         }
