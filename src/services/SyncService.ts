@@ -26,22 +26,25 @@ export class SyncService {
     isSyncing = true;
 
     try {
-      const operation = await this.pendingOpRepo.getOldestPendingOperation();
+      while (true) {
+        const operation = await this.pendingOpRepo.getOldestPendingOperation();
 
-      if (!operation) {
-        console.log('[SyncService] Queue is empty. Nothing to sync.');
-        isSyncing = false;
-        return;
+        if (!operation) {
+          console.log(
+            '[SyncService] Queue is empty or blocked. Halting sync cycle.',
+          );
+          break;
+        }
+
+        console.log('[SyncService] Processing operation:', operation);
+
+        await this.pendingOpRepo.updateOperationStatus(
+          operation.id,
+          'processing',
+        );
+
+        await this.processOperation(operation);
       }
-
-      console.log('[SyncService] Processing operation:', operation);
-
-      await this.pendingOpRepo.updateOperationStatus(
-        operation.id,
-        'processing',
-      );
-
-      await this.processOperation(operation);
     } catch (error) {
       console.error(
         '[SyncService] An unexpected error occurred in runSync:',

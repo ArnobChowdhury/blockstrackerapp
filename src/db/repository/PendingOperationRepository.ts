@@ -95,7 +95,7 @@ export class PendingOperationRepository {
     operationId: number,
     status: 'processing' | 'failed',
   ): Promise<QueryResult> {
-    const sql = `UPDATE pending_operations SET status = ? WHERE id = ?;`;
+    const sql = 'UPDATE pending_operations SET status = ? WHERE id = ?;';
     const params = [status, operationId];
 
     console.log('[DB Repo] Updating operation status:', { sql, params });

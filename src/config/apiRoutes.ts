@@ -9,9 +9,8 @@ interface EndpointConfig {
   path: string;
 }
 
-type EntityEndpoints = {
-  create: EndpointConfig;
-  update: EndpointConfig;
+type EntityEndpoints<T extends string = 'create' | 'update'> = {
+  [K in T]: EndpointConfig;
 };
 
 export const apiEndpoints: Record<string, Partial<EntityEndpoints>> = {
