@@ -5,10 +5,12 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
 } from 'react';
 import { readData, storeData } from '../utils';
 import { useColorScheme } from 'react-native';
 import * as Keychain from 'react-native-keychain';
+import { useNetInfo } from '@react-native-community/netinfo';
 import { syncService } from '../../services/SyncService';
 
 interface AppContextProps {
@@ -44,6 +46,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   >('system');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const colorScheme = useColorScheme();
+  const netInfo = useNetInfo();
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -95,6 +98,22 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   useEffect(() => {
     setIsDarkMode(getIsDarkMode(userPreferredTheme, colorScheme));
   }, [userPreferredTheme, colorScheme]);
+
+  const wasOnline = useRef(false);
+
+  useEffect(() => {
+    const isOnline =
+      netInfo.isConnected === true && netInfo.isInternetReachable === true;
+
+    if (isOnline && !wasOnline.current && userToken) {
+      console.log(
+        '[Network] Connection restored. Checking for pending operations.',
+      );
+      syncService.runSync();
+    }
+
+    wasOnline.current = isOnline;
+  }, [netInfo.isConnected, netInfo.isInternetReachable, userToken]);
 
   const signIn = useCallback(async (token: string) => {
     setIsSigningIn(true);
