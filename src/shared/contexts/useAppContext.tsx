@@ -21,6 +21,7 @@ interface AppContextProps {
   isSigningIn: boolean;
   signIn: (token: string) => void;
   signOut: () => void;
+  isSyncing: boolean;
 }
 
 const AppContext = React.createContext<AppContextProps | undefined>(undefined);
@@ -47,6 +48,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const colorScheme = useColorScheme();
   const netInfo = useNetInfo();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -115,6 +117,10 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     wasOnline.current = isOnline;
   }, [netInfo.isConnected, netInfo.isInternetReachable, userToken]);
 
+  useEffect(() => {
+    syncService.initialize({ onSyncStatusChange: setIsSyncing });
+  }, []);
+
   const signIn = useCallback(async (token: string) => {
     setIsSigningIn(true);
     try {
@@ -150,6 +156,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       isSigningIn,
       signIn,
       signOut,
+      isSyncing,
     }),
     [
       userPreferredTheme,
@@ -159,6 +166,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       isSigningIn,
       signIn,
       signOut,
+      isSyncing,
     ],
   );
 

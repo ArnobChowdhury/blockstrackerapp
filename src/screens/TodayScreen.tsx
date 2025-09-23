@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { StyleSheet, View, SectionList, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  SectionList,
+  ActivityIndicator,
+  Animated,
+} from 'react-native';
 import {
   Text,
   Checkbox,
@@ -114,7 +120,7 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { userToken } = useAppContext();
+  const { userToken, isSyncing } = useAppContext();
   const isLoggedIn = !!userToken;
   const repetitiveTaskTemplateService = useMemo(
     () => new RepetitiveTaskTemplateService(),
@@ -141,6 +147,28 @@ const TodayScreen = ({ navigation }: Props) => {
   >(null);
   const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
     useState<Date>();
+
+  const animatedValue = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    if (isSyncing) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(animatedValue, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+        ]),
+      );
+      animation.start();
+      return () => animation.stop();
+    }
+  }, [isSyncing, animatedValue]);
 
   const fetchTasksForDate = useCallback(
     async (dateToFetch: dayjs.Dayjs) => {
@@ -415,6 +443,14 @@ const TodayScreen = ({ navigation }: Props) => {
     );
   }
 
+  const blinkingColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      theme.colors.secondary,
+      theme.colors.surfaceVariant as string,
+    ],
+  });
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -426,6 +462,19 @@ const TodayScreen = ({ navigation }: Props) => {
           size={30}
           onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         />
+        {isSyncing && (
+          <View style={styles.syncIndicatorContainer}>
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: blinkingColor,
+                },
+                styles.syncingIndicator,
+              ]}
+            />
+            <Text variant="bodyLarge">Syncing</Text>
+          </View>
+        )}
       </View>
       {isLoadingTasks ? (
         <View style={styles.centered}>
@@ -648,6 +697,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  syncIndicatorContainer: {
+    alignItems: 'center',
+    paddingVertical: 2,
+    position: 'absolute',
+    top: '110%',
+    right: '2%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  syncingIndicator: {
+    width: 12,
+    height: 12,
+    marginRight: 8,
+    borderRadius: 10,
+  },
   topBar: {
     paddingLeft: 16,
     borderBottomColor: '#ccc',
@@ -655,6 +719,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative',
   },
   emptyListContainer: {
     flexGrow: 1,

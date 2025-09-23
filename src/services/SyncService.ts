@@ -11,9 +11,16 @@ let isSyncing = false;
 
 class SyncService {
   private pendingOpRepo: PendingOperationRepository;
+  private onSyncStatusChange: ((isSyncing: boolean) => void) | null = null;
 
   constructor() {
     this.pendingOpRepo = new PendingOperationRepository(db);
+  }
+
+  public initialize(callbacks: {
+    onSyncStatusChange: (isSyncing: boolean) => void;
+  }) {
+    this.onSyncStatusChange = callbacks.onSyncStatusChange;
   }
 
   public async runSync(): Promise<void> {
@@ -24,6 +31,7 @@ class SyncService {
 
     console.log('[SyncService] Starting sync process...');
     isSyncing = true;
+    this.onSyncStatusChange?.(true);
 
     try {
       while (true) {
@@ -52,6 +60,7 @@ class SyncService {
       );
     } finally {
       isSyncing = false;
+      this.onSyncStatusChange?.(false);
       console.log('[SyncService] Sync process finished.');
     }
   }
