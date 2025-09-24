@@ -51,8 +51,8 @@ const AuthScreen = ({ navigation }: Props) => {
         );
       }
 
-      const { accessToken } = responseData.result.data;
-      await signIn(accessToken);
+      const { accessToken, refreshToken } = responseData.result.data;
+      await signIn(accessToken, refreshToken);
     } catch (error: any) {
       console.log('error', error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {

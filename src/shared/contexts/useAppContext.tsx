@@ -19,7 +19,7 @@ interface AppContextProps {
   changeTheme: (theme: string) => void;
   userToken: string | null;
   isSigningIn: boolean;
-  signIn: (token: string) => void;
+  signIn: (token: string, refreshToken: string) => void;
   signOut: () => void;
   isSyncing: boolean;
 }
@@ -121,23 +121,30 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     syncService.initialize({ onSyncStatusChange: setIsSyncing });
   }, []);
 
-  const signIn = useCallback(async (token: string) => {
-    setIsSigningIn(true);
-    try {
-      await Keychain.setGenericPassword('user', token);
-      setUserToken(token);
-      console.log('[AuthContext] Token stored successfully.');
-    } catch (error) {
-      console.error('[AuthContext] Error storing token', error);
-    } finally {
-      setIsSigningIn(false);
-    }
-  }, []);
+  const signIn = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      setIsSigningIn(true);
+      try {
+        await Keychain.setGenericPassword('user', accessToken);
+        await Keychain.setGenericPassword('refreshToken', refreshToken, {
+          service: 'refreshToken',
+        });
+        setUserToken(accessToken);
+        console.log('[AuthContext] Token stored successfully.');
+      } catch (error) {
+        console.error('[AuthContext] Error storing token', error);
+      } finally {
+        setIsSigningIn(false);
+      }
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
     setIsSigningIn(true);
     try {
       await Keychain.resetGenericPassword();
+      await Keychain.resetGenericPassword({ service: 'refreshToken' });
       setUserToken(null);
       console.log('[AuthContext] Token removed successfully.');
     } catch (error) {

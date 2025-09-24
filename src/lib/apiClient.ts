@@ -26,4 +26,51 @@ apiClient.interceptors.request.use(
   error => Promise.reject(error),
 );
 
+apiClient.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+    console.log('[APIClient] Error response:', error.response);
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const accessTokenCredentials = await Keychain.getGenericPassword();
+        const refreshTokenCredentials = await Keychain.getGenericPassword({
+          service: 'refreshToken',
+        });
+        console.log('accessTokenCredentials', accessTokenCredentials);
+        console.log('refreshTokenCredentials', refreshTokenCredentials);
+
+        if (!accessTokenCredentials || !refreshTokenCredentials) {
+          console.log('No credentials found');
+          return Promise.reject(error);
+        }
+
+        const accessToken = accessTokenCredentials.password;
+        const refreshToken = refreshTokenCredentials.password;
+        const response = await axios.post(
+          `${API_BASE_URL}/api/v1/auth/refresh`,
+          {
+            accessToken,
+            refreshToken,
+          },
+        );
+
+        const newAccessToken = response.data.accessToken;
+        const newRefreshToken = response.data.refreshToken;
+
+        await Keychain.setGenericPassword(newAccessToken, 'user');
+        await Keychain.setGenericPassword(newRefreshToken, 'refreshToken');
+
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export default apiClient;
