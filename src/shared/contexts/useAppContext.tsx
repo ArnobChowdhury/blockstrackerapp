@@ -12,6 +12,11 @@ import { useColorScheme } from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { syncService } from '../../services/SyncService';
+import {
+  registerAuthFailureHandler,
+  registerTokenRefreshHandler,
+  setInMemoryToken,
+} from '../../lib/apiClient';
 
 interface AppContextProps {
   isDarkMode: boolean;
@@ -80,6 +85,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         const credentials = await Keychain.getGenericPassword();
         if (credentials) {
           console.log('[AuthContext] Token found in keychain.');
+          setInMemoryToken(credentials.password);
           setUserToken(credentials.password);
 
           // Running sync after signing in. However, later we will also have to check if the user is premium user (though we don't have the functionality in place right now).
@@ -121,23 +127,30 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     syncService.initialize({ onSyncStatusChange: setIsSyncing });
   }, []);
 
-  const signIn = useCallback(
+  const updateTokens = useCallback(
     async (accessToken: string, refreshToken: string) => {
-      setIsSigningIn(true);
       try {
         await Keychain.setGenericPassword('user', accessToken);
         await Keychain.setGenericPassword('refreshToken', refreshToken, {
           service: 'refreshToken',
         });
         setUserToken(accessToken);
-        console.log('[AuthContext] Token stored successfully.');
+        setInMemoryToken(accessToken);
+        console.log('[AuthContext] Tokens updated successfully.');
       } catch (error) {
         console.error('[AuthContext] Error storing token', error);
-      } finally {
-        setIsSigningIn(false);
       }
     },
     [],
+  );
+
+  const signIn = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      setIsSigningIn(true);
+      await updateTokens(accessToken, refreshToken);
+      setIsSigningIn(false);
+    },
+    [updateTokens],
   );
 
   const signOut = useCallback(async () => {
@@ -146,6 +159,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       await Keychain.resetGenericPassword();
       await Keychain.resetGenericPassword({ service: 'refreshToken' });
       setUserToken(null);
+      setInMemoryToken(null);
       console.log('[AuthContext] Token removed successfully.');
     } catch (error) {
       console.error('[AuthContext] Error removing token', error);
@@ -153,6 +167,11 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       setIsSigningIn(false);
     }
   }, []);
+
+  useEffect(() => {
+    registerAuthFailureHandler(signOut);
+    registerTokenRefreshHandler(updateTokens);
+  }, [signOut, updateTokens]);
 
   const value = useMemo(
     () => ({

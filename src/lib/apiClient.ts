@@ -7,18 +7,36 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
+let onAuthFailure: () => void;
+let onTokenRefreshed: (
+  newAccessToken: string,
+  newRefreshToken: string,
+) => Promise<void>;
+
+export const registerAuthFailureHandler = (handler: () => void) => {
+  onAuthFailure = handler;
+};
+
+export const registerTokenRefreshHandler = (
+  handler: (newAccessToken: string, newRefreshToken: string) => Promise<void>,
+) => {
+  onTokenRefreshed = handler;
+};
+
+let inMemoryToken: string | null = null;
+
+export const setInMemoryToken = (token: string | null) => {
+  inMemoryToken = token;
+  console.log('[APIClient] In-memory token updated.');
+};
+
 apiClient.interceptors.request.use(
-  async config => {
-    try {
-      const credentials = await Keychain.getGenericPassword();
-      if (credentials) {
-        config.headers.Authorization = `Bearer ${credentials.password}`;
-        console.log('[APIClient] Auth token added to request headers.');
-      }
-    } catch (error) {
-      console.error(
-        '[APIClient] Error retrieving auth token from Keychain:',
-        error,
+  config => {
+    if (inMemoryToken) {
+      config.headers.Authorization = `Bearer ${inMemoryToken}`;
+    } else {
+      console.log(
+        '[APIClient] No in-memory token, request will be unauthenticated.',
       );
     }
     return config;
@@ -42,29 +60,32 @@ apiClient.interceptors.response.use(
         console.log('refreshTokenCredentials', refreshTokenCredentials);
 
         if (!accessTokenCredentials || !refreshTokenCredentials) {
-          console.log('No credentials found');
+          console.log('[APIClient] No refresh token found. Signing out.');
+          onAuthFailure?.();
           return Promise.reject(error);
         }
 
-        const accessToken = accessTokenCredentials.password;
-        const refreshToken = refreshTokenCredentials.password;
         const response = await axios.post(
           `${API_BASE_URL}/api/v1/auth/refresh`,
           {
-            accessToken,
-            refreshToken,
+            accessToken: accessTokenCredentials.password,
+            refreshToken: refreshTokenCredentials.password,
           },
         );
 
-        const newAccessToken = response.data.accessToken;
-        const newRefreshToken = response.data.refreshToken;
+        const newAccessToken = response.data.result.data.accessToken;
+        const newRefreshToken = response.data.result.data.refreshToken;
 
-        await Keychain.setGenericPassword(newAccessToken, 'user');
-        await Keychain.setGenericPassword(newRefreshToken, 'refreshToken');
+        await onTokenRefreshed?.(newAccessToken, newRefreshToken);
 
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
+        console.error(
+          '[APIClient] Token refresh failed. Signing out.',
+          refreshError,
+        );
+        onAuthFailure?.();
         return Promise.reject(refreshError);
       }
     }
