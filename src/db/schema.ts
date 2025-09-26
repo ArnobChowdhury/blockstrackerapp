@@ -5,13 +5,28 @@ export const V1_SCHEMA = `
 
 
   -- =============================================
+  -- Users Table
+  -- =============================================
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    modified_at TEXT NOT NULL,
+    deleted_at TEXT -- Nullable for soft deletes
+  );
+
+
+  -- =============================================
   -- Spaces Table (Equivalent to Space model)
   -- =============================================
   CREATE TABLE IF NOT EXISTS spaces (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    modified_at TEXT NOT NULL
+    modified_at TEXT NOT NULL,
+    user_id TEXT, -- Optional, for logged-in users
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(name, user_id) -- A user cannot have two spaces with the same name
   );
 
   -- =============================================
@@ -19,9 +34,12 @@ export const V1_SCHEMA = `
   -- =============================================
   CREATE TABLE IF NOT EXISTS tags (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE, -- Assuming tag names should be unique
+    name TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    modified_at TEXT NOT NULL
+    modified_at TEXT NOT NULL,
+    user_id TEXT, -- Optional, for logged-in users
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(name, user_id) -- A user cannot have two tags with the same name
   );
 
   -- =============================================
@@ -47,8 +65,10 @@ export const V1_SCHEMA = `
     last_date_of_task_generation TEXT, -- Optional DateTime (ISO String)
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
-    space_id TEXT, -- Foreign key column (optional)
-    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL -- Or CASCADE/RESTRICT depending on desired behavior
+    space_id TEXT, -- Optional
+    user_id TEXT, -- Optional, for logged-in users
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
   -- Index for foreign key
   CREATE INDEX IF NOT EXISTS idx_rep_task_templates_space_id ON repetitive_task_templates(space_id);
@@ -71,9 +91,11 @@ export const V1_SCHEMA = `
     repetitive_task_template_id TEXT, -- Foreign key column (optional)
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
-    space_id TEXT, -- Foreign key column (optional)
-    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL, -- Or CASCADE/RESTRICT
-    FOREIGN KEY (repetitive_task_template_id) REFERENCES repetitive_task_templates(id) ON DELETE CASCADE, -- Matches Prisma schema
+    space_id TEXT, -- Optional
+    user_id TEXT, -- Optional, for logged-in users
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL,
+    FOREIGN KEY (repetitive_task_template_id) REFERENCES repetitive_task_templates(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (repetitive_task_template_id, due_date) -- Matches Prisma @@unique
   );
   -- Indexes for foreign keys and potentially filtered columns
@@ -116,16 +138,19 @@ export const V1_SCHEMA = `
   -- =============================================
   CREATE TABLE IF NOT EXISTS pending_operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,        -- The user this operation belongs to
     operation_type TEXT NOT NULL, -- 'create', 'update', 'delete'
     entity_type TEXT NOT NULL,    -- 'task', 'space', 'tag', 'repetitive_task_template'
     entity_id TEXT NOT NULL,      -- The UUID of the entity that was changed
     payload TEXT NOT NULL,        -- A JSON string of the full object to be sent to the server
     status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'processing', 'failed'
     attempts INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
   -- Index for fetching pending operations efficiently
   CREATE INDEX IF NOT EXISTS idx_pending_operations_status ON pending_operations(status);
+  CREATE INDEX IF NOT EXISTS idx_pending_operations_user_id ON pending_operations(user_id);
 
   -- Set initial schema version
   PRAGMA user_version = 1;

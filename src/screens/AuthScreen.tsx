@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Text, Button, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,8 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { useAppContext } from '../shared/contexts/useAppContext';
 import { API_URL } from '@env';
+import { jwtDecode } from 'jwt-decode';
+import { UserService } from '../services/UserService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
@@ -17,6 +19,8 @@ const AuthScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { signIn } = useAppContext();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const userService = useMemo(() => new UserService(), []);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -52,7 +56,30 @@ const AuthScreen = ({ navigation }: Props) => {
       }
 
       const { accessToken, refreshToken } = responseData.result.data;
-      await signIn(accessToken, refreshToken);
+      try {
+        const decoded = jwtDecode<{ email: string; user_id: string }>(
+          accessToken,
+        );
+
+        if (!decoded.user_id || !decoded.email) {
+          throw new Error('Invalid token received from server.');
+        }
+
+        await userService.saveUserLocally({
+          id: decoded.user_id,
+          email: decoded.email,
+        });
+
+        await signIn(accessToken, refreshToken);
+      } catch (localError: any) {
+        console.error(
+          'Failed to process token or save user locally:',
+          localError,
+        );
+        throw new Error(
+          'Failed to set up your account locally. Please try again.',
+        );
+      }
     } catch (error: any) {
       console.log('error', error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
