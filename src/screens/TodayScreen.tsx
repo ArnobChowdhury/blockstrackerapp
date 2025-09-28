@@ -120,8 +120,8 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { userToken, isSyncing } = useAppContext();
-  const isLoggedIn = !!userToken;
+  const { user, isSyncing } = useAppContext();
+  const isLoggedIn = !!user;
   const repetitiveTaskTemplateService = useMemo(
     () => new RepetitiveTaskTemplateService(),
     [],

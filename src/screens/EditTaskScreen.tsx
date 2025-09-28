@@ -65,8 +65,8 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   }, [navigation]);
 
   const theme = useTheme();
-  const { userToken } = useAppContext();
-  const isLoggedIn = !!userToken;
+  const { user } = useAppContext();
+  const isLoggedIn = !!user;
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [isRepetitiveTask, setIsRepetitiveTask] = useState<boolean>(false);
   const [taskTemplateId, setTaskTemplateId] = useState<string | null>(null);

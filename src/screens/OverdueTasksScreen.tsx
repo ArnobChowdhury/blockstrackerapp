@@ -65,8 +65,8 @@ export const groupTasksByDate = (tasks: Task[]): TaskSection[] => {
 const OverdueScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
-  const { userToken } = useAppContext();
-  const isLoggedIn = !!userToken;
+  const { user } = useAppContext();
+  const isLoggedIn = !!user;
   const [overdueTaskSections, setOverdueTaskSections] = useState<TaskSection[]>(
     [],
   );

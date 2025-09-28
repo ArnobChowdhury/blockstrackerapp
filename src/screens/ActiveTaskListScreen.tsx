@@ -48,8 +48,8 @@ type Props = CompositeScreenProps<
 >;
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
-  const { userToken } = useAppContext();
-  const isLoggedIn = !!userToken;
+  const { user } = useAppContext();
+  const isLoggedIn = !!user;
 
   const { category, spaceId } = route.params;
   console.log(

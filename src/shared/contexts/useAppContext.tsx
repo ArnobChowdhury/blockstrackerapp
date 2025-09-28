@@ -17,12 +17,19 @@ import {
   registerTokenRefreshHandler,
   setInMemoryToken,
 } from '../../lib/apiClient';
+import { jwtDecode } from 'jwt-decode';
+import { UserService } from '../../services/UserService';
+
+export interface User {
+  id: string;
+  email: string;
+}
 
 interface AppContextProps {
   isDarkMode: boolean;
   userPreferredTheme: 'light' | 'dark' | 'system';
   changeTheme: (theme: string) => void;
-  userToken: string | null;
+  user: User | null;
   isSigningIn: boolean;
   signIn: (token: string, refreshToken: string) => void;
   signOut: () => void;
@@ -76,7 +83,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     setUserPreferredTheme(theme);
   }, []);
 
-  const [userToken, setUserToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(true);
 
   useEffect(() => {
@@ -85,8 +92,15 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         const credentials = await Keychain.getGenericPassword();
         if (credentials) {
           console.log('[AuthContext] Token found in keychain.');
-          setInMemoryToken(credentials.password);
-          setUserToken(credentials.password);
+          const accessToken = credentials.password;
+          setInMemoryToken(accessToken);
+
+          const decoded = jwtDecode<{ email: string; user_id: string }>(
+            accessToken,
+          );
+          if (decoded.user_id && decoded.email) {
+            setUser({ id: decoded.user_id, email: decoded.email });
+          }
 
           // Running sync after signing in. However, later we will also have to check if the user is premium user (though we don't have the functionality in place right now).
           syncService.runSync();
@@ -113,7 +127,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     const isOnline =
       netInfo.isConnected === true && netInfo.isInternetReachable === true;
 
-    if (isOnline && !wasOnline.current && userToken) {
+    if (isOnline && !wasOnline.current && user) {
       console.log(
         '[Network] Connection restored. Checking for pending operations.',
       );
@@ -121,7 +135,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     }
 
     wasOnline.current = isOnline;
-  }, [netInfo.isConnected, netInfo.isInternetReachable, userToken]);
+  }, [netInfo.isConnected, netInfo.isInternetReachable, user]);
 
   useEffect(() => {
     syncService.initialize({ onSyncStatusChange: setIsSyncing });
@@ -134,7 +148,6 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         await Keychain.setGenericPassword('refreshToken', refreshToken, {
           service: 'refreshToken',
         });
-        setUserToken(accessToken);
         setInMemoryToken(accessToken);
         console.log('[AuthContext] Tokens updated successfully.');
       } catch (error) {
@@ -147,8 +160,34 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const signIn = useCallback(
     async (accessToken: string, refreshToken: string) => {
       setIsSigningIn(true);
-      await updateTokens(accessToken, refreshToken);
-      setIsSigningIn(false);
+      try {
+        const decoded = jwtDecode<{ email: string; user_id: string }>(
+          accessToken,
+        );
+
+        if (!decoded.user_id || !decoded.email) {
+          throw new Error('Invalid token received from server.');
+        }
+
+        const userService = new UserService();
+        await userService.saveUserLocally({
+          id: decoded.user_id,
+          email: decoded.email,
+        });
+
+        await updateTokens(accessToken, refreshToken);
+        setUser({ id: decoded.user_id, email: decoded.email });
+      } catch (error: any) {
+        console.error(
+          '[AuthContext] Failed to process sign-in:',
+          error.message,
+        );
+        throw new Error(
+          `Sign-in failed: ${error.message || 'An unknown error occurred.'}`,
+        );
+      } finally {
+        setIsSigningIn(false);
+      }
     },
     [updateTokens],
   );
@@ -158,7 +197,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     try {
       await Keychain.resetGenericPassword();
       await Keychain.resetGenericPassword({ service: 'refreshToken' });
-      setUserToken(null);
+      setUser(null);
       setInMemoryToken(null);
       console.log('[AuthContext] Token removed successfully.');
     } catch (error) {
@@ -178,7 +217,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       userPreferredTheme,
       changeTheme,
       isDarkMode,
-      userToken,
+      user,
       isSigningIn,
       signIn,
       signOut,
@@ -188,7 +227,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       userPreferredTheme,
       changeTheme,
       isDarkMode,
-      userToken,
+      user,
       isSigningIn,
       signIn,
       signOut,

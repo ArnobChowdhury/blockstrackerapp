@@ -59,8 +59,8 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   const isTodaysTask = route.params?.isToday;
 
   const theme = useTheme();
-  const { userToken } = useAppContext();
-  const isLoggedIn = !!userToken;
+  const { user } = useAppContext();
+  const isLoggedIn = !!user;
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');

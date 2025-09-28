@@ -15,8 +15,7 @@ export default function CustomDrawerContent(
   const { navigation, state } = props;
   const activeRoute = state.routeNames[state.index];
 
-  const { userToken, signOut, userPreferredTheme, changeTheme } =
-    useAppContext();
+  const { user, signOut, userPreferredTheme, changeTheme } = useAppContext();
 
   return (
     <SafeAreaView style={styles.flexOne}>
@@ -58,7 +57,7 @@ export default function CustomDrawerContent(
               ]}
             />
           </View>
-          {userToken ? (
+          {user ? (
             <Drawer.Item
               label="Sign Out"
               onPress={signOut}

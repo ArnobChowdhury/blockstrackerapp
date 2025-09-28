@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Text, Button, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,9 +9,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useAppContext } from '../shared/contexts/useAppContext';
-import { API_URL } from '@env';
-import { jwtDecode } from 'jwt-decode';
-import { UserService } from '../services/UserService';
+import apiClient from '../lib/apiClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
@@ -19,8 +17,6 @@ const AuthScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { signIn } = useAppContext();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  const userService = useMemo(() => new UserService(), []);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -41,45 +37,14 @@ const AuthScreen = ({ navigation }: Props) => {
         throw new Error('Google Sign-In failed: No ID token received.');
       }
 
-      const response = await fetch(`${API_URL}/api/v1/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: idToken }),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          responseData.result?.message || 'Failed to sign in with Google.',
-        );
-      }
+      const response = await apiClient.post<{
+        result: { data: { accessToken: string; refreshToken: string } };
+      }>('/auth/google', { token: idToken });
+      console.log('[AuthScreen] Google Sign-In response:', response);
+      const responseData = response.data;
 
       const { accessToken, refreshToken } = responseData.result.data;
-      try {
-        const decoded = jwtDecode<{ email: string; user_id: string }>(
-          accessToken,
-        );
-
-        if (!decoded.user_id || !decoded.email) {
-          throw new Error('Invalid token received from server.');
-        }
-
-        await userService.saveUserLocally({
-          id: decoded.user_id,
-          email: decoded.email,
-        });
-
-        await signIn(accessToken, refreshToken);
-      } catch (localError: any) {
-        console.error(
-          'Failed to process token or save user locally:',
-          localError,
-        );
-        throw new Error(
-          'Failed to set up your account locally. Please try again.',
-        );
-      }
+      await signIn(accessToken, refreshToken);
     } catch (error: any) {
       console.log('error', error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -92,7 +57,9 @@ const AuthScreen = ({ navigation }: Props) => {
           'Google Play Services not available or outdated.',
         );
       } else {
-        Alert.alert('Sign-In Error', error.message);
+        const apiErrorMessage =
+          error.response?.data?.result?.message || error.message;
+        Alert.alert('Sign-In Error', apiErrorMessage);
         console.error('Google Sign-In Error:', error);
       }
     } finally {
