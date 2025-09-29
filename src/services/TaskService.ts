@@ -40,9 +40,9 @@ export class TaskService {
    */
   async createTask(
     taskData: NewTaskData,
-    isLoggedIn: boolean,
+    userId: string | null,
   ): Promise<string> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log('[TaskService] Offline user. Writing to local DB only.');
       return await this.taskRepo.createTask(taskData);
     }
@@ -83,6 +83,7 @@ export class TaskService {
         entity_type: 'task',
         entity_id: newId,
         payload: JSON.stringify(remoteTaskPayload),
+        userId,
       });
 
       await db.executeAsync('COMMIT;');
@@ -106,9 +107,9 @@ export class TaskService {
   async updateTask(
     taskId: string,
     taskData: NewTaskData,
-    isLoggedIn: boolean,
+    userId: string | null,
   ): Promise<void> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log('[TaskService] Offline user. Updating local DB only.');
       await this.taskRepo.updateTaskById(taskId, taskData);
       return;
@@ -154,6 +155,7 @@ export class TaskService {
         entity_type: 'task',
         entity_id: taskId,
         payload: JSON.stringify(remoteTaskPayload),
+        userId,
       });
       await db.executeAsync('COMMIT;');
       console.log(
@@ -171,13 +173,13 @@ export class TaskService {
     }
   }
 
-  async bulkFailTasks(taskIds: string[], isLoggedIn: boolean): Promise<void> {
+  async bulkFailTasks(taskIds: string[], userId: string | null): Promise<void> {
     if (taskIds.length === 0) {
       console.log('[TaskService] bulkFailTasks called with no task IDs.');
       return;
     }
 
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log('[TaskService] Offline user. Bulk failing tasks locally.');
       await this.taskRepo.bulkFailTasks(taskIds);
       return;
@@ -206,6 +208,7 @@ export class TaskService {
             entity_type: 'task',
             entity_id: taskId,
             payload: JSON.stringify(remoteTaskPayload),
+            userId,
           });
         }
       }
@@ -226,7 +229,7 @@ export class TaskService {
     }
   }
 
-  async failAllOverdueTasksAtOnce(isLoggedIn: boolean): Promise<void> {
+  async failAllOverdueTasksAtOnce(userId: string | null): Promise<void> {
     const overdueTasks = await this.taskRepo.getAllOverdueTasks();
     if (overdueTasks.length === 0) {
       console.log('[TaskService] No overdue tasks to fail.');
@@ -235,7 +238,7 @@ export class TaskService {
 
     const taskIds = overdueTasks.map(task => task.id);
 
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log(
         '[TaskService] Offline user. Failing all overdue tasks locally.',
       );
@@ -248,7 +251,7 @@ export class TaskService {
     );
 
     try {
-      await this.bulkFailTasks(taskIds, isLoggedIn);
+      await this.bulkFailTasks(taskIds, userId);
       console.log('[TaskService] All overdue tasks failed successfully.');
     } catch (error) {
       console.error('[TaskService] Failed to fail all overdue tasks.', error);
@@ -259,10 +262,10 @@ export class TaskService {
   async updateTaskCompletionStatus(
     taskId: string,
     status: TaskCompletionStatusEnum,
-    isLoggedIn: boolean,
+    userId: string | null,
     score?: number | null,
   ): Promise<void> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log(
         '[TaskService] Offline user. Updating task completion status locally.',
       );
@@ -296,6 +299,7 @@ export class TaskService {
         entity_type: 'task',
         entity_id: taskId,
         payload: JSON.stringify(remoteTaskPayload),
+        userId,
       });
       await db.executeAsync('COMMIT;');
 
@@ -309,9 +313,9 @@ export class TaskService {
   async updateTaskDueDate(
     taskId: string,
     dueDate: Date,
-    isLoggedIn: boolean,
+    userId: string | null,
   ): Promise<void> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log('[TaskService] Offline user. Updating due date locally.');
       await this.taskRepo.updateTaskDueDate(taskId, dueDate);
       return;
@@ -342,6 +346,7 @@ export class TaskService {
         entity_type: 'task',
         entity_id: taskId,
         payload: JSON.stringify(remoteTaskPayload),
+        userId,
       });
       await db.executeAsync('COMMIT;');
 

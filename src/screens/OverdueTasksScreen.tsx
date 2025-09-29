@@ -198,7 +198,7 @@ const OverdueScreen = ({ navigation }: Props) => {
     setBulkFailureOnGoing(true);
     setScreenRequestError('');
     try {
-      await taskService.bulkFailTasks(taskIds, isLoggedIn);
+      await taskService.bulkFailTasks(taskIds, user && user.id);
       await fetchOverdueTasks();
     } catch (err) {
       setScreenRequestError(
@@ -214,7 +214,7 @@ const OverdueScreen = ({ navigation }: Props) => {
     setBulkFailureOnGoing(true);
     setScreenRequestError('');
     try {
-      await taskService.failAllOverdueTasksAtOnce(isLoggedIn);
+      await taskService.failAllOverdueTasksAtOnce(user && user.id);
       await fetchOverdueTasks();
     } catch (err) {
       setScreenRequestError(

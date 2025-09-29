@@ -11,6 +11,7 @@ export interface PendingOperation {
   created_at: string;
 }
 export interface PendingOperationData {
+  userId: string;
   operation_type: 'create' | 'update' | 'delete';
   entity_type: 'task' | 'space' | 'tag' | 'repetitive_task_template';
   entity_id: string;
@@ -28,8 +29,8 @@ export class PendingOperationRepository {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO pending_operations (
-        operation_type, entity_type, entity_id, payload, created_at
-      ) VALUES (?, ?, ?, ?, ?);
+        operation_type, entity_type, entity_id, payload, created_at, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
       opData.operation_type,
@@ -37,6 +38,7 @@ export class PendingOperationRepository {
       opData.entity_id,
       opData.payload,
       now,
+      opData.userId,
     ];
 
     console.log('[DB Repo] Enqueuing pending operation:', { sql, params });

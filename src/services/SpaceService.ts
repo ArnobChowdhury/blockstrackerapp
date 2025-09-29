@@ -1,7 +1,6 @@
 import { db } from '../db';
 import { SpaceRepository, PendingOperationRepository } from '../db/repository';
 import type { Space } from '../types';
-import uuid from 'react-native-uuid';
 import { syncService } from './SyncService';
 
 export class SpaceService {
@@ -21,51 +20,54 @@ export class SpaceService {
     return this.spaceRepo.getSpaceById(id);
   }
 
-  async createSpace(name: string, isLoggedIn: boolean): Promise<string> {
-    if (!isLoggedIn) {
-      console.log('[SpaceService] Offline user. Writing to local DB only.');
-      return await this.spaceRepo.createSpace(name);
-    }
-
-    console.log('[SpaceService] Logged-in user. Using transactional outbox.');
-
-    const now = new Date();
-    const newId = uuid.v4() as string;
-
-    const remotePayload = {
-      id: newId,
-      name: name,
-      createdAt: now.toISOString(),
-      modifiedAt: now.toISOString(),
-    };
-
+  async createSpace(name: string, userId: string | null): Promise<string> {
+    let newId: string;
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
 
-      await this.spaceRepo._internalAddSpace(newId, name);
+      newId = await this.spaceRepo.createSpace(name, userId);
 
-      await this.pendingOpRepo.enqueueOperation({
-        operation_type: 'create',
-        entity_type: 'space',
-        entity_id: newId,
-        payload: JSON.stringify(remotePayload),
-      });
+      if (userId) {
+        console.log(
+          '[SpaceService] Logged-in user. Enqueuing pending operation.',
+        );
+        const now = new Date();
+        const remotePayload = {
+          id: newId,
+          name: name,
+          createdAt: now.toISOString(),
+          modifiedAt: now.toISOString(),
+        };
+
+        await this.pendingOpRepo.enqueueOperation({
+          userId: userId,
+          operation_type: 'create',
+          entity_type: 'space',
+          entity_id: newId,
+          payload: JSON.stringify(remotePayload),
+        });
+      } else {
+        console.log(
+          '[SpaceService] Anonymous user. Skipping pending operation.',
+        );
+      }
 
       await db.executeAsync('COMMIT;');
       console.log(
-        `[SpaceService] Transaction for creating space ${newId} committed.`,
+        `[SpaceService] Transaction for creating space ${newId} committed successfully.`,
       );
 
-      syncService.runSync();
-
-      return newId;
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
       console.error(
-        `[SpaceService] Transaction for creating space ${newId} failed. Rolling back.`,
+        '[SpaceService] Transaction for creating space failed. Rolling back.',
         error,
       );
       await db.executeAsync('ROLLBACK;');
       throw error;
     }
+    return newId;
   }
 }

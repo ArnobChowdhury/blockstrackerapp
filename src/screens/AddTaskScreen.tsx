@@ -188,7 +188,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
             shouldBeScored: finalShouldBeScored,
             spaceId: selectedSpace && selectedSpace.id,
           },
-          isLoggedIn,
+          user && user.id,
         );
       } else {
         await repetitiveTaskTemplateService.createRepetitiveTaskTemplate(
@@ -272,7 +272,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
   const handleAddSpace = useCallback(
     async (spaceName: string) => {
       try {
-        await spaceService.createSpace(spaceName, isLoggedIn);
+        await spaceService.createSpace(spaceName, user && user.id);
         handleLoadSpace();
       } catch (error: any) {
         Alert.alert(
@@ -284,7 +284,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
         console.error('[DB] Failed to add space:', error);
       }
     },
-    [isLoggedIn, spaceService, handleLoadSpace],
+    [spaceService, user, handleLoadSpace],
   );
 
   const handleSpaceSelect = useCallback(
