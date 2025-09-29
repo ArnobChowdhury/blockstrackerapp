@@ -147,6 +147,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         const repetitiveTaskTemplate =
           await repetitiveTaskTemplateService.getRepetitiveTaskTemplateById(
             route.params.taskId,
+            user && user.id,
           );
         if (!repetitiveTaskTemplate) {
           throw new Error(`Task with ID ${route.params.taskId} not found.`);
@@ -180,10 +181,11 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       setIsLoadingTask(false);
     }
   }, [
-    taskService,
-    repetitiveTaskTemplateService,
     route.params.taskId,
     isRepetitiveTaskTemplate,
+    taskService,
+    repetitiveTaskTemplateService,
+    user,
     fetchSpace,
   ]);
 

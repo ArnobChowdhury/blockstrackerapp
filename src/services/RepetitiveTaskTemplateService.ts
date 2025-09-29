@@ -111,6 +111,7 @@ export class RepetitiveTaskTemplateService {
       await this.rttRepo.updateRepetitiveTaskTemplateById(
         templateId,
         templateData,
+        userId,
       );
       return;
     }
@@ -159,6 +160,7 @@ export class RepetitiveTaskTemplateService {
       await this.rttRepo.updateRepetitiveTaskTemplateById(
         templateId,
         templateData,
+        userId,
       );
       await this.pendingOpRepo.enqueueOperation({
         operation_type: 'update',

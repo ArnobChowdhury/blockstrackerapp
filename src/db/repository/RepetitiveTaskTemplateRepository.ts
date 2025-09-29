@@ -158,9 +158,10 @@ export class RepetitiveTaskTemplateRepository {
   async updateRepetitiveTaskTemplateById(
     templateId: string,
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
+    userId: string | null,
   ): Promise<QueryResult> {
     const now = new Date().toISOString();
-    const sql = `
+    let sql = `
       UPDATE repetitive_task_templates
       SET
         title = ?,
@@ -177,7 +178,7 @@ export class RepetitiveTaskTemplateRepository {
         should_be_scored = ?,
         modified_at = ?,
         space_id = ?
-      WHERE id = ?;
+      WHERE id = ?
     `;
 
     const params: any[] = [
@@ -197,6 +198,13 @@ export class RepetitiveTaskTemplateRepository {
       repetitiveTaskTemplateData.spaceId,
       templateId,
     ];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log(
       '[DB Repo] Attempting to UPDATE repetitive task template by id:',
