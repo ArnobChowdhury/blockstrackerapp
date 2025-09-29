@@ -55,6 +55,7 @@ export interface RepetitiveTaskTemplate {
   createdAt: string;
   modifiedAt: string;
   spaceId: string | null;
+  userId: string | null;
 }
 
 export interface Space {

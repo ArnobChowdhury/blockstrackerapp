@@ -75,15 +75,23 @@ export class RepetitiveTaskTemplateRepository {
 
   async getRepetitiveTaskTemplateById(
     templateId: string,
+    userId: string | null,
   ): Promise<RepetitiveTaskTemplate | null> {
-    const sql = `
+    let sql = `
       SELECT
         id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
-        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
+        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id, user_id
       FROM repetitive_task_templates
-      WHERE id = ?;
+      WHERE id = ?
     `;
     const params: any[] = [templateId];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log(
       '[DB Repo] Attempting to SELECT repetitive task template by id:',
@@ -126,6 +134,7 @@ export class RepetitiveTaskTemplateRepository {
             createdAt: row.created_at as string,
             modifiedAt: row.modified_at as string,
             spaceId: row.space_id as string | null,
+            userId: row.user_id as string | null,
           };
 
           return repetitiveTaskTemplate;
@@ -283,6 +292,7 @@ export class RepetitiveTaskTemplateRepository {
               createdAt: repetitiveTaskTemplate.created_at as string,
               modifiedAt: repetitiveTaskTemplate.modified_at as string,
               spaceId: repetitiveTaskTemplate.space_id as string | null,
+              userId: repetitiveTaskTemplate.user_id as string | null,
             };
 
             repetitiveTaskTemplates.push(transformedRepetitiveTaskTemplate);
@@ -491,6 +501,7 @@ export class RepetitiveTaskTemplateRepository {
               createdAt: rtt.created_at as string,
               modifiedAt: rtt.modified_at as string,
               spaceId: rtt.space_id as string | null,
+              userId: rtt.user_id as string | null,
             });
           }
         }

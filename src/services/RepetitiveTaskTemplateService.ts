@@ -27,8 +27,9 @@ export class RepetitiveTaskTemplateService {
 
   async getRepetitiveTaskTemplateById(
     id: string,
+    userId: string | null,
   ): Promise<RepetitiveTaskTemplate | null> {
-    return this.rttRepo.getRepetitiveTaskTemplateById(id);
+    return this.rttRepo.getRepetitiveTaskTemplateById(id, userId);
   }
 
   async createRepetitiveTaskTemplate(
@@ -122,6 +123,7 @@ export class RepetitiveTaskTemplateService {
 
     const originalTemplate = await this.rttRepo.getRepetitiveTaskTemplateById(
       templateId,
+      userId,
     );
     if (!originalTemplate) {
       throw new Error(
@@ -196,6 +198,7 @@ export class RepetitiveTaskTemplateService {
 
     const originalTemplate = await this.rttRepo.getRepetitiveTaskTemplateById(
       templateId,
+      userId,
     );
     if (!originalTemplate) {
       throw new Error(
