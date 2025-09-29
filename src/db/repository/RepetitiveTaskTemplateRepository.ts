@@ -17,28 +17,19 @@ export class RepetitiveTaskTemplateRepository {
 
   async createRepetitiveTaskTemplate(
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
+    userId: string | null,
   ): Promise<string> {
     const newId = uuid.v4() as string;
-    await this._internalAddRepetitiveTaskTemplate({
-      ...repetitiveTaskTemplateData,
-      id: newId,
-    });
-    return newId;
-  }
-
-  async _internalAddRepetitiveTaskTemplate(
-    repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData & { id: string },
-  ): Promise<void> {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO repetitive_task_templates (
         id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
-        should_be_scored, created_at, modified_at, space_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        should_be_scored, created_at, modified_at, space_id, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     const params = [
-      repetitiveTaskTemplateData.id,
+      newId,
       repetitiveTaskTemplateData.title,
       repetitiveTaskTemplateData.description,
       repetitiveTaskTemplateData.schedule,
@@ -54,6 +45,7 @@ export class RepetitiveTaskTemplateRepository {
       now,
       now,
       repetitiveTaskTemplateData.spaceId,
+      userId,
     ];
 
     console.log('[DB Repo] Attempting to INSERT Repetitive Task Template:', {
@@ -63,7 +55,11 @@ export class RepetitiveTaskTemplateRepository {
 
     try {
       await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Repetitive Task Template INSERT successful:');
+      console.log(
+        '[DB Repo] Repetitive Task Template INSERT successful for id:',
+        newId,
+      );
+      return newId;
     } catch (error: any) {
       console.error(
         '[DB Repo] Failed to INSERT Repetitive Task Template:',
