@@ -191,7 +191,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   ) => {
     await repetitiveTaskTemplateService.stopRepetitiveTask(
       repetitiveTaskTemplateId,
-      isLoggedIn,
+      user && user.id,
     );
     await fetchTasksByCategory();
   };

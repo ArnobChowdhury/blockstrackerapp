@@ -181,7 +181,7 @@ const TodayScreen = ({ navigation }: Props) => {
 
       try {
         await repetitiveTaskTemplateService.generateDueRepetitiveTasks(
-          isLoggedIn,
+          user && user.id,
         );
 
         const countOfTaskOverdue = await taskService.getCountOfTasksOverdue();
@@ -200,7 +200,7 @@ const TodayScreen = ({ navigation }: Props) => {
         setIsLoadingTasks(false);
       }
     },
-    [repetitiveTaskTemplateService, taskService, isLoggedIn],
+    [repetitiveTaskTemplateService, user, taskService],
   );
 
   const refreshCurrentView = useCallback(async () => {

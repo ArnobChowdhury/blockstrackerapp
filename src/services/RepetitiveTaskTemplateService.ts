@@ -34,9 +34,9 @@ export class RepetitiveTaskTemplateService {
 
   async createRepetitiveTaskTemplate(
     templateData: NewRepetitiveTaskTemplateData,
-    isLoggedIn: boolean,
+    userId: string | null,
   ): Promise<string> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log(
         '[RepetitiveTaskTemplateService] Offline user. Writing to local DB only.',
       );
@@ -83,6 +83,7 @@ export class RepetitiveTaskTemplateService {
         entity_type: 'repetitive_task_template',
         entity_id: newId,
         payload: JSON.stringify(remotePayload),
+        userId,
       });
       await db.executeAsync('COMMIT;');
 
@@ -102,9 +103,9 @@ export class RepetitiveTaskTemplateService {
   async updateRepetitiveTaskTemplate(
     templateId: string,
     templateData: NewRepetitiveTaskTemplateData,
-    isLoggedIn: boolean,
+    userId: string | null,
   ): Promise<void> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log(
         '[RepetitiveTaskTemplateService] Offline user. Updating local DB only.',
       );
@@ -164,6 +165,7 @@ export class RepetitiveTaskTemplateService {
         entity_type: 'repetitive_task_template',
         entity_id: templateId,
         payload: JSON.stringify(remotePayload),
+        userId,
       });
       await db.executeAsync('COMMIT;');
 
@@ -180,9 +182,9 @@ export class RepetitiveTaskTemplateService {
 
   async stopRepetitiveTask(
     templateId: string,
-    isLoggedIn: boolean,
+    userId: string | null,
   ): Promise<void> {
-    if (!isLoggedIn) {
+    if (!userId) {
       console.log(
         '[RepetitiveTaskTemplateService] Offline user. Stopping template locally.',
       );
@@ -217,6 +219,7 @@ export class RepetitiveTaskTemplateService {
         entity_type: 'repetitive_task_template',
         entity_id: templateId,
         payload: JSON.stringify(remotePayload),
+        userId,
       });
       await db.executeAsync('COMMIT;');
       console.log(
@@ -234,7 +237,7 @@ export class RepetitiveTaskTemplateService {
     }
   }
 
-  async generateDueRepetitiveTasks(isLoggedIn: boolean): Promise<void> {
+  async generateDueRepetitiveTasks(userId: string | null): Promise<void> {
     console.log('[RepetitiveTaskTemplateService] Generating due tasks...');
     const todayStart = dayjs().startOf('day');
 
@@ -296,7 +299,7 @@ export class RepetitiveTaskTemplateService {
             };
 
             try {
-              await this.taskService.createTask(newTaskData, isLoggedIn);
+              await this.taskService.createTask(newTaskData, userId);
               await this.rttRepo.updateLastDateOfTaskGeneration(
                 template.id,
                 targetDueDate.toISOString(),

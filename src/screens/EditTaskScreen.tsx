@@ -66,7 +66,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
   const theme = useTheme();
   const { user } = useAppContext();
-  const isLoggedIn = !!user;
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [isRepetitiveTask, setIsRepetitiveTask] = useState<boolean>(false);
   const [taskTemplateId, setTaskTemplateId] = useState<string | null>(null);
@@ -253,7 +252,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
             shouldBeScored: shouldBeScored ? 1 : 0,
             spaceId: selectedSpace && selectedSpace.id,
           },
-          isLoggedIn,
+          user && user.id,
         );
       }
 

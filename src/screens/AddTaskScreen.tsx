@@ -60,7 +60,6 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
 
   const theme = useTheme();
   const { user } = useAppContext();
-  const isLoggedIn = !!user;
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
@@ -201,7 +200,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
             shouldBeScored: finalShouldBeScored,
             spaceId: selectedSpace && selectedSpace.id,
           },
-          isLoggedIn,
+          user && user.id,
         );
       }
 
