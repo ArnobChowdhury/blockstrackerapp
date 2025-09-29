@@ -230,6 +230,7 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   private async _getAllActiveRepetitiveTaskTemplatesByCondition(
+    userId: string | null,
     additionalConditionSql = '',
     additionalConditionParams: any[] = [],
   ): Promise<RepetitiveTaskTemplate[]> {
@@ -244,10 +245,17 @@ export class RepetitiveTaskTemplateRepository {
       allParams.push(...additionalConditionParams);
     }
 
+    if (userId) {
+      allWhereClauses.push('user_id = ?');
+      allParams.push(userId);
+    } else {
+      allWhereClauses.push('user_id IS NULL');
+    }
+
     const sql = `
       SELECT
         id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
-        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
+        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id, user_id
       FROM repetitive_task_templates
       WHERE ${allWhereClauses.join(' AND ')}
       ORDER BY created_at DESC;
@@ -255,7 +263,7 @@ export class RepetitiveTaskTemplateRepository {
 
     console.log(
       '[DB Repo] Attempting to SELECT all active repetitive task templates:',
-      { sql },
+      { sql, params: allParams },
     );
     try {
       const resultSet: QueryResult = await this.db.executeAsync(sql, allParams);
@@ -322,37 +330,43 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async getAllActiveDailyRepetitiveTaskTemplates(): Promise<
-    RepetitiveTaskTemplate[]
-  > {
+  async getAllActiveDailyRepetitiveTaskTemplates(
+    userId: string | null,
+  ): Promise<RepetitiveTaskTemplate[]> {
     return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      userId,
       'schedule = ?',
       [TaskScheduleTypeEnum.Daily],
     );
   }
 
-  async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(): Promise<
-    RepetitiveTaskTemplate[]
-  > {
+  async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(
+    userId: string | null,
+  ): Promise<RepetitiveTaskTemplate[]> {
     return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      userId,
       'schedule = ?',
       [TaskScheduleTypeEnum.SpecificDaysInAWeek],
     );
   }
 
   async getActiveDailyRepetitiveTaskTemplatesBySpace(
+    userId: string | null,
     spaceId: string,
   ): Promise<RepetitiveTaskTemplate[]> {
     return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      userId,
       'schedule = ? AND space_id = ?',
       [TaskScheduleTypeEnum.Daily, spaceId],
     );
   }
 
   async getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+    userId: string | null,
     spaceId: string,
   ): Promise<RepetitiveTaskTemplate[]> {
     return this._getAllActiveRepetitiveTaskTemplatesByCondition(
+      userId,
       'schedule = ? AND space_id = ?',
       [TaskScheduleTypeEnum.SpecificDaysInAWeek, spaceId],
     );

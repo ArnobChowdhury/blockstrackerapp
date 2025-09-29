@@ -121,7 +121,7 @@ const HabitsScreen = ({ navigation }: Props) => {
   );
   const taskService = useMemo(() => new TaskService(), []);
 
-  const { isDarkMode } = useAppContext();
+  const { user, isDarkMode } = useAppContext();
   const theme = useTheme();
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
@@ -137,9 +137,13 @@ const HabitsScreen = ({ navigation }: Props) => {
 
     try {
       const dailies =
-        await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates();
+        await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates(
+          user && user.id,
+        );
       const weeklies =
-        await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+        await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(
+          user && user.id,
+        );
 
       console.log('[Habits] Fetched daily tasks count:', dailies.length);
       console.log(
@@ -166,7 +170,7 @@ const HabitsScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [repetitiveTaskTemplateService]);
+  }, [repetitiveTaskTemplateService, user]);
 
   useFocusEffect(
     useCallback(() => {

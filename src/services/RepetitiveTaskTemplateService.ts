@@ -327,28 +327,36 @@ export class RepetitiveTaskTemplateService {
     }
   }
 
-  async getAllActiveDailyRepetitiveTaskTemplates(): Promise<
-    RepetitiveTaskTemplate[]
-  > {
-    return this.rttRepo.getAllActiveDailyRepetitiveTaskTemplates();
+  async getAllActiveDailyRepetitiveTaskTemplates(
+    userId: string | null,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    return this.rttRepo.getAllActiveDailyRepetitiveTaskTemplates(userId);
   }
 
-  async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(): Promise<
-    RepetitiveTaskTemplate[]
-  > {
-    return this.rttRepo.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+  async getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(
+    userId: string | null,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    return this.rttRepo.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(
+      userId,
+    );
   }
 
   async getActiveDailyRepetitiveTaskTemplatesBySpace(
     spaceId: string,
+    userId: string | null,
   ): Promise<RepetitiveTaskTemplate[]> {
-    return this.rttRepo.getActiveDailyRepetitiveTaskTemplatesBySpace(spaceId);
+    return this.rttRepo.getActiveDailyRepetitiveTaskTemplatesBySpace(
+      userId,
+      spaceId,
+    );
   }
 
   async getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
     spaceId: string,
+    userId: string | null,
   ): Promise<RepetitiveTaskTemplate[]> {
     return this.rttRepo.getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
+      userId,
       spaceId,
     );
   }

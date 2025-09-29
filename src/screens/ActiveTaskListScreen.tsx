@@ -105,11 +105,13 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
           fetchedTasks =
             await repetitiveTaskTemplateService.getActiveDailyRepetitiveTaskTemplatesBySpace(
               spaceId,
+              user && user.id,
             );
         } else if (TaskScheduleTypeEnum.SpecificDaysInAWeek === category) {
           fetchedTasks =
             await repetitiveTaskTemplateService.getActiveSpecificDaysInAWeekRepetitiveTaskTemplatesBySpace(
               spaceId,
+              user && user.id,
             );
         }
       } else if (TaskScheduleTypeEnum.Unscheduled === category) {
@@ -118,10 +120,14 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         fetchedTasks = await taskService.getAllActiveOnceTasks();
       } else if (TaskScheduleTypeEnum.Daily === category) {
         fetchedTasks =
-          await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates();
+          await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates(
+            user && user.id,
+          );
       } else if (TaskScheduleTypeEnum.SpecificDaysInAWeek === category) {
         fetchedTasks =
-          await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates();
+          await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(
+            user && user.id,
+          );
       }
 
       console.log(
@@ -138,7 +144,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [category, spaceId, taskService, repetitiveTaskTemplateService]);
+  }, [category, spaceId, taskService, repetitiveTaskTemplateService, user]);
 
   const [screenRequestError, setScreenRequestError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
