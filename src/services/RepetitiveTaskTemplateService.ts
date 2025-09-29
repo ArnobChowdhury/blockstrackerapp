@@ -245,7 +245,9 @@ export class RepetitiveTaskTemplateService {
     const todayStart = dayjs().startOf('day');
 
     try {
-      const dueTemplates = await this.rttRepo.getDueRepetitiveTaskTemplates();
+      const dueTemplates = await this.rttRepo.getDueRepetitiveTaskTemplates(
+        userId,
+      );
 
       if (dueTemplates.length === 0) {
         console.log(

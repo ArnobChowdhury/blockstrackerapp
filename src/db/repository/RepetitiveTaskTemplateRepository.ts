@@ -478,24 +478,34 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async getDueRepetitiveTaskTemplates(): Promise<RepetitiveTaskTemplate[]> {
-    const sql = `
+  async getDueRepetitiveTaskTemplates(
+    userId: string | null,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    let sql = `
       SELECT
         id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday, priority,
-        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id
+        created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id, user_id
       FROM repetitive_task_templates
       WHERE is_active = 1 AND (
         (DATE(last_date_of_task_generation, 'localtime') < DATE('now', 'localtime')) OR 
         last_date_of_task_generation IS NULL
       )
     `;
+    const params: any[] = [];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log(
       '[DB Repo] Attempting to SELECT due repetitive task templates:',
-      { sql },
+      { sql, params },
     );
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
       const dueTemplates: RepetitiveTaskTemplate[] = [];
       if (resultSet.rows) {
         for (let i = 0; i < resultSet.rows.length; i++) {
