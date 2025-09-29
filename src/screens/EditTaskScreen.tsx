@@ -103,7 +103,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const fetchSpace = useCallback(
     async (spaceId: string) => {
       try {
-        const space = await spaceService.getSpaceById(spaceId);
+        const space = await spaceService.getSpaceById(spaceId, user && user.id);
         if (!space) {
           throw new Error(`Space with ID ${spaceId} not found.`);
         }
@@ -112,7 +112,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         console.error('[EditTaskScreen] Failed to fetch space');
       }
     },
-    [spaceService],
+    [spaceService, user],
   );
 
   const fetchTaskOrTemplate = useCallback(async () => {
@@ -315,7 +315,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const handleLoadSpace = useCallback(async () => {
     setIsLoadingSpaces(true);
     try {
-      const spaces = await spaceService.getAllSpaces();
+      const spaces = await spaceService.getAllSpaces(user && user.id);
       setAllSpaces(spaces);
     } catch (error: any) {
       setSnackbarVisible(true);
@@ -327,7 +327,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [spaceService]);
+  }, [spaceService, user]);
 
   const handleAddSpace = useCallback(
     async (spaceName: string) => {

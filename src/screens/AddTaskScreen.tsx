@@ -254,7 +254,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     setIsLoadingSpaces(true);
 
     try {
-      const spaces = await spaceService.getAllSpaces();
+      const spaces = await spaceService.getAllSpaces(user && user.id);
       setAllSpaces(spaces);
     } catch (error: any) {
       setSnackbarVisible(true);
@@ -266,7 +266,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [spaceService]);
+  }, [spaceService, user]);
 
   const handleAddSpace = useCallback(
     async (spaceName: string) => {

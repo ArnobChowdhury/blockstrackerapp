@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SpaceService } from '../services/SpaceService';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { TaskService } from '../services/TaskService';
+import { useAppContext } from '../shared/contexts/useAppContext';
 
 type Props = NativeStackScreenProps<ActiveStackParamList, 'ActiveCategoryList'>;
 
@@ -30,6 +31,7 @@ const categoriesToDisplay: TaskScheduleTypeEnum[] = [
 
 const ActiveCategoryListScreen = ({ navigation }: Props) => {
   const theme = useTheme();
+  const { user } = useAppContext();
   const spaceService = useMemo(() => new SpaceService(), []);
   const taskService = useMemo(() => new TaskService(), []);
   const repetitiveTaskTemplateService = useMemo(
@@ -63,7 +65,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     setIsLoadingSpaces(true);
 
     try {
-      const spaces = await spaceService.getAllSpaces();
+      const spaces = await spaceService.getAllSpaces(user && user.id);
       setAllSpaces(spaces);
     } catch (error: any) {
       setSnackbarVisible(true);
@@ -75,7 +77,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [spaceService]);
+  }, [spaceService, user]);
 
   const [countForCategories, setCountForCategories] =
     useState<Record<TaskScheduleTypeEnum, number>>();

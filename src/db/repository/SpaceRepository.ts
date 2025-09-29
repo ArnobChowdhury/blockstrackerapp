@@ -9,17 +9,28 @@ export class SpaceRepository {
     this.db = database;
   }
 
-  async getSpaceById(spaceId: string): Promise<Space | null> {
-    const sql = `
-      SELECT id, name, created_at, modified_at FROM spaces WHERE id = ?;
+  async getSpaceById(
+    spaceId: string,
+    userId: string | null,
+  ): Promise<Space | null> {
+    let sql = `
+      SELECT id, name, created_at, modified_at, user_id FROM spaces WHERE id = ?
     `;
+    const params: any[] = [spaceId];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log('[DB Repo] Attempting to SELECT space by id:', {
       sql,
-      spaceId,
+      params,
     });
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, [spaceId]);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
       console.log(
         '[DB Repo] SELECT successful, rows found:',
         resultSet.rows?.length,
@@ -33,6 +44,7 @@ export class SpaceRepository {
             name: space.name as string,
             createdAt: space.created_at as string,
             modifiedAt: space.modified_at as string,
+            userId: space.user_id as string | null,
           };
 
           return transformedSpace;
@@ -48,14 +60,22 @@ export class SpaceRepository {
     }
   }
 
-  async getAllSpaces(): Promise<Space[]> {
-    const sql = `
-      SELECT id, name, created_at, modified_at FROM spaces;
+  async getAllSpaces(userId: string | null): Promise<Space[]> {
+    let sql = `
+      SELECT id, name, created_at, modified_at, user_id FROM spaces
     `;
+    const params: any[] = [];
 
-    console.log('[DB Repo] Attempting to SELECT all spaces:', { sql });
+    if (userId) {
+      sql += ' WHERE user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' WHERE user_id IS NULL;';
+    }
+
+    console.log('[DB Repo] Attempting to SELECT all spaces:', { sql, params });
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
       console.log(
         '[DB Repo] SELECT successful, rows found:',
         resultSet.rows?.length,
@@ -72,6 +92,7 @@ export class SpaceRepository {
               name: space.name as string,
               createdAt: space.created_at as string,
               modifiedAt: space.modified_at as string,
+              userId: space.user_id as string | null,
             };
 
             spaces.push(transformedSpace);

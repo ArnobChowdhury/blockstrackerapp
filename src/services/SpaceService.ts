@@ -12,12 +12,12 @@ export class SpaceService {
     this.pendingOpRepo = new PendingOperationRepository(db);
   }
 
-  async getAllSpaces(): Promise<Space[]> {
-    return this.spaceRepo.getAllSpaces();
+  async getAllSpaces(userId: string | null): Promise<Space[]> {
+    return this.spaceRepo.getAllSpaces(userId);
   }
 
-  async getSpaceById(id: string): Promise<Space | null> {
-    return this.spaceRepo.getSpaceById(id);
+  async getSpaceById(id: string, userId: string | null): Promise<Space | null> {
+    return this.spaceRepo.getSpaceById(id, userId);
   }
 
   async createSpace(name: string, userId: string | null): Promise<string> {

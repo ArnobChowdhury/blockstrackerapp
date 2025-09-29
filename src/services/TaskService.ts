@@ -35,7 +35,7 @@ export class TaskService {
    * If the user is logged in, it uses the Outbox Pattern to ensure the local
    * database write and the sync operation are queued atomically.
    * @param taskData The data for the new task.
-   * @param isLoggedIn The current authentication status of the user.
+   * @param userId The userId of the user.
    * @returns The UUID of the newly created task.
    */
   async createTask(

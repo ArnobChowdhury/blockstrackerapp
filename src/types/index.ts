@@ -62,6 +62,7 @@ export interface Space {
   name: string;
   createdAt: string;
   modifiedAt: string;
+  userId: string | null;
 }
 
 export enum DaysInAWeek {

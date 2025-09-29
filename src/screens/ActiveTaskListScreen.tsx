@@ -73,7 +73,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
 
   useLayoutEffect(() => {
     if (spaceId) {
-      spaceService.getSpaceById(spaceId).then(space => {
+      spaceService.getSpaceById(spaceId, user && user.id).then(space => {
         if (!space) {
           return;
         }
@@ -86,7 +86,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         title: category,
       });
     }
-  }, [navigation, category, spaceId, spaceService]);
+  }, [navigation, category, spaceId, spaceService, user]);
 
   const fetchTasksByCategory = useCallback(async () => {
     console.log(`[TaskList-${category}] Fetching tasks...`);
