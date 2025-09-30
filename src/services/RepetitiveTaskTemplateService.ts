@@ -363,15 +363,18 @@ export class RepetitiveTaskTemplateService {
     );
   }
 
-  async countAllActiveRepetitiveTasksByCategory() {
-    return this.rttRepo.countAllActiveRepetitiveTasksByCategory();
+  async countAllActiveRepetitiveTasksByCategory(userId: string | null) {
+    return this.rttRepo.countAllActiveRepetitiveTasksByCategory(userId);
   }
 
-  async countActiveRepetitiveTasksBySpaceId(spaceId: string) {
+  async countActiveRepetitiveTasksBySpaceId(
+    spaceId: string,
+    userId: string | null,
+  ) {
     if (!spaceId) {
       throw new Error('A spaceId must be provided.');
     }
 
-    return this.rttRepo.countActiveRepetitiveTasksBySpaceId(spaceId);
+    return this.rttRepo.countActiveRepetitiveTasksBySpaceId(spaceId, userId);
   }
 }

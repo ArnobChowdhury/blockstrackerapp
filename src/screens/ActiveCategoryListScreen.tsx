@@ -86,7 +86,9 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     const countForNonRepetitiveTasks =
       await taskService.countAllActiveTasksByCategory();
     const countForRepetitiveTasks =
-      await repetitiveTaskTemplateService.countAllActiveRepetitiveTasksByCategory();
+      await repetitiveTaskTemplateService.countAllActiveRepetitiveTasksByCategory(
+        user && user.id,
+      );
 
     const counts = {
       ...countForNonRepetitiveTasks,
@@ -94,7 +96,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
     };
 
     setCountForCategories(counts);
-  }, [repetitiveTaskTemplateService, taskService]);
+  }, [repetitiveTaskTemplateService, taskService, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -122,6 +124,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
       const countForRepetitiveTasks =
         await repetitiveTaskTemplateService.countActiveRepetitiveTasksBySpaceId(
           spaceId,
+          user && user.id,
         );
 
       const counts = {
@@ -131,7 +134,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
       setCountForSpace(counts);
     },
-    [repetitiveTaskTemplateService, taskService],
+    [repetitiveTaskTemplateService, taskService, user],
   );
 
   const handleSpaceExpansion = async (expandedId: string | number) => {

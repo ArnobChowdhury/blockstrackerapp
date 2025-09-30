@@ -373,15 +373,23 @@ export class RepetitiveTaskTemplateRepository {
   }
 
   async _countActiveTasksByCondition(
+    userId: string | null,
     conditionSql: string,
     conditionParams: any[],
   ): Promise<number> {
-    const sql = `
+    let sql = `
       SELECT COUNT(*) as count
       FROM repetitive_task_templates
-      WHERE ${conditionSql} AND is_active = ?;
+      WHERE ${conditionSql} AND is_active = ?
     `;
-    const params = [...conditionParams, 1];
+    let params = [...conditionParams, 1];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log('[DB Repo] Attempting to SELECT count of active tasks:', {
       sql,
@@ -406,15 +414,16 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async countAllActiveRepetitiveTasksByCategory() {
+  async countAllActiveRepetitiveTasksByCategory(userId: string | null) {
     const whereClause = 'schedule = ?';
 
     const countOfDailyTasks = await this._countActiveTasksByCondition(
+      userId,
       whereClause,
       [TaskScheduleTypeEnum.Daily],
     );
     const countOfSpecificDaysInAWeekTasks =
-      await this._countActiveTasksByCondition(whereClause, [
+      await this._countActiveTasksByCondition(userId, whereClause, [
         TaskScheduleTypeEnum.SpecificDaysInAWeek,
       ]);
 
@@ -425,16 +434,20 @@ export class RepetitiveTaskTemplateRepository {
     };
   }
 
-  async countActiveRepetitiveTasksBySpaceId(spaceId: string) {
+  async countActiveRepetitiveTasksBySpaceId(
+    spaceId: string,
+    userId: string | null,
+  ) {
     const whereClause = 'schedule = ? AND space_id = ?';
 
     const countOfDailyTasks = await this._countActiveTasksByCondition(
+      userId,
       whereClause,
       [TaskScheduleTypeEnum.Daily, spaceId],
     );
 
     const countOfSpecificDaysInAWeekTasks =
-      await this._countActiveTasksByCondition(whereClause, [
+      await this._countActiveTasksByCondition(userId, whereClause, [
         TaskScheduleTypeEnum.SpecificDaysInAWeek,
         spaceId,
       ]);
