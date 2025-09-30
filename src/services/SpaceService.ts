@@ -22,29 +22,24 @@ export class SpaceService {
 
   async createSpace(name: string, userId: string | null): Promise<string> {
     let newId: string;
+    let newSpace: Space;
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
 
-      newId = await this.spaceRepo.createSpace(name, userId);
+      newSpace = await this.spaceRepo.createSpace(name, userId);
+      newId = newSpace.id;
 
       if (userId) {
         console.log(
           '[SpaceService] Logged-in user. Enqueuing pending operation.',
         );
-        const now = new Date();
-        const remotePayload = {
-          id: newId,
-          name: name,
-          createdAt: now.toISOString(),
-          modifiedAt: now.toISOString(),
-        };
 
         await this.pendingOpRepo.enqueueOperation({
           userId: userId,
           operation_type: 'create',
           entity_type: 'space',
           entity_id: newId,
-          payload: JSON.stringify(remotePayload),
+          payload: JSON.stringify(newSpace),
         });
       } else {
         console.log(

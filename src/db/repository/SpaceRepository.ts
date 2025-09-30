@@ -109,7 +109,7 @@ export class SpaceRepository {
     }
   }
 
-  async createSpace(name: string, userId: string | null): Promise<string> {
+  async createSpace(name: string, userId: string | null): Promise<Space> {
     const newId = uuid.v4() as string;
     const now = new Date().toISOString();
     const sql = `
@@ -124,7 +124,11 @@ export class SpaceRepository {
     try {
       await this.db.executeAsync(sql, params);
       console.log('[DB Repo] Space INSERT successful for id:', newId);
-      return newId;
+      const newSpace = await this.getSpaceById(newId, userId);
+      if (!newSpace) {
+        throw new Error('Failed to fetch newly created space.');
+      }
+      return newSpace;
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT space:', error);
       throw new Error(
