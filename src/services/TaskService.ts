@@ -1,7 +1,6 @@
 import { db } from '../db';
 import { TaskRepository, PendingOperationRepository } from '../db/repository';
 import type { NewTaskData, Task } from '../types';
-import uuid from 'react-native-uuid';
 import { TaskCompletionStatusEnum } from '../types';
 import { syncService } from './SyncService';
 
@@ -42,66 +41,42 @@ export class TaskService {
     taskData: NewTaskData,
     userId: string | null,
   ): Promise<string> {
-    if (!userId) {
-      console.log('[TaskService] Offline user. Writing to local DB only.');
-      return await this.taskRepo.createTask(taskData);
-    }
-
-    console.log('[TaskService] Logged-in user. Using transactional outbox.');
-
-    const now = new Date();
-    const newId = uuid.v4() as string; // Generate ID upfront to use in both tables
-
-    const localTaskPayload = { ...taskData, id: newId };
-
-    const remoteTaskPayload = {
-      id: newId,
-      isActive: true,
-      title: taskData.title,
-      description: taskData.description || '',
-      schedule: taskData.schedule,
-      priority: 3,
-      completionStatus: TaskCompletionStatusEnum.INCOMPLETE, // Default for new task
-      dueDate: taskData.dueDate ? taskData.dueDate.toISOString() : null,
-      shouldBeScored: taskData.shouldBeScored === 1,
-      score: null,
-      timeOfDay: taskData.timeOfDay,
-      repetitiveTaskTemplateId: taskData.repetitiveTaskTemplateId || null,
-      createdAt: now.toISOString(),
-      modifiedAt: now.toISOString(),
-      tags: [],
-      spaceId: taskData.spaceId,
-    };
-
+    let newId: string;
+    let newTask: Task;
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
 
-      await this.taskRepo._internalAddTask(localTaskPayload);
+      newTask = await this.taskRepo.createTask(taskData, userId);
+      newId = newTask.id;
 
-      await this.pendingOpRepo.enqueueOperation({
-        operation_type: 'create',
-        entity_type: 'task',
-        entity_id: newId,
-        payload: JSON.stringify(remoteTaskPayload),
-        userId,
-      });
+      if (userId) {
+        console.log(
+          '[TaskService] Logged-in user. Enqueuing pending operation.',
+        );
+
+        await this.pendingOpRepo.enqueueOperation({
+          userId: userId,
+          operation_type: 'create',
+          entity_type: 'task',
+          entity_id: newId,
+          payload: JSON.stringify({ ...newTask, tags: [] }),
+        });
+      }
 
       await db.executeAsync('COMMIT;');
-      console.log(
-        `[TaskService] Transaction for creating task ${newId} committed successfully.`,
-      );
 
-      syncService.runSync();
-
-      return newId;
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
       console.error(
-        `[TaskService] Transaction for creating task ${newId} failed. Rolling back.`,
+        '[TaskService] Transaction for creating task failed. Rolling back.',
         error,
       );
       await db.executeAsync('ROLLBACK;');
       throw error;
     }
+    return newId;
   }
 
   async updateTask(

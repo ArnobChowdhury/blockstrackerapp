@@ -25,34 +25,26 @@ export class TaskRepository {
   }
 
   /**
-   * Creates a new task with a generated UUID. Ideal for simple, non-transactional writes.
+   * Creates a new task with a generated UUID.
    * @param taskData The data for the new task.
+   * @param userId The ID of the user creating the task, or null for anonymous.
    * @returns The UUID of the newly created task.
    */
-  async createTask(taskData: NewTaskData): Promise<string> {
+  async createTask(
+    taskData: NewTaskData,
+    userId: string | null,
+  ): Promise<Task> {
     const newId = uuid.v4() as string;
-    await this._internalAddTask({ ...taskData, id: newId });
-    return newId;
-  }
-
-  /**
-   * Internal method to add a task with a pre-defined ID.
-   * This should be used within a transaction managed by a service.
-   * @param taskData The data for the new task, including its ID.
-   */
-  async _internalAddTask(
-    taskData: NewTaskData & { id: string },
-  ): Promise<void> {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO tasks (
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
-        should_be_scored, created_at, modified_at, space_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        should_be_scored, created_at, modified_at, space_id, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     const params = [
-      taskData.id,
+      newId,
       taskData.title,
       taskData.description,
       taskData.schedule,
@@ -63,13 +55,19 @@ export class TaskRepository {
       now,
       now,
       taskData.spaceId,
+      userId,
     ];
 
     console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
 
     try {
       await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Task INSERT successful for id:', taskData.id);
+      console.log('[DB Repo] Task INSERT successful for id:', newId);
+      const newTask = await this.getTaskById(newId);
+      if (!newTask) {
+        throw new Error('Failed to fetch newly created task.');
+      }
+      return newTask;
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT task:', error);
       throw new Error(
