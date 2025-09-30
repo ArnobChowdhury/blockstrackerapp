@@ -565,13 +565,24 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async stopRepetitiveTask(repetitiveTaskId: string): Promise<void> {
-    const sql = `
+  async stopRepetitiveTask(
+    repetitiveTaskId: string,
+    userId: string | null,
+  ): Promise<RepetitiveTaskTemplate | null> {
+    const now = new Date().toISOString();
+    let sql = `
       UPDATE repetitive_task_templates
-      SET is_active = 0
-      WHERE id = ?;
+      SET is_active = 0, modified_at = ?
+      WHERE id = ?
     `;
-    const params = [repetitiveTaskId];
+    const params = [now, repetitiveTaskId];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log('[DB Repo] Attempting to stop repetitive task:', {
       sql,
@@ -580,6 +591,7 @@ export class RepetitiveTaskTemplateRepository {
 
     try {
       await this.db.executeAsync(sql, params);
+      return await this.getRepetitiveTaskTemplateById(repetitiveTaskId, userId);
     } catch (error: any) {
       console.error('[DB Repo] Failed to stop repetitive task:', error);
       throw new Error(

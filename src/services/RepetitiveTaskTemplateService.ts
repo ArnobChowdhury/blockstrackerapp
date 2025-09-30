@@ -186,50 +186,40 @@ export class RepetitiveTaskTemplateService {
     templateId: string,
     userId: string | null,
   ): Promise<void> {
-    if (!userId) {
-      console.log(
-        '[RepetitiveTaskTemplateService] Offline user. Stopping template locally.',
-      );
-      await this.rttRepo.stopRepetitiveTask(templateId);
-      return;
-    }
-
-    console.log(
-      '[RepetitiveTaskTemplateService] Logged-in user. Using transactional outbox to stop template.',
-    );
-
-    const originalTemplate = await this.rttRepo.getRepetitiveTaskTemplateById(
-      templateId,
-      userId,
-    );
-    if (!originalTemplate) {
-      throw new Error(
-        `[RepetitiveTaskTemplateService] Cannot stop non-existent template with ID ${templateId}`,
-      );
-    }
-
-    const remotePayload = {
-      ...originalTemplate,
-      isActive: false,
-      modifiedAt: new Date().toISOString(),
-    };
-
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
-      await this.rttRepo.stopRepetitiveTask(templateId);
-      await this.pendingOpRepo.enqueueOperation({
-        operation_type: 'update',
-        entity_type: 'repetitive_task_template',
-        entity_id: templateId,
-        payload: JSON.stringify(remotePayload),
+
+      const originalTemplate = await this.rttRepo.stopRepetitiveTask(
+        templateId,
         userId,
-      });
-      await db.executeAsync('COMMIT;');
-      console.log(
-        `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} committed.`,
       );
 
-      syncService.runSync();
+      if (userId) {
+        console.log(
+          '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation to stop template.',
+        );
+        if (!originalTemplate) {
+          throw new Error(
+            `[RepetitiveTaskTemplateService] Cannot stop non-existent or unauthorized template with ID ${templateId}`,
+          );
+        }
+
+        const remotePayload = { ...originalTemplate };
+
+        await this.pendingOpRepo.enqueueOperation({
+          operation_type: 'update',
+          entity_type: 'repetitive_task_template',
+          entity_id: templateId,
+          payload: JSON.stringify(remotePayload),
+          userId,
+        });
+      }
+
+      await db.executeAsync('COMMIT;');
+
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
       console.error(
         `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} failed. Rolling back.`,
