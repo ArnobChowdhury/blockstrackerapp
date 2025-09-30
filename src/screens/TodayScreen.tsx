@@ -530,20 +530,21 @@ const TodayScreen = ({ navigation }: Props) => {
             sections={taskSections}
             keyExtractor={item => item.id.toString()}
             renderItem={({ item, section }) => {
-              const theme =
+              const sectionTheme =
                 SECTION_THEMES[section.title] || DEFAULT_SECTION_THEME;
               return renderTaskItem({
                 item,
-                sectionBackgroundColor: theme.backgroundColor,
+                sectionBackgroundColor: sectionTheme.backgroundColor,
               });
             }}
             renderSectionHeader={({ section: { title } }) => {
-              const theme = SECTION_THEMES[title] || DEFAULT_SECTION_THEME;
+              const sectionTheme =
+                SECTION_THEMES[title] || DEFAULT_SECTION_THEME;
               return (
                 <View
                   style={[
                     styles.sectionHeaderContainer,
-                    { backgroundColor: theme.backgroundColor },
+                    { backgroundColor: sectionTheme.backgroundColor },
                   ]}>
                   <Text
                     style={[
