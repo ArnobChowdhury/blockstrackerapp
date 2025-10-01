@@ -16,6 +16,28 @@ export class TaskRepository {
     this.db = database;
   }
 
+  private _transformRowToTask(row: any): Task {
+    return {
+      id: row.id as string,
+      title: row.title as string,
+      isActive: (row.is_active === 1) as boolean,
+      description: row.description as string | null,
+      schedule: row.schedule as TaskScheduleTypeEnum,
+      dueDate: row.due_date as string | null,
+      timeOfDay: row.time_of_day as TimeOfDay | null,
+      completionStatus: row.completion_status as TaskCompletionStatusEnum,
+      shouldBeScored: (row.should_be_scored === 1) as boolean,
+      score: row.score as number | null,
+      createdAt: row.created_at as string,
+      modifiedAt: row.modified_at as string,
+      repetitiveTaskTemplateId: row.repetitive_task_template_id as
+        | string
+        | null,
+      spaceId: row.space_id as string | null,
+      userId: row.user_id as string | null,
+    };
+  }
+
   async getTaskById(taskId: string): Promise<Task | null> {
     const task = await this._getActiveTasksByCondition('id = ?', [taskId]);
     if (task) {
@@ -40,7 +62,7 @@ export class TaskRepository {
       INSERT INTO tasks (
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
         should_be_scored, created_at, modified_at, space_id, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
     `;
 
     const params = [
@@ -61,13 +83,16 @@ export class TaskRepository {
     console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
 
     try {
-      await this.db.executeAsync(sql, params);
+      const resultSet = await this.db.executeAsync(sql, params);
       console.log('[DB Repo] Task INSERT successful for id:', newId);
-      const newTask = await this.getTaskById(newId);
-      if (!newTask) {
-        throw new Error('Failed to fetch newly created task.');
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        if (row) {
+          return this._transformRowToTask(row);
+        }
       }
-      return newTask;
+
+      throw new Error('Failed to create task: no rows returned.');
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT task:', error);
       throw new Error(
@@ -79,9 +104,10 @@ export class TaskRepository {
   async updateTaskById(
     taskId: string,
     taskData: NewTaskData,
-  ): Promise<QueryResult> {
+    userId: string | null,
+  ): Promise<Task | null> {
     const now = new Date().toISOString();
-    const sql = `
+    let sql = `
       UPDATE tasks
       SET
         title = ?,
@@ -92,7 +118,7 @@ export class TaskRepository {
         should_be_scored = ?,
         modified_at = ?,
         space_id = ?
-      WHERE id = ?;
+      WHERE id = ?
     `;
 
     const params = [
@@ -107,11 +133,32 @@ export class TaskRepository {
       taskId,
     ];
 
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+    sql += ' RETURNING *;';
+
     console.log('[DB Repo] Attempting to UPDATE Task:', { sql, params });
 
-    const result: QueryResult = await this.db.executeAsync(sql, params);
-    console.log('[DB Repo] Task UPDATE successful:', result);
-    return result;
+    try {
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Task UPDATE successful:', resultSet);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        if (row) {
+          return this._transformRowToTask(row);
+        }
+      }
+      return null;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to UPDATE task:', error);
+      throw new Error(
+        `Failed to update task: ${error.message || 'Unknown error'}`,
+      );
+    }
   }
 
   async getAllOverdueTasks(): Promise<Task[]> {
@@ -397,27 +444,7 @@ export class TaskRepository {
         for (let i = 0; i < resultSet.rows.length; i++) {
           const task = resultSet.rows.item(i);
           if (task) {
-            const transformedTask: Task = {
-              id: task.id as string,
-              title: task.title as string,
-              isActive: (task.is_active === 1) as boolean,
-              description: task.description as string | null,
-              schedule: task.schedule as TaskScheduleTypeEnum,
-              dueDate: task.due_date as string | null,
-              timeOfDay: task.time_of_day as TimeOfDay | null,
-              completionStatus:
-                task.completion_status as TaskCompletionStatusEnum,
-              shouldBeScored: (task.should_be_scored === 1) as boolean,
-              score: task.score as number | null,
-              createdAt: task.created_at as string,
-              modifiedAt: task.modified_at as string,
-              repetitiveTaskTemplateId: task.repetitive_task_template_id as
-                | string
-                | null,
-              spaceId: task.space_id as string | null,
-            };
-
-            tasks.push(transformedTask);
+            tasks.push(this._transformRowToTask(task));
           }
         }
       }
@@ -469,25 +496,7 @@ export class TaskRepository {
         for (let i = 0; i < resultSet.rows.length; i++) {
           const row = resultSet.rows.item(i);
           if (row) {
-            tasks.push({
-              id: row.id as string,
-              title: row.title as string,
-              isActive: (row.is_active === 1) as boolean,
-              description: row.description as string | null,
-              schedule: row.schedule as TaskScheduleTypeEnum,
-              dueDate: row.due_date as string | null,
-              timeOfDay: row.time_of_day as TimeOfDay | null,
-              shouldBeScored: (row.should_be_scored === 1) as boolean,
-              score: row.score as number | null,
-              completionStatus:
-                row.completion_status as TaskCompletionStatusEnum,
-              createdAt: row.created_at as string,
-              modifiedAt: row.modified_at as string,
-              repetitiveTaskTemplateId: row.repetitive_task_template_id as
-                | string
-                | null,
-              spaceId: row.space_id as string | null,
-            });
+            tasks.push(this._transformRowToTask(row));
           }
         }
       }

@@ -84,60 +84,42 @@ export class TaskService {
     taskData: NewTaskData,
     userId: string | null,
   ): Promise<void> {
-    if (!userId) {
-      console.log('[TaskService] Offline user. Updating local DB only.');
-      await this.taskRepo.updateTaskById(taskId, taskData);
-      return;
-    }
-
-    console.log(
-      '[TaskService] Logged-in user. Using transactional outbox for update.',
-    );
-
-    const now = new Date();
-
-    const originalTask = await this.taskRepo.getTaskById(taskId);
-    if (!originalTask) {
-      throw new Error(
-        `[TaskService] Cannot update non-existent task with ID ${taskId}`,
-      );
-    }
-
-    const remoteTaskPayload = {
-      id: taskId,
-      isActive: true,
-      title: taskData.title,
-      description: taskData.description || '',
-      schedule: taskData.schedule,
-      priority: 3,
-      completionStatus: TaskCompletionStatusEnum.INCOMPLETE,
-      dueDate: taskData.dueDate ? taskData.dueDate.toISOString() : null,
-      shouldBeScored: taskData.shouldBeScored === 1,
-      score: null,
-      timeOfDay: taskData.timeOfDay,
-      repetitiveTaskTemplateId: taskData.repetitiveTaskTemplateId || null,
-      createdAt: originalTask.createdAt,
-      modifiedAt: now.toISOString(),
-      tags: [],
-      spaceId: taskData.spaceId,
-    };
-
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
-      await this.taskRepo.updateTaskById(taskId, taskData);
-      await this.pendingOpRepo.enqueueOperation({
-        operation_type: 'update',
-        entity_type: 'task',
-        entity_id: taskId,
-        payload: JSON.stringify(remoteTaskPayload),
+
+      const updatedTask = await this.taskRepo.updateTaskById(
+        taskId,
+        taskData,
         userId,
-      });
-      await db.executeAsync('COMMIT;');
-      console.log(
-        `[TaskService] Transaction for updating task ${taskId} committed.`,
       );
 
-      syncService.runSync();
+      if (userId) {
+        if (!updatedTask) {
+          throw new Error(
+            `[TaskService] Cannot update non-existent or unauthorized task with ID ${taskId}`,
+          );
+        }
+
+        console.log(
+          '[TaskService] Logged-in user. Enqueuing pending operation for update.',
+        );
+
+        const remoteTaskPayload = { ...updatedTask, tags: [] };
+
+        await this.pendingOpRepo.enqueueOperation({
+          operation_type: 'update',
+          entity_type: 'task',
+          entity_id: taskId,
+          payload: JSON.stringify(remoteTaskPayload),
+          userId,
+        });
+      }
+
+      await db.executeAsync('COMMIT;');
+
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
       console.error(
         `[TaskService] Transaction for updating task ${taskId} failed. Rolling back.`,
