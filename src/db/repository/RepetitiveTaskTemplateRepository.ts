@@ -73,6 +73,33 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
+  private _transformRowToTemplate(row: any): RepetitiveTaskTemplate {
+    return {
+      id: row.id as string,
+      title: row.title as string,
+      isActive: (row.is_active === 1) as boolean,
+      description: row.description as string | null,
+      schedule: row.schedule as TaskScheduleTypeEnum,
+      priority: row.priority as number,
+      timeOfDay: row.time_of_day as TimeOfDay | null,
+      shouldBeScored: (row.should_be_scored === 1) as boolean,
+      lastDateOfTaskGeneration: row.last_date_of_task_generation as
+        | string
+        | null,
+      monday: (row.monday === 1) as boolean | null,
+      tuesday: (row.tuesday === 1) as boolean | null,
+      wednesday: (row.wednesday === 1) as boolean | null,
+      thursday: (row.thursday === 1) as boolean | null,
+      friday: (row.friday === 1) as boolean | null,
+      saturday: (row.saturday === 1) as boolean | null,
+      sunday: (row.sunday === 1) as boolean | null,
+      createdAt: row.created_at as string,
+      modifiedAt: row.modified_at as string,
+      spaceId: row.space_id as string | null,
+      userId: row.user_id as string | null,
+    };
+  }
+
   async getRepetitiveTaskTemplateById(
     templateId: string,
     userId: string | null,
@@ -112,32 +139,7 @@ export class RepetitiveTaskTemplateRepository {
         const row = resultSet.rows.item(0);
 
         if (row) {
-          const repetitiveTaskTemplate: RepetitiveTaskTemplate = {
-            id: row.id as string,
-            title: row.title as string,
-            isActive: (row.is_active === 1) as boolean,
-            description: row.description as string | null,
-            schedule: row.schedule as TaskScheduleTypeEnum,
-            priority: row.priority as number,
-            timeOfDay: row.time_of_day as TimeOfDay | null,
-            shouldBeScored: (row.should_be_scored === 1) as boolean,
-            lastDateOfTaskGeneration: row.last_date_of_task_generation as
-              | string
-              | null,
-            monday: (row.monday === 1) as boolean | null,
-            tuesday: (row.tuesday === 1) as boolean | null,
-            wednesday: (row.wednesday === 1) as boolean | null,
-            thursday: (row.thursday === 1) as boolean | null,
-            friday: (row.friday === 1) as boolean | null,
-            saturday: (row.saturday === 1) as boolean | null,
-            sunday: (row.sunday === 1) as boolean | null,
-            createdAt: row.created_at as string,
-            modifiedAt: row.modified_at as string,
-            spaceId: row.space_id as string | null,
-            userId: row.user_id as string | null,
-          };
-
-          return repetitiveTaskTemplate;
+          return this._transformRowToTemplate(row);
         }
       }
 
@@ -278,40 +280,9 @@ export class RepetitiveTaskTemplateRepository {
         for (let i = 0; i < resultSet.rows.length; i++) {
           const repetitiveTaskTemplate = resultSet.rows.item(i);
           if (repetitiveTaskTemplate) {
-            const transformedRepetitiveTaskTemplate: RepetitiveTaskTemplate = {
-              id: repetitiveTaskTemplate.id as string,
-              title: repetitiveTaskTemplate.title as string,
-              isActive: (repetitiveTaskTemplate.is_active === 1) as boolean,
-              description: repetitiveTaskTemplate.description as string | null,
-              schedule: repetitiveTaskTemplate.schedule as TaskScheduleTypeEnum,
-              priority: repetitiveTaskTemplate.priority as number,
-              shouldBeScored: (repetitiveTaskTemplate.should_be_scored ===
-                1) as boolean,
-              monday: (repetitiveTaskTemplate.monday === 1) as boolean | null,
-              tuesday: (repetitiveTaskTemplate.tuesday === 1) as boolean | null,
-              wednesday: (repetitiveTaskTemplate.wednesday === 1) as
-                | boolean
-                | null,
-              thursday: (repetitiveTaskTemplate.thursday === 1) as
-                | boolean
-                | null,
-              friday: (repetitiveTaskTemplate.friday === 1) as boolean | null,
-              saturday: (repetitiveTaskTemplate.saturday === 1) as
-                | boolean
-                | null,
-              sunday: (repetitiveTaskTemplate.sunday === 1) as boolean | null,
-              timeOfDay: repetitiveTaskTemplate.time_of_day as TimeOfDay | null,
-              lastDateOfTaskGeneration:
-                repetitiveTaskTemplate.last_date_of_task_generation as
-                  | string
-                  | null,
-              createdAt: repetitiveTaskTemplate.created_at as string,
-              modifiedAt: repetitiveTaskTemplate.modified_at as string,
-              spaceId: repetitiveTaskTemplate.space_id as string | null,
-              userId: repetitiveTaskTemplate.user_id as string | null,
-            };
-
-            repetitiveTaskTemplates.push(transformedRepetitiveTaskTemplate);
+            repetitiveTaskTemplates.push(
+              this._transformRowToTemplate(repetitiveTaskTemplate),
+            );
           }
         }
       }
@@ -524,30 +495,7 @@ export class RepetitiveTaskTemplateRepository {
         for (let i = 0; i < resultSet.rows.length; i++) {
           const rtt = resultSet.rows.item(i);
           if (rtt) {
-            dueTemplates.push({
-              id: rtt.id as string,
-              title: rtt.title as string,
-              isActive: (rtt.is_active === 1) as boolean,
-              description: rtt.description as string | null,
-              schedule: rtt.schedule as TaskScheduleTypeEnum,
-              priority: rtt.priority as number,
-              shouldBeScored: (rtt.should_be_scored === 1) as boolean,
-              monday: (rtt.monday === 1) as boolean | null,
-              tuesday: (rtt.tuesday === 1) as boolean | null,
-              wednesday: (rtt.wednesday === 1) as boolean | null,
-              thursday: (rtt.thursday === 1) as boolean | null,
-              friday: (rtt.friday === 1) as boolean | null,
-              saturday: (rtt.saturday === 1) as boolean | null,
-              sunday: (rtt.sunday === 1) as boolean | null,
-              timeOfDay: rtt.time_of_day as TimeOfDay | null,
-              lastDateOfTaskGeneration: rtt.last_date_of_task_generation as
-                | string
-                | null,
-              createdAt: rtt.created_at as string,
-              modifiedAt: rtt.modified_at as string,
-              spaceId: rtt.space_id as string | null,
-              userId: rtt.user_id as string | null,
-            });
+            dueTemplates.push(this._transformRowToTemplate(rtt));
           }
         }
       }
@@ -578,11 +526,12 @@ export class RepetitiveTaskTemplateRepository {
     const params = [now, repetitiveTaskId];
 
     if (userId) {
-      sql += ' AND user_id = ?;';
+      sql += ' AND user_id = ? ';
       params.push(userId);
     } else {
-      sql += ' AND user_id IS NULL;';
+      sql += ' AND user_id IS NULL ';
     }
+    sql += 'RETURNING *;';
 
     console.log('[DB Repo] Attempting to stop repetitive task:', {
       sql,
@@ -590,8 +539,14 @@ export class RepetitiveTaskTemplateRepository {
     });
 
     try {
-      await this.db.executeAsync(sql, params);
-      return await this.getRepetitiveTaskTemplateById(repetitiveTaskId, userId);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        return this._transformRowToTemplate(row);
+      }
+
+      return null;
     } catch (error: any) {
       console.error('[DB Repo] Failed to stop repetitive task:', error);
       throw new Error(
