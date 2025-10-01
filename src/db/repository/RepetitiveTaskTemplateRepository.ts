@@ -18,14 +18,14 @@ export class RepetitiveTaskTemplateRepository {
   async createRepetitiveTaskTemplate(
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
-  ): Promise<string> {
+  ): Promise<RepetitiveTaskTemplate> {
     const newId = uuid.v4() as string;
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO repetitive_task_templates (
         id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
         should_be_scored, created_at, modified_at, space_id, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
     `;
 
     const params = [
@@ -54,12 +54,18 @@ export class RepetitiveTaskTemplateRepository {
     });
 
     try {
-      await this.db.executeAsync(sql, params);
+      const resultSet = await this.db.executeAsync(sql, params);
       console.log(
         '[DB Repo] Repetitive Task Template INSERT successful for id:',
         newId,
       );
-      return newId;
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        return this._transformRowToTemplate(row);
+      }
+      throw new Error(
+        'Failed to create repetitive task template: no rows returned.',
+      );
     } catch (error: any) {
       console.error(
         '[DB Repo] Failed to INSERT Repetitive Task Template:',
@@ -161,7 +167,7 @@ export class RepetitiveTaskTemplateRepository {
     templateId: string,
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
-  ): Promise<QueryResult> {
+  ): Promise<RepetitiveTaskTemplate | null> {
     const now = new Date().toISOString();
     let sql = `
       UPDATE repetitive_task_templates
@@ -202,11 +208,12 @@ export class RepetitiveTaskTemplateRepository {
     ];
 
     if (userId) {
-      sql += ' AND user_id = ?;';
+      sql += ' AND user_id = ?';
       params.push(userId);
     } else {
-      sql += ' AND user_id IS NULL;';
+      sql += ' AND user_id IS NULL';
     }
+    sql += ' RETURNING *;';
 
     console.log(
       '[DB Repo] Attempting to UPDATE repetitive task template by id:',
@@ -217,7 +224,12 @@ export class RepetitiveTaskTemplateRepository {
     );
 
     try {
-      return await this.db.executeAsync(sql, params);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        return this._transformRowToTemplate(row);
+      }
+      return null;
     } catch (error: any) {
       console.error(
         '[DB Repo] Failed to UPDATE repetitive task template by id:',

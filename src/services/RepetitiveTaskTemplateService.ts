@@ -5,7 +5,6 @@ import {
 } from '../db/repository';
 import {
   NewRepetitiveTaskTemplateData,
-  DaysInAWeek,
   RepetitiveTaskTemplate,
   NewTaskData,
   TaskScheduleTypeEnum,
@@ -36,11 +35,11 @@ export class RepetitiveTaskTemplateService {
     templateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
   ): Promise<string> {
-    let newId: string;
+    let newTemplate: RepetitiveTaskTemplate;
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
 
-      newId = await this.rttRepo.createRepetitiveTaskTemplate(
+      newTemplate = await this.rttRepo.createRepetitiveTaskTemplate(
         templateData,
         userId,
       );
@@ -49,37 +48,13 @@ export class RepetitiveTaskTemplateService {
         console.log(
           '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation.',
         );
-        const now = new Date();
-        const remotePayload = {
-          id: newId,
-          isActive: true,
-          title: templateData.title,
-          description: templateData.description,
-          schedule: templateData.schedule,
-          priority: 3,
-          shouldBeScored: templateData.shouldBeScored === 1,
-          monday: templateData.days.includes(DaysInAWeek.Monday),
-          tuesday: templateData.days.includes(DaysInAWeek.Tuesday),
-          wednesday: templateData.days.includes(DaysInAWeek.Wednesday),
-          thursday: templateData.days.includes(DaysInAWeek.Thursday),
-          friday: templateData.days.includes(DaysInAWeek.Friday),
-          saturday: templateData.days.includes(DaysInAWeek.Saturday),
-          sunday: templateData.days.includes(DaysInAWeek.Sunday),
-          timeOfDay: templateData.timeOfDay,
-          lastDateOfTaskGeneration: null,
-          createdAt: now.toISOString(),
-          modifiedAt: now.toISOString(),
-          tags: [],
-          spaceId: templateData.spaceId,
-          userId: userId,
-        };
 
         await this.pendingOpRepo.enqueueOperation({
           userId: userId,
           operation_type: 'create',
           entity_type: 'repetitive_task_template',
-          entity_id: newId,
-          payload: JSON.stringify(remotePayload),
+          entity_id: newTemplate.id,
+          payload: JSON.stringify({ ...newTemplate, tags: [] }),
         });
       }
 
@@ -96,7 +71,7 @@ export class RepetitiveTaskTemplateService {
       await db.executeAsync('ROLLBACK;');
       throw error;
     }
-    return newId;
+    return newTemplate.id;
   }
 
   async updateRepetitiveTaskTemplate(
@@ -104,74 +79,43 @@ export class RepetitiveTaskTemplateService {
     templateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
   ): Promise<void> {
-    if (!userId) {
-      console.log(
-        '[RepetitiveTaskTemplateService] Offline user. Updating local DB only.',
-      );
-      await this.rttRepo.updateRepetitiveTaskTemplateById(
-        templateId,
-        templateData,
-        userId,
-      );
-      return;
-    }
-
-    console.log(
-      '[RepetitiveTaskTemplateService] Logged-in user. Using transactional outbox for update.',
-    );
-
-    const now = new Date();
-
-    const originalTemplate = await this.rttRepo.getRepetitiveTaskTemplateById(
-      templateId,
-      userId,
-    );
-    if (!originalTemplate) {
-      throw new Error(
-        `[RepetitiveTaskTemplateService] Cannot update non-existent template with ID ${templateId}`,
-      );
-    }
-
-    const remotePayload = {
-      id: templateId,
-      isActive: true,
-      title: templateData.title,
-      description: templateData.description,
-      schedule: templateData.schedule,
-      priority: 3,
-      shouldBeScored: templateData.shouldBeScored === 1,
-      monday: templateData.days.includes(DaysInAWeek.Monday),
-      tuesday: templateData.days.includes(DaysInAWeek.Tuesday),
-      wednesday: templateData.days.includes(DaysInAWeek.Wednesday),
-      thursday: templateData.days.includes(DaysInAWeek.Thursday),
-      friday: templateData.days.includes(DaysInAWeek.Friday),
-      saturday: templateData.days.includes(DaysInAWeek.Saturday),
-      sunday: templateData.days.includes(DaysInAWeek.Sunday),
-      timeOfDay: templateData.timeOfDay,
-      lastDateOfTaskGeneration: null,
-      createdAt: originalTemplate.createdAt,
-      modifiedAt: now.toISOString(),
-      tags: [],
-      spaceId: templateData.spaceId,
-    };
-
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
-      await this.rttRepo.updateRepetitiveTaskTemplateById(
-        templateId,
-        templateData,
-        userId,
-      );
-      await this.pendingOpRepo.enqueueOperation({
-        operation_type: 'update',
-        entity_type: 'repetitive_task_template',
-        entity_id: templateId,
-        payload: JSON.stringify(remotePayload),
-        userId,
-      });
+
+      const updatedTemplate =
+        await this.rttRepo.updateRepetitiveTaskTemplateById(
+          templateId,
+          templateData,
+          userId,
+        );
+
+      if (userId) {
+        if (!updatedTemplate) {
+          throw new Error(
+            `[RepetitiveTaskTemplateService] Cannot update non-existent or unauthorized template with ID ${templateId}`,
+          );
+        }
+
+        console.log(
+          '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation for update.',
+        );
+
+        const remotePayload = { ...updatedTemplate, tags: [] };
+
+        await this.pendingOpRepo.enqueueOperation({
+          operation_type: 'update',
+          entity_type: 'repetitive_task_template',
+          entity_id: templateId,
+          payload: JSON.stringify(remotePayload),
+          userId,
+        });
+      }
+
       await db.executeAsync('COMMIT;');
 
-      syncService.runSync();
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
       console.error(
         `[RepetitiveTaskTemplateService] Transaction for updating template ${templateId} failed. Rolling back.`,
