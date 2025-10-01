@@ -136,34 +136,21 @@ export class TaskService {
       return;
     }
 
-    if (!userId) {
-      console.log('[TaskService] Offline user. Bulk failing tasks locally.');
-      await this.taskRepo.bulkFailTasks(taskIds);
-      return;
-    }
-
-    console.log(
-      '[TaskService] Logged-in user. Using transactional outbox for bulk fail.',
-    );
-
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
 
-      await this.taskRepo.bulkFailTasks(taskIds);
+      const updatedTasks = await this.taskRepo.bulkFailTasks(taskIds, userId);
 
-      for (const taskId of taskIds) {
-        const originalTask = await this.taskRepo.getTaskById(taskId);
-        if (originalTask) {
-          const remoteTaskPayload = {
-            ...originalTask,
-            completionStatus: TaskCompletionStatusEnum.FAILED,
-            modifiedAt: new Date().toISOString(),
-          };
-
+      if (userId) {
+        console.log(
+          '[TaskService] Logged-in user. Enqueuing pending operations for bulk fail.',
+        );
+        for (const task of updatedTasks) {
+          const remoteTaskPayload = { ...task, tags: [] };
           await this.pendingOpRepo.enqueueOperation({
             operation_type: 'update',
             entity_type: 'task',
-            entity_id: taskId,
+            entity_id: task.id,
             payload: JSON.stringify(remoteTaskPayload),
             userId,
           });
@@ -171,11 +158,10 @@ export class TaskService {
       }
 
       await db.executeAsync('COMMIT;');
-      console.log(
-        '[TaskService] Transaction for bulk failing tasks committed.',
-      );
 
-      syncService.runSync();
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
       console.error(
         '[TaskService] Transaction for bulk failing tasks failed. Rolling back.',
@@ -187,31 +173,35 @@ export class TaskService {
   }
 
   async failAllOverdueTasksAtOnce(userId: string | null): Promise<void> {
-    const overdueTasks = await this.taskRepo.getAllOverdueTasks();
-    if (overdueTasks.length === 0) {
-      console.log('[TaskService] No overdue tasks to fail.');
-      return;
-    }
-
-    const taskIds = overdueTasks.map(task => task.id);
-
-    if (!userId) {
-      console.log(
-        '[TaskService] Offline user. Failing all overdue tasks locally.',
-      );
-      await this.taskRepo.failAllOverdueTasksAtOnce();
-      return;
-    }
-
-    console.log(
-      '[TaskService] Logged-in user. Failing all overdue tasks with outbox.',
-    );
-
     try {
-      await this.bulkFailTasks(taskIds, userId);
-      console.log('[TaskService] All overdue tasks failed successfully.');
+      await db.executeAsync('BEGIN TRANSACTION;');
+      const failedTasks = await this.taskRepo.failAllOverdueTasksAtOnce(userId);
+
+      if (userId && failedTasks.length > 0) {
+        console.log(
+          '[TaskService] Logged-in user. Enqueuing pending operations for all overdue tasks.',
+        );
+        for (const task of failedTasks) {
+          const remoteTaskPayload = { ...task, tags: [] };
+          await this.pendingOpRepo.enqueueOperation({
+            operation_type: 'update',
+            entity_type: 'task',
+            entity_id: task.id,
+            payload: JSON.stringify(remoteTaskPayload),
+            userId,
+          });
+        }
+      }
+      await db.executeAsync('COMMIT;');
+      if (userId) {
+        syncService.runSync();
+      }
     } catch (error) {
-      console.error('[TaskService] Failed to fail all overdue tasks.', error);
+      console.error(
+        '[TaskService] Transaction for failing all overdue tasks failed. Rolling back.',
+        error,
+      );
+      await db.executeAsync('ROLLBACK;');
       throw error;
     }
   }

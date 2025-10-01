@@ -272,30 +272,49 @@ export class TaskRepository {
     };
   }
 
-  async bulkFailTasks(taskIds: string[]): Promise<QueryResult> {
+  async bulkFailTasks(
+    taskIds: string[],
+    userId: string | null,
+  ): Promise<Task[]> {
     if (taskIds.length === 0) {
       console.log('[DB Repo] bulkFailTasks called with no task IDs. Skipping.');
-      return { rowsAffected: 0, insertId: undefined, rows: undefined };
+      return [];
     }
 
     const now = new Date().toISOString();
     const placeholders = taskIds.map(() => '?').join(', ');
-    const sql = `
+    let sql = `
       UPDATE tasks
       SET
         completion_status = ?,
         modified_at = ?
-      WHERE id IN (${placeholders});
+      WHERE id IN (${placeholders})
     `;
 
-    const params = [TaskCompletionStatusEnum.FAILED, now, ...taskIds];
+    const params: any[] = [TaskCompletionStatusEnum.FAILED, now, ...taskIds];
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+    sql += ' RETURNING *;';
 
     console.log('[DB Repo] Attempting to bulk fail tasks:', { sql, params });
 
     try {
-      const result = await this.db.executeAsync(sql, params);
-      console.log('[DB Repo] Bulk fail tasks successful:', result);
-      return result;
+      const resultSet = await this.db.executeAsync(sql, params);
+      const updatedTasks: Task[] = [];
+      if (resultSet.rows) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const row = resultSet.rows.item(i);
+          if (row) {
+            updatedTasks.push(this._transformRowToTask(row));
+          }
+        }
+      }
+      return updatedTasks;
     } catch (error: any) {
       console.error('[DB Repo] Failed to bulk fail tasks:', error);
       throw new Error(
@@ -304,19 +323,19 @@ export class TaskRepository {
     }
   }
 
-  async failAllOverdueTasksAtOnce(): Promise<QueryResult> {
+  async failAllOverdueTasksAtOnce(userId: string | null): Promise<Task[]> {
     const now = new Date().toISOString();
     const todayStart = dayjs().startOf('day').toISOString();
 
-    const sql = `
+    let sql = `
       UPDATE tasks
       SET
         completion_status = ?,
         modified_at = ?
-        WHERE due_date < ? AND completion_status = ? AND is_active = ?;
+        WHERE due_date < ? AND completion_status = ? AND is_active = ?
     `;
 
-    const params = [
+    const params: any[] = [
       TaskCompletionStatusEnum.FAILED,
       now,
       todayStart,
@@ -324,18 +343,31 @@ export class TaskRepository {
       1,
     ];
 
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+    sql += ' RETURNING *;';
+
     console.log('[DB Repo] Attempting to fail all overdue tasks at once:', {
       sql,
       params,
     });
 
     try {
-      const result = await this.db.executeAsync(sql, params);
-      console.log(
-        '[DB Repo] Failed all overdue tasks at once successful:',
-        result,
-      );
-      return result;
+      const resultSet = await this.db.executeAsync(sql, params);
+      const updatedTasks: Task[] = [];
+      if (resultSet.rows) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const row = resultSet.rows.item(i);
+          if (row) {
+            updatedTasks.push(this._transformRowToTask(row));
+          }
+        }
+      }
+      return updatedTasks;
     } catch (error: any) {
       console.error(
         '[DB Repo] Failed to fail all overdue tasks at once:',
