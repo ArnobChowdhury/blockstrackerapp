@@ -9,6 +9,16 @@ export class SpaceRepository {
     this.db = database;
   }
 
+  private _transformRowToSpace(row: any): Space {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      createdAt: row.created_at as string,
+      modifiedAt: row.modified_at as string,
+      userId: row.user_id as string | null,
+    };
+  }
+
   async getSpaceById(
     spaceId: string,
     userId: string | null,
@@ -39,15 +49,7 @@ export class SpaceRepository {
       if (resultSet.rows) {
         const space = resultSet.rows.item(0);
         if (space) {
-          const transformedSpace: Space = {
-            id: space.id as string,
-            name: space.name as string,
-            createdAt: space.created_at as string,
-            modifiedAt: space.modified_at as string,
-            userId: space.user_id as string | null,
-          };
-
-          return transformedSpace;
+          return this._transformRowToSpace(space);
         }
       }
 
@@ -87,15 +89,7 @@ export class SpaceRepository {
         for (let i = 0; i < resultSet.rows.length; i++) {
           const space = resultSet.rows.item(i);
           if (space) {
-            const transformedSpace: Space = {
-              id: space.id as string,
-              name: space.name as string,
-              createdAt: space.created_at as string,
-              modifiedAt: space.modified_at as string,
-              userId: space.user_id as string | null,
-            };
-
-            spaces.push(transformedSpace);
+            spaces.push(this._transformRowToSpace(space));
           }
         }
       }
@@ -115,20 +109,22 @@ export class SpaceRepository {
     const sql = `
       INSERT INTO spaces (
         id, name, created_at, modified_at, user_id
-      ) VALUES (?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?)
+      RETURNING *;
     `;
     const params = [newId, name, now, now, userId];
 
     console.log('[DB Repo] Attempting to INSERT Space:', { sql, params });
 
     try {
-      await this.db.executeAsync(sql, params);
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+
       console.log('[DB Repo] Space INSERT successful for id:', newId);
-      const newSpace = await this.getSpaceById(newId, userId);
-      if (!newSpace) {
-        throw new Error('Failed to fetch newly created space.');
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        return this._transformRowToSpace(row);
       }
-      return newSpace;
+      throw new Error('Failed to create space: no rows returned.');
     } catch (error: any) {
       console.error('[DB Repo] Failed to INSERT space:', error);
       throw new Error(
