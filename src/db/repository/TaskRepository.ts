@@ -517,22 +517,33 @@ export class TaskRepository {
   async updateTaskCompletionStatus(
     taskId: string,
     status: TaskCompletionStatusEnum,
+    userId: string | null,
     score?: number | null,
-  ): Promise<QueryResult> {
-    const sql = `
+  ): Promise<Task | null> {
+    const now = new Date().toISOString();
+    let sql = `
       UPDATE tasks
       SET
         completion_status = ?,
         score = ?,
         modified_at = ?
-      WHERE id = ?;
+      WHERE id = ?
     `;
-    const params = [
+    const params: any[] = [
       status,
       score === undefined ? null : score, // Handle undefined score as null
-      new Date().toISOString(),
+      now,
       taskId,
     ];
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+    sql += ' RETURNING *;';
+
     console.log(
       '[DB Repo] Attempting to UPDATE task completion_status and score:',
       {
@@ -542,19 +553,17 @@ export class TaskRepository {
     );
 
     try {
-      const result = await this.db.executeAsync(sql, params);
-      console.log(
-        `[DB Repo] Task ${taskId} completion_status updated to ${status} and score to ${
-          score === undefined ? null : score
-        }. Result:`,
-        result,
-      );
-      return result;
+      const resultSet = await this.db.executeAsync(sql, params);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        if (row) {
+          return this._transformRowToTask(row);
+        }
+      }
+      return null;
     } catch (error: any) {
       console.error(
-        `[DB Repo] Failed to UPDATE task ${taskId} completion_status to ${status} and score to ${
-          score === undefined ? null : score
-        }:`,
+        '[DB Repo] Failed to UPDATE task completion_status:',
         error,
       );
       throw new Error(
@@ -565,52 +574,51 @@ export class TaskRepository {
     }
   }
 
-  async updateTaskDueDate(taskId: string, dueDate: Date): Promise<QueryResult> {
+  async updateTaskDueDate(
+    taskId: string,
+    dueDate: Date,
+    userId: string | null,
+  ): Promise<Task | null> {
     console.log(
       `[DB Repo] Attempting to update due date for task ID: ${taskId} to ${dueDate.toISOString()}`,
     );
     try {
-      const getTaskSql = 'SELECT schedule FROM tasks WHERE id = ?;';
-      const getTaskParams = [taskId];
-      console.log('[DB Repo] Fetching task to check schedule:', {
-        sql: getTaskSql,
-        params: getTaskParams,
-      });
-
-      const taskResult: QueryResult = await this.db.executeAsync(
-        getTaskSql,
-        getTaskParams,
-      );
-
-      if (!taskResult.rows || taskResult.rows.length === 0) {
-        throw new Error(`Task with ID ${taskId} not found.`);
-      }
-
-      const currentSchedule = taskResult.rows.item(0)
-        ?.schedule as TaskScheduleTypeEnum;
-      console.log(
-        `[DB Repo] Current schedule for task ${taskId}: ${currentSchedule}`,
-      );
-
       const now = new Date().toISOString();
 
-      const scheduleToSet =
-        currentSchedule === TaskScheduleTypeEnum.Unscheduled
-          ? TaskScheduleTypeEnum.Once
-          : currentSchedule;
+      let sql = `
+        UPDATE tasks
+        SET
+          due_date = ?,
+          schedule = CASE
+                       WHEN schedule = '${TaskScheduleTypeEnum.Unscheduled}' THEN '${TaskScheduleTypeEnum.Once}'
+                       ELSE schedule
+                     END,
+          modified_at = ?
+        WHERE id = ?
+      `;
+      const params: any[] = [dueDate.toISOString(), now, taskId];
 
-      const updateSql =
-        'UPDATE tasks SET due_date = ?, schedule = ?, modified_at = ? WHERE id = ?;';
-      const updateParams = [dueDate.toISOString(), scheduleToSet, now, taskId];
+      if (userId) {
+        sql += ' AND user_id = ?';
+        params.push(userId);
+      } else {
+        sql += ' AND user_id IS NULL';
+      }
+      sql += ' RETURNING *;';
 
       console.log('[DB Repo] Attempting to UPDATE task:', {
-        sql: updateSql,
-        params: updateParams,
+        sql,
+        params,
       });
 
-      const result = await this.db.executeAsync(updateSql, updateParams);
-      console.log('[DB Repo] Task UPDATE successful:', result);
-      return result;
+      const resultSet = await this.db.executeAsync(sql, params);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        if (row) {
+          return this._transformRowToTask(row);
+        }
+      }
+      return null;
     } catch (error: any) {
       console.error('[DB Repo] Failed to UPDATE task:', error);
       throw new Error(
