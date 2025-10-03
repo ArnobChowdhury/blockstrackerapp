@@ -98,9 +98,13 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         if (TaskScheduleTypeEnum.Unscheduled === category) {
           fetchedTasks = await taskService.getActiveUnscheduledTasksBySpace(
             spaceId,
+            user && user.id,
           );
         } else if (TaskScheduleTypeEnum.Once === category) {
-          fetchedTasks = await taskService.getActiveOnceTasksBySpace(spaceId);
+          fetchedTasks = await taskService.getActiveOnceTasksBySpace(
+            spaceId,
+            user && user.id,
+          );
         } else if (TaskScheduleTypeEnum.Daily === category) {
           fetchedTasks =
             await repetitiveTaskTemplateService.getActiveDailyRepetitiveTaskTemplatesBySpace(
@@ -115,9 +119,11 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
             );
         }
       } else if (TaskScheduleTypeEnum.Unscheduled === category) {
-        fetchedTasks = await taskService.getAllActiveUnscheduledTasks();
+        fetchedTasks = await taskService.getAllActiveUnscheduledTasks(
+          user && user.id,
+        );
       } else if (TaskScheduleTypeEnum.Once === category) {
-        fetchedTasks = await taskService.getAllActiveOnceTasks();
+        fetchedTasks = await taskService.getAllActiveOnceTasks(user && user.id);
       } else if (TaskScheduleTypeEnum.Daily === category) {
         fetchedTasks =
           await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates(

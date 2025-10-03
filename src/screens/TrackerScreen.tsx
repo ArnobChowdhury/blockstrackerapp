@@ -8,6 +8,7 @@ import { TaskService } from '../services/TaskService';
 import type { TrackerStackParamList } from '../navigation/RootNavigator';
 import { Task } from '../types';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
+import { useAppContext } from '../shared/contexts/useAppContext';
 
 type Props = NativeStackScreenProps<TrackerStackParamList, 'Tracker'>;
 
@@ -21,6 +22,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
+  const { user } = useAppContext();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -37,6 +39,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
         const fetchedTasks: Task[] =
           await taskService.getActiveTasksByRepetitiveTaskTemplateId(
             repetitiveTaskTemplateId,
+            user && user.id,
           );
 
         console.log(
@@ -54,7 +57,7 @@ const TrackerScreen = ({ route, navigation }: Props) => {
         setIsLoadingTasks(false);
       }
     },
-    [taskService, habit],
+    [habit.id, taskService, user],
   );
 
   const [screenRequestError, setScreenRequestError] = useState('');

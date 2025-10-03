@@ -58,6 +58,7 @@ interface HabitCardItemProps {
 
 const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
   ({ habit, isViewable, taskService, onPress, activityBgColor }) => {
+    const { user } = useAppContext();
     const FETCH_TASKS_LIMIT = 50;
     const [heatmapTasks, setHeatmapTasks] = useState<Task[]>([]);
     const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
@@ -72,6 +73,7 @@ const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
             const fetched =
               await taskService.getActiveTasksByRepetitiveTaskTemplateId(
                 habit.id,
+                user && user.id,
                 FETCH_TASKS_LIMIT,
               );
             setHeatmapTasks(fetched);
@@ -88,7 +90,7 @@ const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
         };
         fetchHeatmapData();
       }
-    }, [isViewable, habit.id, taskService, hasFetched, isLoadingHeatmap]);
+    }, [isViewable, habit.id, taskService, hasFetched, isLoadingHeatmap, user]);
 
     return (
       <Card style={[styles.card]} onPress={onPress}>

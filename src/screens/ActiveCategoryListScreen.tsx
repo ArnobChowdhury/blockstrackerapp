@@ -84,7 +84,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
 
   const getCountForAllCategory = useCallback(async () => {
     const countForNonRepetitiveTasks =
-      await taskService.countAllActiveTasksByCategory();
+      await taskService.countAllActiveTasksByCategory(user && user.id);
     const countForRepetitiveTasks =
       await repetitiveTaskTemplateService.countAllActiveRepetitiveTasksByCategory(
         user && user.id,
@@ -120,7 +120,7 @@ const ActiveCategoryListScreen = ({ navigation }: Props) => {
   const getCountForSpace = useCallback(
     async (spaceId: string) => {
       const countForNonRepetitiveTasks =
-        await taskService.countActiveTasksBySpaceId(spaceId);
+        await taskService.countActiveTasksBySpaceId(spaceId, user && user.id);
       const countForRepetitiveTasks =
         await repetitiveTaskTemplateService.countActiveRepetitiveTasksBySpaceId(
           spaceId,

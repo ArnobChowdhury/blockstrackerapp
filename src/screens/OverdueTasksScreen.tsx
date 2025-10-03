@@ -96,7 +96,9 @@ const OverdueScreen = ({ navigation }: Props) => {
     setErrorLoadingTasks(null);
     setIsLoadingTasks(true);
     try {
-      const fetchedOverdueTasks = await taskService.getAllOverdueTasks();
+      const fetchedOverdueTasks = await taskService.getAllOverdueTasks(
+        user && user.id,
+      );
       console.log('fetchedOverdueTasks', groupTasksByDate(fetchedOverdueTasks));
 
       setOverdueTaskSections(groupTasksByDate(fetchedOverdueTasks));
@@ -109,7 +111,7 @@ const OverdueScreen = ({ navigation }: Props) => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [isDbLoading, taskService]);
+  }, [isDbLoading, taskService, user]);
 
   const {
     onToggleTaskCompletionStatus,
