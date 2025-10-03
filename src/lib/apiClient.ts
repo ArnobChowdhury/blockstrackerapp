@@ -65,13 +65,10 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const response = await axios.post(
-          `${API_BASE_URL}/api/v1/auth/refresh`,
-          {
-            accessToken: accessTokenCredentials.password,
-            refreshToken: refreshTokenCredentials.password,
-          },
-        );
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          accessToken: accessTokenCredentials.password,
+          refreshToken: refreshTokenCredentials.password,
+        });
 
         const newAccessToken = response.data.result.data.accessToken;
         const newRefreshToken = response.data.result.data.refreshToken;
