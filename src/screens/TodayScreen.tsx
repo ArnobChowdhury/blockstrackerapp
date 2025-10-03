@@ -184,10 +184,13 @@ const TodayScreen = ({ navigation }: Props) => {
           user && user.id,
         );
 
-        const countOfTaskOverdue = await taskService.getCountOfTasksOverdue();
+        const countOfTaskOverdue = await taskService.getCountOfTasksOverdue(
+          user && user.id,
+        );
         setNumberOfTaskOverdue(countOfTaskOverdue);
         const fetchedTasks = await taskService.getTasksForDate(
           dateToFetch.toDate(),
+          user && user.id,
         );
         setTaskSections(groupTasks(fetchedTasks));
       } catch (error: any) {

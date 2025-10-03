@@ -13,20 +13,20 @@ export class TaskService {
     this.pendingOpRepo = new PendingOperationRepository(db);
   }
 
-  async getTaskById(id: string): Promise<Task | null> {
-    return this.taskRepo.getTaskById(id);
+  async getTaskById(id: string, userId: string | null): Promise<Task | null> {
+    return this.taskRepo.getTaskById(id, userId);
   }
 
-  async getTasksForDate(date: Date): Promise<Task[]> {
-    return this.taskRepo.getTasksForDate(date);
+  async getTasksForDate(date: Date, userId: string | null): Promise<Task[]> {
+    return this.taskRepo.getTasksForDate(date, userId);
   }
 
-  async getCountOfTasksOverdue(): Promise<number> {
-    return this.taskRepo.getCountOfTasksOverdue();
+  async getCountOfTasksOverdue(userId: string | null): Promise<number> {
+    return this.taskRepo.getCountOfTasksOverdue(userId);
   }
 
-  async getAllOverdueTasks(): Promise<Task[]> {
-    return this.taskRepo.getAllOverdueTasks();
+  async getAllOverdueTasks(userId: string | null): Promise<Task[]> {
+    return this.taskRepo.getAllOverdueTasks(userId);
   }
 
   /**
@@ -312,43 +312,51 @@ export class TaskService {
 
   async getActiveTasksByRepetitiveTaskTemplateId(
     templateId: string,
+    userId: string | null,
     days?: number,
   ): Promise<Task[]> {
     return this.taskRepo.getActiveTasksByRepetitiveTaskTemplateId(
       templateId,
+      userId,
       days,
     );
   }
 
-  async countAllActiveTasksByCategory() {
-    return this.taskRepo.countAllActiveTasksByCategory();
+  async countAllActiveTasksByCategory(userId: string | null) {
+    return this.taskRepo.countAllActiveTasksByCategory(userId);
   }
 
-  async countActiveTasksBySpaceId(spaceId: string) {
-    return this.taskRepo.countActiveTasksBySpaceId(spaceId);
+  async countActiveTasksBySpaceId(spaceId: string, userId: string | null) {
+    return this.taskRepo.countActiveTasksBySpaceId(spaceId, userId);
   }
 
-  async getActiveUnscheduledTasksBySpace(spaceId: string): Promise<Task[]> {
+  async getActiveUnscheduledTasksBySpace(
+    spaceId: string,
+    userId: string | null,
+  ): Promise<Task[]> {
     console.log(
       `[TaskService] Getting active unscheduled tasks for space ID: ${spaceId}`,
     );
-    return this.taskRepo.getActiveUnscheduledTasksBySpace(spaceId);
+    return this.taskRepo.getActiveUnscheduledTasksBySpace(spaceId, userId);
   }
 
-  async getActiveOnceTasksBySpace(spaceId: string): Promise<Task[]> {
+  async getActiveOnceTasksBySpace(
+    spaceId: string,
+    userId: string | null,
+  ): Promise<Task[]> {
     console.log(
       `[TaskService] Getting active 'once' tasks for space ID: ${spaceId}`,
     );
-    return this.taskRepo.getActiveOnceTasksBySpace(spaceId);
+    return this.taskRepo.getActiveOnceTasksBySpace(spaceId, userId);
   }
 
-  async getAllActiveUnscheduledTasks(): Promise<Task[]> {
+  async getAllActiveUnscheduledTasks(userId: string | null): Promise<Task[]> {
     console.log('[TaskService] Getting all active unscheduled tasks');
-    return this.taskRepo.getAllActiveUnscheduledTasks();
+    return this.taskRepo.getAllActiveUnscheduledTasks(userId);
   }
 
-  async getAllActiveOnceTasks(): Promise<Task[]> {
+  async getAllActiveOnceTasks(userId: string | null): Promise<Task[]> {
     console.log("[TaskService] Getting all active 'once' tasks");
-    return this.taskRepo.getAllActiveOnceTasks();
+    return this.taskRepo.getAllActiveOnceTasks(userId);
   }
 }

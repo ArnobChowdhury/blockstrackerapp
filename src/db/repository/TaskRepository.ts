@@ -38,8 +38,13 @@ export class TaskRepository {
     };
   }
 
-  async getTaskById(taskId: string): Promise<Task | null> {
-    const task = await this._getActiveTasksByCondition('id = ?', [taskId]);
+  async getTaskById(
+    taskId: string,
+    userId: string | null,
+  ): Promise<Task | null> {
+    const task = await this._getActiveTasksByCondition(userId, 'id = ?', [
+      taskId,
+    ]);
     if (task) {
       return task[0];
     }
@@ -161,29 +166,37 @@ export class TaskRepository {
     }
   }
 
-  async getAllOverdueTasks(): Promise<Task[]> {
+  async getAllOverdueTasks(userId: string | null): Promise<Task[]> {
     const todayStart = dayjs().startOf('day');
 
     return this._getActiveTasksByCondition(
+      userId,
       'due_date < ? AND completion_status = ?',
       [todayStart.toISOString(), TaskCompletionStatusEnum.INCOMPLETE],
     );
   }
 
-  async getCountOfTasksOverdue(): Promise<number> {
+  async getCountOfTasksOverdue(userId: string | null): Promise<number> {
     const todayStart = dayjs().startOf('day');
 
-    const sql = `
+    let sql = `
       SELECT COUNT(*) as count
       FROM tasks
-      WHERE due_date < ? AND completion_status = ? AND is_active = ?;
+      WHERE due_date < ? AND completion_status = ? AND is_active = ?
     `;
 
-    const params = [
+    const params: any[] = [
       todayStart.toISOString(),
       TaskCompletionStatusEnum.INCOMPLETE,
       1,
     ];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log('[DB Repo] Attempting to SELECT count of overdue tasks:', {
       sql,
@@ -207,15 +220,23 @@ export class TaskRepository {
   }
 
   async _countActiveTasksByCondition(
+    userId: string | null,
     conditionSql: string,
     conditionParams: any[],
   ): Promise<number> {
-    const sql = `
+    let sql = `
       SELECT COUNT(*) as count
       FROM tasks
-      WHERE ${conditionSql} AND is_active = ?;
+      WHERE ${conditionSql} AND is_active = ?
     `;
     const params = [...conditionParams, 1];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
 
     console.log('[DB Repo] Attempting to SELECT count of active tasks:', {
       sql,
@@ -236,36 +257,42 @@ export class TaskRepository {
     }
   }
 
-  async countAllActiveTasksByCategory() {
+  async countAllActiveTasksByCategory(userId: string | null) {
     const sql = 'schedule = ? AND completion_status = ?';
-    const countUnscheduledTasks = await this._countActiveTasksByCondition(sql, [
-      TaskScheduleTypeEnum.Unscheduled,
-      TaskCompletionStatusEnum.INCOMPLETE,
-    ]);
+    const countUnscheduledTasks = await this._countActiveTasksByCondition(
+      userId,
+      sql,
+      [TaskScheduleTypeEnum.Unscheduled, TaskCompletionStatusEnum.INCOMPLETE],
+    );
 
-    const countOnceTasks = await this._countActiveTasksByCondition(sql, [
-      TaskScheduleTypeEnum.Once,
-      TaskCompletionStatusEnum.INCOMPLETE,
-    ]);
+    const countOnceTasks = await this._countActiveTasksByCondition(
+      userId,
+      sql,
+      [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE],
+    );
     return {
       [TaskScheduleTypeEnum.Unscheduled]: countUnscheduledTasks,
       [TaskScheduleTypeEnum.Once]: countOnceTasks,
     };
   }
 
-  async countActiveTasksBySpaceId(spaceId: string) {
+  async countActiveTasksBySpaceId(spaceId: string, userId: string | null) {
     const sql = 'schedule = ? AND completion_status = ? AND space_id = ?';
-    const countUnscheduledTasks = await this._countActiveTasksByCondition(sql, [
-      TaskScheduleTypeEnum.Unscheduled,
-      TaskCompletionStatusEnum.INCOMPLETE,
-      spaceId,
-    ]);
+    const countUnscheduledTasks = await this._countActiveTasksByCondition(
+      userId,
+      sql,
+      [
+        TaskScheduleTypeEnum.Unscheduled,
+        TaskCompletionStatusEnum.INCOMPLETE,
+        spaceId,
+      ],
+    );
 
-    const countOnceTasks = await this._countActiveTasksByCondition(sql, [
-      TaskScheduleTypeEnum.Once,
-      TaskCompletionStatusEnum.INCOMPLETE,
-      spaceId,
-    ]);
+    const countOnceTasks = await this._countActiveTasksByCondition(
+      userId,
+      sql,
+      [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE, spaceId],
+    );
     return {
       [TaskScheduleTypeEnum.Unscheduled]: countUnscheduledTasks,
       [TaskScheduleTypeEnum.Once]: countOnceTasks,
@@ -381,22 +408,28 @@ export class TaskRepository {
     }
   }
 
-  async getAllActiveUnscheduledTasks(): Promise<Task[]> {
+  async getAllActiveUnscheduledTasks(userId: string | null): Promise<Task[]> {
     return this._getActiveTasksByCondition(
+      userId,
       'schedule = ? AND completion_status = ?',
       [TaskScheduleTypeEnum.Unscheduled, TaskCompletionStatusEnum.INCOMPLETE],
     );
   }
 
-  async getAllActiveOnceTasks(): Promise<Task[]> {
+  async getAllActiveOnceTasks(userId: string | null): Promise<Task[]> {
     return this._getActiveTasksByCondition(
+      userId,
       'schedule = ? AND completion_status = ?',
       [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE],
     );
   }
 
-  async getActiveUnscheduledTasksBySpace(spaceId: string): Promise<Task[]> {
+  async getActiveUnscheduledTasksBySpace(
+    spaceId: string,
+    userId: string | null,
+  ): Promise<Task[]> {
     return this._getActiveTasksByCondition(
+      userId,
       'schedule = ? AND completion_status = ? AND space_id = ?',
       [
         TaskScheduleTypeEnum.Unscheduled,
@@ -406,19 +439,24 @@ export class TaskRepository {
     );
   }
 
-  async getActiveOnceTasksBySpace(spaceId: string): Promise<Task[]> {
+  async getActiveOnceTasksBySpace(
+    spaceId: string,
+    userId: string | null,
+  ): Promise<Task[]> {
     return this._getActiveTasksByCondition(
+      userId,
       'schedule = ? AND completion_status = ? AND space_id = ?',
       [TaskScheduleTypeEnum.Once, TaskCompletionStatusEnum.INCOMPLETE, spaceId],
     );
   }
 
-  async getAllActiveTasks(): Promise<Task[]> {
-    return this._getActiveTasksByCondition(); // no condition
+  async getAllActiveTasks(userId: string | null): Promise<Task[]> {
+    return this._getActiveTasksByCondition(userId); // no condition
   }
 
   async getActiveTasksByRepetitiveTaskTemplateId(
     templateId: string,
+    userId: string | null,
     days: number = 91,
   ): Promise<Task[]> {
     const startDate = dayjs()
@@ -429,12 +467,14 @@ export class TaskRepository {
       `[DB Repo] Fetching tasks for templateId: ${templateId} from date: ${startDate} (last ${days} days)`,
     );
     return this._getActiveTasksByCondition(
+      userId,
       'repetitive_task_template_id = ? AND due_date >= ?',
       [templateId, startDate],
     );
   }
 
   private async _getActiveTasksByCondition(
+    userId: string | null,
     additionalConditionSql = '',
     additionalConditionParams: any[] = [],
   ): Promise<Task[]> {
@@ -449,9 +489,16 @@ export class TaskRepository {
       allParams.push(...additionalConditionParams);
     }
 
+    if (userId) {
+      allWhereClauses.push('user_id = ?');
+      allParams.push(userId);
+    } else {
+      allWhereClauses.push('user_id IS NULL');
+    }
+
     const sql = `
       SELECT
-        id, title, description, schedule, time_of_day, should_be_scored, score, space_id,
+        id, title, description, schedule, time_of_day, should_be_scored, score, space_id, user_id,
         repetitive_task_template_id, created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
       WHERE ${allWhereClauses.join(' AND ')}
@@ -490,11 +537,11 @@ export class TaskRepository {
     }
   }
 
-  async getTasksForDate(date: Date): Promise<Task[]> {
+  async getTasksForDate(date: Date, userId: string | null): Promise<Task[]> {
     const dateString = dayjs(date).format('YYYY-MM-DD');
-    const sql = `
+    let sql = `
       SELECT
-        id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
+        id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id, user_id,
         should_be_scored, score, created_at, modified_at, is_active, completion_status, space_id
       FROM tasks
       WHERE DATE(due_date, 'localtime') = ?
@@ -508,12 +555,20 @@ export class TaskRepository {
         END,
         created_at DESC;
     `;
-    const params = [dateString];
+    const params: any[] = [dateString];
+
+    if (userId) {
+      sql = sql.replace('WHERE', 'WHERE user_id = ? AND');
+      params.unshift(userId);
+    } else {
+      sql = sql.replace('WHERE', 'WHERE user_id IS NULL AND');
+    }
 
     console.log(
       `[DB Repo] Attempting to SELECT tasks for date: ${dateString}`,
       {
         sql,
+        params,
       },
     );
     try {
