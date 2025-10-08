@@ -107,7 +107,7 @@ export const V1_SCHEMA = `
   -- =============================================
   -- Join Table for Tasks and Tags (Many-to-Many)
   -- =============================================
-  CREATE TABLE IF NOT EXISTS tasks_tags (
+  CREATE TABLE IF NOT EXISTS task_tags (
     task_id TEXT NOT NULL,
     tag_id TEXT NOT NULL,
     PRIMARY KEY (task_id, tag_id),
@@ -115,14 +115,14 @@ export const V1_SCHEMA = `
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE   -- If tag deleted, remove association
   );
   -- Indexes for join table foreign keys
-  CREATE INDEX IF NOT EXISTS idx_tasks_tags_task_id ON tasks_tags(task_id);
-  CREATE INDEX IF NOT EXISTS idx_tasks_tags_tag_id ON tasks_tags(tag_id);
+  CREATE INDEX IF NOT EXISTS idx_task_tags_task_id ON task_tags(task_id);
+  CREATE INDEX IF NOT EXISTS idx_task_tags_tag_id ON task_tags(tag_id);
 
 
   -- =============================================
   -- Join Table for Repetitive Task Templates and Tags (Many-to-Many)
   -- =============================================
-  CREATE TABLE IF NOT EXISTS repetitive_task_templates_tags (
+  CREATE TABLE IF NOT EXISTS repetitive_task_template_tags (
     repetitive_task_template_id TEXT NOT NULL,
     tag_id TEXT NOT NULL,
     PRIMARY KEY (repetitive_task_template_id, tag_id),
@@ -130,8 +130,8 @@ export const V1_SCHEMA = `
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
   );
   -- Indexes for join table foreign keys
-  CREATE INDEX IF NOT EXISTS idx_rep_task_templates_tags_template_id ON repetitive_task_templates_tags(repetitive_task_template_id);
-  CREATE INDEX IF NOT EXISTS idx_rep_task_templates_tags_tag_id ON repetitive_task_templates_tags(tag_id);
+  CREATE INDEX IF NOT EXISTS idx_repetitive_task_template_tags_template_id ON repetitive_task_template_tags(repetitive_task_template_id);
+  CREATE INDEX IF NOT EXISTS idx_repetitive_task_template_tags_tag_id ON repetitive_task_template_tags(tag_id);
 
   -- =============================================
   -- Outbox Table for Syncing Operations
