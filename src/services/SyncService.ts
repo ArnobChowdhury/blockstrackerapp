@@ -126,58 +126,69 @@ class SyncService {
   }
 
   private async pullRemoteChanges(): Promise<void> {
-    let syncData;
-    let lastChangeId;
-    try {
-      lastChangeId = await this.settingsRepo.getLastChangeId();
-      console.log(
-        `[SyncService] Fetching changes since change ID: ${lastChangeId}`,
-      );
+    while (true) {
+      let syncData;
+      let lastChangeId;
+      try {
+        lastChangeId = await this.settingsRepo.getLastChangeId();
+        console.log(
+          `[SyncService] Fetching changes since change ID: ${lastChangeId}`,
+        );
 
-      const endpoint = apiEndpoints.sync!.fetch!;
-      const response = await apiClient.get(endpoint.path, {
-        params: { last_change_id: lastChangeId },
-      });
-      syncData = response.data.result.data;
-    } catch (error) {
-      console.error(
-        '[SyncService] Failed to fetch remote changes from API:',
-        error,
-      );
-      return;
-    }
-
-    try {
-      console.log(
-        '[SyncService] Beginning database transaction for sync pull.',
-      );
-      await db.executeAsync('BEGIN TRANSACTION;');
-
-      if (syncData.spaces?.length > 0) {
-        await this.spaceRepo.upsertMany(syncData.spaces);
+        const endpoint = apiEndpoints.sync!.fetch!;
+        const response = await apiClient.get(endpoint.path, {
+          params: { last_change_id: lastChangeId },
+        });
+        syncData = response.data.result.data;
+      } catch (error) {
+        console.error(
+          '[SyncService] Failed to fetch remote changes from API:',
+          error,
+        );
+        break;
       }
-      if (syncData.repetitiveTaskTemplates?.length > 0) {
-        await this.rttRepo.upsertMany(syncData.repetitiveTaskTemplates);
-      }
-      if (syncData.tasks?.length > 0) {
-        await this.taskRepo.upsertMany(syncData.tasks);
-      }
-      // ... other repositories
 
-      if (syncData.latestChangeId > lastChangeId) {
+      const hasNewChanges =
+        syncData.tasks?.length > 0 ||
+        syncData.spaces?.length > 0 ||
+        syncData.repetitiveTaskTemplates?.length > 0;
+
+      if (!hasNewChanges) {
         await this.settingsRepo.setLastChangeId(syncData.latestChangeId);
+        break;
       }
 
-      await db.executeAsync('COMMIT;');
-      console.log(
-        `[SyncService] PULL phase complete. Transaction committed. Synced up to change ID: ${syncData.latestChangeId}`,
-      );
-    } catch (error) {
-      console.error(
-        '[SyncService] Error during sync pull transaction. Rolling back.',
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
+      try {
+        console.log(
+          '[SyncService] Beginning database transaction for sync pull.',
+        );
+        await db.executeAsync('BEGIN TRANSACTION;');
+
+        if (syncData.spaces?.length > 0) {
+          await this.spaceRepo.upsertMany(syncData.spaces);
+        }
+        if (syncData.repetitiveTaskTemplates?.length > 0) {
+          await this.rttRepo.upsertMany(syncData.repetitiveTaskTemplates);
+        }
+        if (syncData.tasks?.length > 0) {
+          await this.taskRepo.upsertMany(syncData.tasks);
+        }
+        // ... other repositories
+
+        await this.settingsRepo.setLastChangeId(syncData.latestChangeId);
+
+        await db.executeAsync('COMMIT;');
+        console.log(
+          `[SyncService] PULL phase complete. Transaction committed. Synced up to change ID: ${syncData.latestChangeId}`,
+        );
+      } catch (error) {
+        console.error(
+          '[SyncService] Error during sync pull transaction. Rolling back.',
+          error,
+        );
+        await db.executeAsync('ROLLBACK;');
+        break;
+      }
     }
   }
 
