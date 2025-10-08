@@ -132,4 +132,34 @@ export class SpaceRepository {
       );
     }
   }
+
+  async upsertMany(spaces: Space[]): Promise<void> {
+    if (spaces.length === 0) {
+      return;
+    }
+
+    console.log(
+      `[DB Repo] UPSERTING ${spaces.length} spaces within a transaction.`,
+    );
+
+    const sql = `
+      INSERT INTO spaces (
+        id, name, created_at, modified_at, user_id
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        modified_at = excluded.modified_at;
+    `;
+
+    for (const space of spaces) {
+      const params = [
+        space.id,
+        space.name,
+        space.createdAt,
+        space.modifiedAt,
+        space.userId,
+      ];
+      await this.db.executeAsync(sql, params);
+    }
+  }
 }

@@ -152,6 +152,14 @@ export const V1_SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_pending_operations_status ON pending_operations(status);
   CREATE INDEX IF NOT EXISTS idx_pending_operations_user_id ON pending_operations(user_id);
 
+  -- =============================================
+  -- Settings Table for app metadata
+  -- =============================================
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL
+  );
+
   -- Set initial schema version
   PRAGMA user_version = 1;
 `;

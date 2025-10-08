@@ -713,4 +713,56 @@ export class TaskRepository {
       );
     }
   }
+
+  async upsertMany(tasks: Task[]): Promise<void> {
+    if (tasks.length === 0) {
+      return;
+    }
+
+    console.log(
+      `[DB Repo] UPSERTING ${tasks.length} tasks within a transaction.`,
+    );
+
+    const sql = `
+      INSERT INTO tasks (
+        id, title, description, schedule, due_date, time_of_day, completion_status,
+        should_be_scored, score, is_active, created_at, modified_at,
+        repetitive_task_template_id, space_id, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        description = excluded.description,
+        schedule = excluded.schedule,
+        due_date = excluded.due_date,
+        time_of_day = excluded.time_of_day,
+        completion_status = excluded.completion_status,
+        should_be_scored = excluded.should_be_scored,
+        score = excluded.score,
+        is_active = excluded.is_active,
+        modified_at = excluded.modified_at,
+        space_id = excluded.space_id,
+        repetitive_task_template_id = excluded.repetitive_task_template_id;
+    `;
+
+    for (const task of tasks) {
+      const params = [
+        task.id,
+        task.title,
+        task.description,
+        task.schedule,
+        task.dueDate,
+        task.timeOfDay,
+        task.completionStatus,
+        task.shouldBeScored ? 1 : 0,
+        task.score,
+        task.isActive ? 1 : 0,
+        task.createdAt,
+        task.modifiedAt,
+        task.repetitiveTaskTemplateId,
+        task.spaceId,
+        task.userId,
+      ];
+      await this.db.executeAsync(sql, params);
+    }
+  }
 }

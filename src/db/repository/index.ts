@@ -3,6 +3,7 @@ import { RepetitiveTaskTemplateRepository } from './RepetitiveTaskTemplateReposi
 import { SpaceRepository } from './SpaceRepository';
 import { PendingOperationRepository } from './PendingOperationRepository';
 import { UserRepository } from './UserRepository';
+import { SettingsRepository } from './SettingsRepository';
 
 export {
   TaskRepository,
@@ -10,4 +11,5 @@ export {
   RepetitiveTaskTemplateRepository,
   PendingOperationRepository,
   UserRepository,
+  SettingsRepository,
 };

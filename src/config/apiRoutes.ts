@@ -2,14 +2,14 @@ import { API_URL } from '@env';
 
 export const API_BASE_URL = `${API_URL}/api/v1`;
 
-type HttpMethod = 'POST' | 'PUT';
+type HttpMethod = 'POST' | 'PUT' | 'GET';
 
 interface EndpointConfig {
   method: HttpMethod;
   path: string;
 }
 
-type EntityEndpoints<T extends string = 'create' | 'update'> = {
+type EntityEndpoints<T extends string = 'create' | 'update' | 'fetch'> = {
   [K in T]: EndpointConfig;
 };
 
@@ -29,5 +29,8 @@ export const apiEndpoints: Record<string, Partial<EntityEndpoints>> = {
   repetitive_task_template: {
     create: { method: 'POST', path: '/repetitive-task-templates' },
     update: { method: 'PUT', path: '/repetitive-task-templates/:id' },
+  },
+  sync: {
+    fetch: { method: 'GET', path: '/changes/sync' },
   },
 };

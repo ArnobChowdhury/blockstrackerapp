@@ -566,4 +566,66 @@ export class RepetitiveTaskTemplateRepository {
       );
     }
   }
+
+  async upsertMany(templates: RepetitiveTaskTemplate[]): Promise<void> {
+    if (templates.length === 0) {
+      return;
+    }
+
+    console.log(
+      `[DB Repo] UPSERTING ${templates.length} repetitive task templates within a transaction.`,
+    );
+
+    const sql = `
+      INSERT INTO repetitive_task_templates (
+        id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        should_be_scored, is_active, priority, last_date_of_task_generation,
+        created_at, modified_at, space_id, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        description = excluded.description,
+        schedule = excluded.schedule,
+        time_of_day = excluded.time_of_day,
+        monday = excluded.monday,
+        tuesday = excluded.tuesday,
+        wednesday = excluded.wednesday,
+        thursday = excluded.thursday,
+        friday = excluded.friday,
+        saturday = excluded.saturday,
+        sunday = excluded.sunday,
+        should_be_scored = excluded.should_be_scored,
+        is_active = excluded.is_active,
+        priority = excluded.priority,
+        last_date_of_task_generation = excluded.last_date_of_task_generation,
+        modified_at = excluded.modified_at,
+        space_id = excluded.space_id;
+    `;
+
+    for (const template of templates) {
+      const params = [
+        template.id,
+        template.title,
+        template.description,
+        template.schedule,
+        template.timeOfDay,
+        template.monday ? 1 : 0,
+        template.tuesday ? 1 : 0,
+        template.wednesday ? 1 : 0,
+        template.thursday ? 1 : 0,
+        template.friday ? 1 : 0,
+        template.saturday ? 1 : 0,
+        template.sunday ? 1 : 0,
+        template.shouldBeScored ? 1 : 0,
+        template.isActive ? 1 : 0,
+        template.priority,
+        template.lastDateOfTaskGeneration,
+        template.createdAt,
+        template.modifiedAt,
+        template.spaceId,
+        template.userId,
+      ];
+      await this.db.executeAsync(sql, params);
+    }
+  }
 }
