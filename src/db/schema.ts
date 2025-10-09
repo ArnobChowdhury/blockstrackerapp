@@ -94,7 +94,7 @@ export const V1_SCHEMA = `
     space_id TEXT, -- Optional
     user_id TEXT, -- Optional, for logged-in users
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE SET NULL,
-    FOREIGN KEY (repetitive_task_template_id) REFERENCES repetitive_task_templates(id) ON DELETE CASCADE,
+    FOREIGN KEY (repetitive_task_template_id) REFERENCES repetitive_task_templates(id) ON DELETE SET NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (repetitive_task_template_id, due_date) -- Matches Prisma @@unique
   );
