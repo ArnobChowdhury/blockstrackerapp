@@ -39,7 +39,7 @@ const AuthScreen = ({ navigation }: Props) => {
 
       const response = await apiClient.post<{
         result: { data: { accessToken: string; refreshToken: string } };
-      }>('/auth/google', { token: idToken });
+      }>('/auth/google/mobile', { token: idToken });
       console.log('[AuthScreen] Google Sign-In response:', response);
       const responseData = response.data;
 
