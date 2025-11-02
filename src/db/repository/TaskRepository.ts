@@ -171,8 +171,8 @@ export class TaskRepository {
 
     return this._getActiveTasksByCondition(
       userId,
-      'due_date < ? AND completion_status = ?',
-      [todayStart.toISOString(), TaskCompletionStatusEnum.INCOMPLETE],
+      'due_date < ? AND completion_status = ? AND is_active = ?',
+      [todayStart.toISOString(), TaskCompletionStatusEnum.INCOMPLETE, 1],
     );
   }
 
