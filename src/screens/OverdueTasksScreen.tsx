@@ -180,7 +180,7 @@ const OverdueScreen = ({ navigation }: Props) => {
         onToggleTaskCompletionStatus(
           task.id,
           TaskCompletionStatusEnum.INCOMPLETE,
-          null,
+          user && user.id,
         );
         return;
       }
@@ -530,12 +530,10 @@ const OverdueScreen = ({ navigation }: Props) => {
             <Button
               onPress={() => {
                 if (!taskToBeCompleted) {
-                  // show error
                   return;
                 }
 
-                if (!scoreForTaskToBeCompleted) {
-                  // show error
+                if (scoreForTaskToBeCompleted === undefined) {
                   return;
                 }
 
@@ -543,12 +541,14 @@ const OverdueScreen = ({ navigation }: Props) => {
                   taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
                   user && user.id,
-                  scoreForTaskToBeCompleted,
+                  scoreForTaskToBeCompleted + 1,
                 );
                 setTaskToBeCompleted(undefined);
                 setScoreForTaskToBeCompleted(undefined);
               }}
-              disabled={!taskToBeCompleted || !scoreForTaskToBeCompleted}>
+              disabled={
+                !taskToBeCompleted || scoreForTaskToBeCompleted === undefined
+              }>
               Done
             </Button>
           </Dialog.Actions>

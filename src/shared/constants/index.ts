@@ -1,10 +1,10 @@
 export const scoreColorConfigs = {
   failed: '#d43f3f',
-  score0: '#c0e8c2',
-  score1: '#7be187',
-  score2: '#24c241',
-  score3: '#019927',
-  score4: '#006620',
+  score1: '#c0e8c2',
+  score2: '#7be187',
+  score3: '#24c241',
+  score4: '#019927',
+  score5: '#006620',
   noActivity: '#eeeeee',
   padding: 'transparent',
 };

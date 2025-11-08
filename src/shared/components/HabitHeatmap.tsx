@@ -42,14 +42,12 @@ const getColorForTask = (task: Task | undefined): string => {
     task.completionStatus === TaskCompletionStatusEnum.COMPLETE &&
     !task.shouldBeScored
   ) {
-    return scoreColorConfigs.score4;
+    return scoreColorConfigs.score5;
   }
 
   if (task.completionStatus === TaskCompletionStatusEnum.COMPLETE) {
     const score = task.shouldBeScored ? (task as any).score ?? 0 : 0;
     switch (score) {
-      case 0:
-        return scoreColorConfigs.score0;
       case 1:
         return scoreColorConfigs.score1;
       case 2:
@@ -58,6 +56,8 @@ const getColorForTask = (task: Task | undefined): string => {
         return scoreColorConfigs.score3;
       case 4:
         return scoreColorConfigs.score4;
+      case 5:
+        return scoreColorConfigs.score5;
       default:
         return scoreColorConfigs.noActivity;
     }
@@ -355,12 +355,6 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
                     <View
                       style={[
                         styles.legendBox,
-                        { backgroundColor: scoreColorConfigs.score0 },
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.legendBox,
                         { backgroundColor: scoreColorConfigs.score1 },
                       ]}
                     />
@@ -376,12 +370,18 @@ const HabitHeatmap: React.FC<HabitHeatmapProps> = ({
                         { backgroundColor: scoreColorConfigs.score3 },
                       ]}
                     />
+                    <View
+                      style={[
+                        styles.legendBox,
+                        { backgroundColor: scoreColorConfigs.score4 },
+                      ]}
+                    />
                   </>
                 )}
                 <View
                   style={[
                     styles.legendBox,
-                    { backgroundColor: scoreColorConfigs.score4 },
+                    { backgroundColor: scoreColorConfigs.score5 },
                   ]}
                 />
               </View>
