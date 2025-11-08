@@ -48,9 +48,9 @@ export const CombinedLightTheme: MD3Theme = {
   colors: {
     ...MD3LightTheme.colors,
     ...NavLightTheme.colors,
-    primary: '#007A9F',
+    primary: '#008ab4',
     secondary: '#11C498',
-    primaryContainer: '#007A9F',
+    primaryContainer: '#008ab4',
     onPrimaryContainer: '#ffffff',
 
     // influences bottom navigation bar
@@ -60,7 +60,7 @@ export const CombinedLightTheme: MD3Theme = {
     surface: '#FFFFFF',
     onSurface: '#333333',
     // input fields
-    surfaceVariant: '#007A9F40',
+    surfaceVariant: '#008ab440',
     onSurfaceVariant: '#444444',
 
     elevation: {
@@ -79,9 +79,9 @@ export const CombinedDarkTheme: MD3Theme = {
   colors: {
     ...MD3DarkTheme.colors,
     ...NavDarkTheme.colors,
-    primary: '#007A9F',
+    primary: '#008ab4',
     secondary: '#11C498',
-    primaryContainer: '#007A9F',
+    primaryContainer: '#008ab4',
     onPrimaryContainer: '#ffffff',
 
     // influences bottom navigation bar
@@ -92,7 +92,7 @@ export const CombinedDarkTheme: MD3Theme = {
     onSurface: '#EAEAEA',
 
     // input fields
-    surfaceVariant: '#007A9F40',
+    surfaceVariant: '#008ab440',
     onSurfaceVariant: '#CCCCCC',
 
     elevation: {
