@@ -12,7 +12,7 @@ import { useColorScheme } from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { syncService } from '../../services/SyncService';
-import {
+import apiClient, {
   registerAuthFailureHandler,
   registerTokenRefreshHandler,
   setInMemoryToken,
@@ -195,15 +195,32 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const signOut = useCallback(async () => {
     setIsSigningIn(true);
     try {
-      await Keychain.resetGenericPassword();
-      await Keychain.resetGenericPassword({ service: 'refreshToken' });
-      setUser(null);
-      setInMemoryToken(null);
-      console.log('[AuthContext] Token removed successfully.');
-    } catch (error) {
-      console.error('[AuthContext] Error removing token', error);
+      await apiClient.post('/auth/signout');
+      console.log(
+        '[AuthContext] Successfully invalidated tokens on the backend.',
+      );
+    } catch (apiError: any) {
+      console.error(
+        '[AuthContext] Backend sign-out failed, proceeding with local sign-out:',
+        apiError.message,
+      );
     } finally {
-      setIsSigningIn(false);
+      try {
+        await Keychain.resetGenericPassword();
+        await Keychain.resetGenericPassword({ service: 'refreshToken' });
+        setUser(null);
+        setInMemoryToken(null);
+        console.log(
+          '[AuthContext] Local user session and tokens cleared successfully.',
+        );
+      } catch (keychainError: any) {
+        console.error(
+          '[AuthContext] Failed to clear local tokens from keychain:',
+          keychainError.message,
+        );
+      } finally {
+        setIsSigningIn(false);
+      }
     }
   }, []);
 
