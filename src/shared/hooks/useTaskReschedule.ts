@@ -4,22 +4,17 @@ import { TaskService } from '../../services/TaskService';
 
 export const useTaskReschedule = (
   taskService: TaskService,
-  isLoggedIn: boolean,
   cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
   const [error, setError] = useState('');
 
   const onTaskReschedule = useCallback(
-    async (taskId: string, rescheduledTime: Date) => {
+    async (taskId: string, rescheduledTime: Date, userId: string | null) => {
       setError('');
       setRequestOnGoing(true);
       try {
-        await taskService.updateTaskDueDate(
-          taskId,
-          rescheduledTime,
-          isLoggedIn,
-        );
+        await taskService.updateTaskDueDate(taskId, rescheduledTime, userId);
 
         if (cb) {
           await cb();
@@ -30,7 +25,7 @@ export const useTaskReschedule = (
         setRequestOnGoing(false);
       }
     },
-    [cb, taskService, isLoggedIn],
+    [cb, taskService],
   );
 
   return {

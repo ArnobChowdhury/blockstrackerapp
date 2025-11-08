@@ -49,7 +49,6 @@ type Props = CompositeScreenProps<
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   const { user } = useAppContext();
-  const isLoggedIn = !!user;
 
   const { category, spaceId } = route.params;
   console.log(
@@ -162,14 +161,10 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     useState<Date>();
 
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(
-      taskService,
-      isLoggedIn,
-      fetchTasksByCategory,
-    );
+    useToggleTaskCompletionStatus(taskService, fetchTasksByCategory);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskService, isLoggedIn, fetchTasksByCategory);
+    useTaskReschedule(taskService, fetchTasksByCategory);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -245,6 +240,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
                           TaskCompletionStatusEnum.COMPLETE
                           ? TaskCompletionStatusEnum.INCOMPLETE
                           : TaskCompletionStatusEnum.COMPLETE,
+                        user && user.id,
                       )
                     }
                   />
@@ -276,6 +272,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
                       onToggleTaskCompletionStatus(
                         item.id,
                         TaskCompletionStatusEnum.FAILED,
+                        user && user.id,
                       )
                     }
                     style={styles.iconButton}
@@ -316,11 +313,15 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         return;
       }
 
-      await onTaskReschedule(taskIdToBeRescheduled, params.date);
+      await onTaskReschedule(
+        taskIdToBeRescheduled,
+        params.date,
+        user && user.id,
+      );
       setTaskIdToBeRescheduled(null);
       setSelectedDateForTaskReschedule(undefined);
     },
-    [taskIdToBeRescheduled, onTaskReschedule],
+    [taskIdToBeRescheduled, onTaskReschedule, user],
   );
 
   const handleSnackbarDismiss = () => {

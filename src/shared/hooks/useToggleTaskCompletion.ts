@@ -4,7 +4,6 @@ import { TaskService } from '../../services/TaskService';
 
 export const useToggleTaskCompletionStatus = (
   taskService: TaskService,
-  isLoggedIn: boolean,
   cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
@@ -13,6 +12,7 @@ export const useToggleTaskCompletionStatus = (
   const onToggleTaskCompletionStatus = async (
     id: string,
     status: TaskCompletionStatusEnum,
+    userId: string | null,
     taskScore?: number | null,
   ) => {
     setError('');
@@ -21,7 +21,7 @@ export const useToggleTaskCompletionStatus = (
       await taskService.updateTaskCompletionStatus(
         id,
         status,
-        isLoggedIn,
+        userId,
         taskScore,
       );
 

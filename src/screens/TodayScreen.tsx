@@ -121,7 +121,6 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { user, isSyncing } = useAppContext();
-  const isLoggedIn = !!user;
   const repetitiveTaskTemplateService = useMemo(
     () => new RepetitiveTaskTemplateService(),
     [],
@@ -211,10 +210,10 @@ const TodayScreen = ({ navigation }: Props) => {
   }, [fetchTasksForDate, displayDate]);
 
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskService, isLoggedIn, refreshCurrentView);
+    useToggleTaskCompletionStatus(taskService, refreshCurrentView);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskService, isLoggedIn, refreshCurrentView);
+    useTaskReschedule(taskService, refreshCurrentView);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -271,11 +270,15 @@ const TodayScreen = ({ navigation }: Props) => {
         return;
       }
 
-      await onTaskReschedule(taskIdToBeRescheduled, params.date);
+      await onTaskReschedule(
+        taskIdToBeRescheduled,
+        params.date,
+        user && user.id,
+      );
       setTaskIdToBeRescheduled(null);
       setSelectedDateForTaskReschedule(undefined);
     },
-    [taskIdToBeRescheduled, onTaskReschedule],
+    [taskIdToBeRescheduled, onTaskReschedule, user],
   );
 
   const handleRefreshToNewDay = useCallback(() => {
@@ -305,12 +308,13 @@ const TodayScreen = ({ navigation }: Props) => {
         onToggleTaskCompletionStatus(
           task.id,
           TaskCompletionStatusEnum.COMPLETE,
+          user && user.id,
         );
         return;
       }
       setTaskToBeCompleted(task);
     },
-    [onToggleTaskCompletionStatus],
+    [onToggleTaskCompletionStatus, user],
   );
 
   const renderTaskItem = useCallback(
@@ -397,6 +401,7 @@ const TodayScreen = ({ navigation }: Props) => {
                       onToggleTaskCompletionStatus(
                         item.id,
                         TaskCompletionStatusEnum.FAILED,
+                        user && user.id,
                       )
                     }
                     style={styles.iconButton}
@@ -411,6 +416,7 @@ const TodayScreen = ({ navigation }: Props) => {
                       onToggleTaskCompletionStatus(
                         item.id,
                         TaskCompletionStatusEnum.INCOMPLETE,
+                        user && user.id,
                       )
                     }
                     style={styles.iconButton}
@@ -422,7 +428,7 @@ const TodayScreen = ({ navigation }: Props) => {
         </View>
       );
     },
-    [handleTaskCompletion, navigation, onToggleTaskCompletionStatus],
+    [handleTaskCompletion, navigation, onToggleTaskCompletionStatus, user],
   );
 
   if (isDbLoading) {
@@ -676,6 +682,7 @@ const TodayScreen = ({ navigation }: Props) => {
                 onToggleTaskCompletionStatus(
                   taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
+                  user && user.id,
                   scoreForTaskToBeCompleted,
                 );
                 setTaskToBeCompleted(undefined);

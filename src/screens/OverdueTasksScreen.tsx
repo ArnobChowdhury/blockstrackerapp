@@ -66,7 +66,6 @@ const OverdueScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const { user } = useAppContext();
-  const isLoggedIn = !!user;
   const [overdueTaskSections, setOverdueTaskSections] = useState<TaskSection[]>(
     [],
   );
@@ -117,10 +116,10 @@ const OverdueScreen = ({ navigation }: Props) => {
     onToggleTaskCompletionStatus,
     requestOnGoing: toggleTaskCompletionRequestOnGoing,
     error: toggleTaskCompletionError,
-  } = useToggleTaskCompletionStatus(taskService, isLoggedIn, fetchOverdueTasks);
+  } = useToggleTaskCompletionStatus(taskService, fetchOverdueTasks);
 
   const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskService, isLoggedIn, fetchOverdueTasks);
+    useTaskReschedule(taskService, fetchOverdueTasks);
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -160,11 +159,15 @@ const OverdueScreen = ({ navigation }: Props) => {
         return;
       }
 
-      await onTaskReschedule(taskIdToBeRescheduled, params.date);
+      await onTaskReschedule(
+        taskIdToBeRescheduled,
+        params.date,
+        user && user.id,
+      );
       setTaskIdToBeRescheduled(null);
       setSelectedDateForTaskReschedule(undefined);
     },
-    [taskIdToBeRescheduled, onTaskReschedule],
+    [taskIdToBeRescheduled, onTaskReschedule, user],
   );
 
   const [taskToBeCompleted, setTaskToBeCompleted] = useState<Task>();
@@ -186,12 +189,13 @@ const OverdueScreen = ({ navigation }: Props) => {
         onToggleTaskCompletionStatus(
           task.id,
           TaskCompletionStatusEnum.COMPLETE,
+          user && user.id,
         );
         return;
       }
       setTaskToBeCompleted(task);
     },
-    [onToggleTaskCompletionStatus],
+    [onToggleTaskCompletionStatus, user],
   );
 
   const [bulkFailureOnGoing, setBulkFailureOnGoing] = useState(false);
@@ -314,6 +318,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                     onToggleTaskCompletionStatus(
                       item.id,
                       TaskCompletionStatusEnum.FAILED,
+                      user && user.id,
                     )
                   }
                   style={styles.iconButton}
@@ -325,11 +330,12 @@ const OverdueScreen = ({ navigation }: Props) => {
       );
     },
     [
-      handleTaskCompletion,
-      navigation,
-      onToggleTaskCompletionStatus,
       toggleTaskCompletionRequestOnGoing,
       bulkFailureOnGoing,
+      navigation,
+      handleTaskCompletion,
+      onToggleTaskCompletionStatus,
+      user,
     ],
   );
 
@@ -536,6 +542,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                 onToggleTaskCompletionStatus(
                   taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
+                  user && user.id,
                   scoreForTaskToBeCompleted,
                 );
                 setTaskToBeCompleted(undefined);
