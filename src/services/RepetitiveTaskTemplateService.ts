@@ -174,42 +174,77 @@ export class RepetitiveTaskTemplateService {
     }
   }
 
-  async generateDueRepetitiveTasks(userId: string | null): Promise<void> {
-    console.log('[RepetitiveTaskTemplateService] Generating due tasks...');
-    const todayStart = dayjs().startOf('day');
+  async updateLastDateOfTaskGeneration(
+    templateId: string,
+    lastDate: string,
+    userId: string | null,
+  ): Promise<void> {
+    const updatedTemplate = await this.rttRepo.updateLastDateOfTaskGeneration(
+      templateId,
+      lastDate,
+    );
 
-    try {
-      const dueTemplates = await this.rttRepo.getDueRepetitiveTaskTemplates(
-        userId,
-      );
-
-      if (dueTemplates.length === 0) {
-        console.log(
-          '[RepetitiveTaskTemplateService] No due templates to process.',
+    if (userId) {
+      if (!updatedTemplate) {
+        throw new Error(
+          `[RepetitiveTaskTemplateService] Cannot update last generation date for non-existent template with ID ${templateId}`,
         );
-        return;
       }
 
-      for (const template of dueTemplates) {
-        let lastGenDateOrCreatedAt: Dayjs | string =
-          template.lastDateOfTaskGeneration || template.createdAt;
+      console.log(
+        '[RepetitiveTaskTemplateService] Enqueuing pending operation for last_date_of_task_generation update.',
+      );
 
-        if (!template.lastDateOfTaskGeneration) {
-          const templateCreationDate = dayjs(template.createdAt)
-            .startOf('day')
-            .toISOString();
-          if (templateCreationDate === todayStart.toISOString()) {
-            lastGenDateOrCreatedAt = todayStart.subtract(1, 'day');
-          }
+      await this.pendingOpRepo.enqueueOperation({
+        operation_type: 'update',
+        entity_type: 'repetitive_task_template',
+        entity_id: templateId,
+        payload: JSON.stringify({ ...updatedTemplate, tags: [] }),
+        userId,
+      });
+    }
+  }
+
+  async generateDueRepetitiveTasks(userId: string | null): Promise<void> {
+    console.log(
+      '[RepetitiveTaskTemplateService] Starting generation of due tasks...',
+    );
+    const dueTemplates = await this.rttRepo.getDueRepetitiveTaskTemplates(
+      userId,
+    );
+
+    if (dueTemplates.length === 0) {
+      console.log(
+        '[RepetitiveTaskTemplateService] No due templates to process.',
+      );
+      return;
+    }
+
+    const isPremium = !!userId;
+
+    for (const template of dueTemplates) {
+      try {
+        await db.executeAsync('BEGIN TRANSACTION;');
+
+        const todayStart = dayjs().startOf('day');
+        let lastGenDate = template.lastDateOfTaskGeneration;
+
+        if (!lastGenDate) {
+          const templateCreationDate = dayjs(template.createdAt).startOf('day');
+          lastGenDate = templateCreationDate.isSame(todayStart)
+            ? todayStart.subtract(1, 'day').toISOString()
+            : template.createdAt;
         }
 
         const daysToGenerate = todayStart.diff(
-          dayjs(lastGenDateOrCreatedAt).startOf('day'),
+          dayjs(lastGenDate).startOf('day'),
           'day',
         );
 
-        for (let i = 0; i < daysToGenerate; i++) {
-          const targetDueDate = dayjs(lastGenDateOrCreatedAt)
+        let latestDueDateForTemplate: Dayjs | undefined;
+
+        for (let i = 0; i < daysToGenerate; i += 1) {
+          const targetDueDate = dayjs(lastGenDate)
             .startOf('day')
             .add(i + 1, 'day');
           const dayOfWeekLowercase = targetDueDate
@@ -234,32 +269,34 @@ export class RepetitiveTaskTemplateService {
               timeOfDay: template.timeOfDay,
               repetitiveTaskTemplateId: template.id,
               shouldBeScored: template.shouldBeScored ? 1 : 0,
-              spaceId: template.spaceId || null,
+              spaceId: template.spaceId,
             };
 
-            try {
-              await this.taskService.createTask(newTaskData, userId);
-              await this.rttRepo.updateLastDateOfTaskGeneration(
-                template.id,
-                targetDueDate.toISOString(),
-              );
-            } catch (error) {
-              console.error(
-                `[RepetitiveTaskTemplateService] Error processing template ${
-                  template.id
-                } for date ${targetDueDate.toISOString()}:`,
-                error,
-              );
-            }
+            await this.taskService._createTaskInternal(newTaskData, userId);
+            latestDueDateForTemplate = targetDueDate;
           }
         }
+
+        if (latestDueDateForTemplate) {
+          await this.updateLastDateOfTaskGeneration(
+            template.id,
+            latestDueDateForTemplate.toISOString(),
+            userId,
+          );
+        }
+
+        await db.executeAsync('COMMIT;');
+      } catch (error) {
+        console.error(
+          `[RepetitiveTaskTemplateService] Transaction failed for template ${template.id}. Rolling back.`,
+          error,
+        );
+        await db.executeAsync('ROLLBACK;');
       }
-    } catch (error) {
-      console.error(
-        '[RepetitiveTaskTemplateService] Failed to generate due tasks:',
-        error,
-      );
-      throw error;
+    }
+
+    if (isPremium) {
+      syncService.runSync();
     }
   }
 

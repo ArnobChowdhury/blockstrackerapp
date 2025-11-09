@@ -30,6 +30,34 @@ export class TaskService {
   }
 
   /**
+   * Internal method to create a task and enqueue a sync operation.
+   * This method does NOT manage transactions; the caller is responsible for that.
+   * @param taskData The data for the new task.
+   * @param userId The userId of the user.
+   * @returns The newly created task.
+   */
+  async _createTaskInternal(
+    taskData: NewTaskData,
+    userId: string | null,
+  ): Promise<Task> {
+    const newTask = await this.taskRepo.createTask(taskData, userId);
+
+    if (userId) {
+      console.log(
+        '[TaskService] Logged-in user. Enqueuing pending operation for new task.',
+      );
+      await this.pendingOpRepo.enqueueOperation({
+        userId: userId,
+        operation_type: 'create',
+        entity_type: 'task',
+        entity_id: newTask.id,
+        payload: JSON.stringify({ ...newTask, tags: [] }),
+      });
+    }
+    return newTask;
+  }
+
+  /**
    * Creates a new task.
    * If the user is logged in, it uses the Outbox Pattern to ensure the local
    * database write and the sync operation are queued atomically.
@@ -41,27 +69,11 @@ export class TaskService {
     taskData: NewTaskData,
     userId: string | null,
   ): Promise<string> {
-    let newId: string;
     let newTask: Task;
     try {
       await db.executeAsync('BEGIN TRANSACTION;');
 
-      newTask = await this.taskRepo.createTask(taskData, userId);
-      newId = newTask.id;
-
-      if (userId) {
-        console.log(
-          '[TaskService] Logged-in user. Enqueuing pending operation.',
-        );
-
-        await this.pendingOpRepo.enqueueOperation({
-          userId: userId,
-          operation_type: 'create',
-          entity_type: 'task',
-          entity_id: newId,
-          payload: JSON.stringify({ ...newTask, tags: [] }),
-        });
-      }
+      newTask = await this._createTaskInternal(taskData, userId);
 
       await db.executeAsync('COMMIT;');
 
@@ -76,7 +88,7 @@ export class TaskService {
       await db.executeAsync('ROLLBACK;');
       throw error;
     }
-    return newId;
+    return newTask.id;
   }
 
   async updateTask(

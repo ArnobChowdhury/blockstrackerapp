@@ -445,9 +445,9 @@ export class RepetitiveTaskTemplateRepository {
   async updateLastDateOfTaskGeneration(
     templateId: string,
     lastDate: string,
-  ): Promise<QueryResult> {
+  ): Promise<RepetitiveTaskTemplate | null> {
     const sql =
-      'UPDATE repetitive_task_templates SET last_date_of_task_generation = ?, modified_at = ? WHERE id = ?;';
+      'UPDATE repetitive_task_templates SET last_date_of_task_generation = ?, modified_at = ? WHERE id = ? RETURNING *;';
     const params = [lastDate, new Date().toISOString(), templateId];
     console.log(
       '[DB Repo] Attempting to UPDATE repetitive_task_template last_date_of_task_generation:',
@@ -455,12 +455,17 @@ export class RepetitiveTaskTemplateRepository {
     );
 
     try {
-      const result = await this.db.executeAsync(sql, params);
-      console.log(
-        '[DB Repo] RepetitiveTaskTemplate last_date_of_task_generation UPDATE successful:',
-        result,
-      );
-      return result;
+      const resultSet = await this.db.executeAsync(sql, params);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        if (row) {
+          console.log(
+            '[DB Repo] RepetitiveTaskTemplate last_date_of_task_generation UPDATE successful.',
+          );
+          return this._transformRowToTemplate(row);
+        }
+      }
+      return null;
     } catch (error: any) {
       console.error(
         '[DB Repo] Failed to UPDATE repetitive_task_template last_date_of_task_generation:',
