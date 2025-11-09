@@ -284,8 +284,7 @@ const OverdueScreen = ({ navigation }: Props) => {
             )}
             right={props => (
               <View {...props} style={styles.iconContainer}>
-                {(item.schedule === TaskScheduleTypeEnum.Unscheduled ||
-                  item.schedule === TaskScheduleTypeEnum.Once) && (
+                {item.schedule !== TaskScheduleTypeEnum.Daily && (
                   <IconButton
                     icon="calendar-refresh"
                     size={20}
@@ -295,6 +294,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                       );
                       setTaskIdToBeRescheduled(item.id);
                     }}
+                    iconColor={theme.colors.secondary}
                     disabled={
                       item.completionStatus ===
                         TaskCompletionStatusEnum.COMPLETE ||
@@ -334,6 +334,7 @@ const OverdueScreen = ({ navigation }: Props) => {
       bulkFailureOnGoing,
       navigation,
       handleTaskCompletion,
+      theme.colors.secondary,
       onToggleTaskCompletionStatus,
       user,
     ],

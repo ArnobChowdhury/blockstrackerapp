@@ -676,6 +676,7 @@ export class TaskRepository {
         UPDATE tasks
         SET
           due_date = ?,
+          completion_status = ?, 
           schedule = CASE
                        WHEN schedule = '${TaskScheduleTypeEnum.Unscheduled}' THEN '${TaskScheduleTypeEnum.Once}'
                        ELSE schedule
@@ -683,7 +684,12 @@ export class TaskRepository {
           modified_at = ?
         WHERE id = ?
       `;
-      const params: any[] = [dueDate.toISOString(), now, taskId];
+      const params: any[] = [
+        dueDate.toISOString(),
+        TaskCompletionStatusEnum.INCOMPLETE,
+        now,
+        taskId,
+      ];
 
       if (userId) {
         sql += ' AND user_id = ?';

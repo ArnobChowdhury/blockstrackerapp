@@ -369,25 +369,24 @@ const TodayScreen = ({ navigation }: Props) => {
               : {})}
             right={props => (
               <View {...props} style={styles.iconContainer}>
-                {(item.schedule === TaskScheduleTypeEnum.Unscheduled ||
-                  item.schedule === TaskScheduleTypeEnum.Once) &&
-                  item.completionStatus !== TaskCompletionStatusEnum.FAILED && (
-                    <IconButton
-                      icon="calendar-refresh"
-                      size={20}
-                      onPress={() => {
-                        setSelectedDateForTaskReschedule(
-                          new Date(item.dueDate as string),
-                        );
-                        setTaskIdToBeRescheduled(item.id);
-                      }}
-                      disabled={
-                        item.completionStatus ===
-                        TaskCompletionStatusEnum.COMPLETE
-                      }
-                      style={styles.iconButton}
-                    />
-                  )}
+                {item.schedule !== TaskScheduleTypeEnum.Daily && (
+                  <IconButton
+                    icon="calendar-refresh"
+                    size={20}
+                    onPress={() => {
+                      setSelectedDateForTaskReschedule(
+                        new Date(item.dueDate as string),
+                      );
+                      setTaskIdToBeRescheduled(item.id);
+                    }}
+                    iconColor={theme.colors.secondary}
+                    disabled={
+                      item.completionStatus ===
+                      TaskCompletionStatusEnum.COMPLETE
+                    }
+                    style={styles.iconButton}
+                  />
+                )}
                 {item.completionStatus !== TaskCompletionStatusEnum.FAILED && (
                   <IconButton
                     icon="thumb-down-outline"
@@ -428,7 +427,13 @@ const TodayScreen = ({ navigation }: Props) => {
         </View>
       );
     },
-    [handleTaskCompletion, navigation, onToggleTaskCompletionStatus, user],
+    [
+      handleTaskCompletion,
+      navigation,
+      onToggleTaskCompletionStatus,
+      theme.colors.secondary,
+      user,
+    ],
   );
 
   if (isDbLoading) {
