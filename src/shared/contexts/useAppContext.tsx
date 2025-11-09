@@ -69,6 +69,15 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [isSnackbarVisible, setIsSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
+  const showSnackbar = useCallback((message: string) => {
+    setSnackbarMessage(message);
+    setIsSnackbarVisible(true);
+  }, []);
+
+  const hideSnackbar = useCallback(() => {
+    setIsSnackbarVisible(false);
+  }, []);
+
   useEffect(() => {
     const loadTheme = async () => {
       const theme = await readData('theme');
@@ -231,19 +240,16 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     }
   }, []);
 
+  const handleAuthFailure = useCallback(() => {
+    showSnackbar(
+      'Failed to refresh your session. Sync is paused. Please sign out and sign in again to resume.',
+    );
+  }, [showSnackbar]);
+
   useEffect(() => {
-    registerAuthFailureHandler(signOut);
+    registerAuthFailureHandler(handleAuthFailure);
     registerTokenRefreshHandler(updateTokens);
-  }, [signOut, updateTokens]);
-
-  const showSnackbar = useCallback((message: string) => {
-    setSnackbarMessage(message);
-    setIsSnackbarVisible(true);
-  }, []);
-
-  const hideSnackbar = useCallback(() => {
-    setIsSnackbarVisible(false);
-  }, []);
+  }, [handleAuthFailure, updateTokens]);
 
   const value = useMemo(
     () => ({
