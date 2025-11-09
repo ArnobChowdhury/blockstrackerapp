@@ -7,7 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, Snackbar } from 'react-native-paper';
 import { initializeDatabase } from '../db'; // Adjust path if needed
 import 'react-native-gesture-handler';
 
@@ -31,7 +31,8 @@ enableSimpleNullHandling();
 registerTranslation('en', en);
 
 const AppContent = () => {
-  const { isDarkMode } = useAppContext();
+  const { isDarkMode, isSnackbarVisible, snackbarMessage, hideSnackbar } =
+    useAppContext();
 
   let navigationTheme: Theme;
   if (isDarkMode) {
@@ -63,6 +64,16 @@ const AppContent = () => {
       <NavigationContainer theme={navigationTheme}>
         <RootNavigator />
       </NavigationContainer>
+      <Snackbar
+        visible={isSnackbarVisible}
+        onDismiss={hideSnackbar}
+        duration={3000}
+        action={{
+          label: 'Dismiss',
+          onPress: hideSnackbar,
+        }}>
+        {snackbarMessage}
+      </Snackbar>
     </PaperProvider>
   );
 };

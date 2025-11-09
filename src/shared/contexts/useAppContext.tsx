@@ -34,6 +34,10 @@ interface AppContextProps {
   signIn: (token: string, refreshToken: string) => void;
   signOut: () => void;
   isSyncing: boolean;
+  isSnackbarVisible: boolean;
+  snackbarMessage: string;
+  showSnackbar: (message: string) => void;
+  hideSnackbar: () => void;
 }
 
 const AppContext = React.createContext<AppContextProps | undefined>(undefined);
@@ -61,6 +65,9 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const colorScheme = useColorScheme();
   const netInfo = useNetInfo();
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const [isSnackbarVisible, setIsSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -229,6 +236,15 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     registerTokenRefreshHandler(updateTokens);
   }, [signOut, updateTokens]);
 
+  const showSnackbar = useCallback((message: string) => {
+    setSnackbarMessage(message);
+    setIsSnackbarVisible(true);
+  }, []);
+
+  const hideSnackbar = useCallback(() => {
+    setIsSnackbarVisible(false);
+  }, []);
+
   const value = useMemo(
     () => ({
       userPreferredTheme,
@@ -239,6 +255,10 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       signIn,
       signOut,
       isSyncing,
+      isSnackbarVisible,
+      snackbarMessage,
+      showSnackbar,
+      hideSnackbar,
     }),
     [
       userPreferredTheme,
@@ -249,6 +269,10 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       signIn,
       signOut,
       isSyncing,
+      isSnackbarVisible,
+      snackbarMessage,
+      showSnackbar,
+      hideSnackbar,
     ],
   );
 
