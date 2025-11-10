@@ -113,6 +113,33 @@ export class PendingOperationRepository {
   }
 
   /**
+   * Remaps the entity_id for all pending operations that match the oldId.
+   * This is crucial when a duplicate 'create' operation is resolved by the server
+   * providing a canonical ID.
+   * @param oldId The client-generated ID that was found to be a duplicate.
+   * @param newId The canonical ID provided by the server.
+   */
+  async remapEntityId(oldId: string, newId: string): Promise<QueryResult> {
+    const sql =
+      'UPDATE pending_operations SET entity_id = ? WHERE entity_id = ?;';
+    const params = [newId, oldId];
+
+    console.log('[DB Repo] Remapping entity ID in pending operations:', {
+      sql,
+      params,
+    });
+
+    try {
+      return await this.db.executeAsync(sql, params);
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to remap entity ID:', error);
+      throw new Error(
+        `Failed to remap entity ID: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
    * Deletes a pending operation from the queue, typically after a successful sync.
    * @param operationId The ID of the operation to delete.
    */

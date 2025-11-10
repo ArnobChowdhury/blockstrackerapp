@@ -1,6 +1,17 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import * as Keychain from 'react-native-keychain';
 import { API_BASE_URL } from '../config/apiRoutes';
+
+interface BackendErrorResponseData {
+  result?: {
+    code?: string;
+    message?: string;
+    data?: { canonical_id?: string };
+  };
+}
+
+export interface CustomAxiosError
+  extends AxiosError<BackendErrorResponseData> {}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

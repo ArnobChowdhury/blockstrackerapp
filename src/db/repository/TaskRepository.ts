@@ -166,6 +166,23 @@ export class TaskRepository {
     }
   }
 
+  async deleteTaskById(taskId: string): Promise<void> {
+    const sql = 'DELETE FROM tasks WHERE id = ?;';
+    const params = [taskId];
+
+    console.log('[DB Repo] Attempting to DELETE Task:', { sql, params });
+
+    try {
+      await this.db.executeAsync(sql, params);
+      console.log('[DB Repo] Task DELETE successful for id:', taskId);
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to DELETE task:', error);
+      throw new Error(
+        `Failed to delete task: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
   async getAllOverdueTasks(userId: string | null): Promise<Task[]> {
     const todayStart = dayjs().startOf('day');
 

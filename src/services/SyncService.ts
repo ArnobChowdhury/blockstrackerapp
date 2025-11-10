@@ -1,5 +1,5 @@
-import axios, { AxiosError } from 'axios';
-import apiClient from '../lib/apiClient';
+import axios from 'axios';
+import apiClient, { CustomAxiosError } from '../lib/apiClient';
 import { db } from '../db';
 import {
   PendingOperationRepository,
@@ -114,7 +114,7 @@ class SyncService {
       await this.pendingOpRepo.deleteOperation(id);
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        await this.handleAxiosError(error, id);
+        await this.handleAxiosError(error, operation);
       } else {
         console.warn(
           `[SyncService] An unexpected network error occurred for operation ${id}. Recording failed attempt.`,
@@ -192,27 +192,79 @@ class SyncService {
     }
   }
 
-  private async handleAxiosError(error: AxiosError, operationId: number) {
-    if (error.response) {
-      const { status } = error.response;
+  private async handleAxiosError(
+    error: CustomAxiosError,
+    operation: PendingOperation,
+  ) {
+    const { id, entity_type: entityType, entity_id: entityId } = operation;
 
-      if (status >= 500) {
+    if (error.response) {
+      const { status, data } = error.response;
+      const errorCode = data?.result?.code;
+
+      if (status === 409) {
+        if (errorCode === 'DUPLICATE_ENTITY') {
+          const canonicalId = data?.result?.data?.canonical_id;
+          if (canonicalId) {
+            console.warn(
+              `[SyncService] Duplicate entity conflict for operation ${id} (entityId: ${entityId}). Canonical ID: ${canonicalId}. Remapping and deleting local entity.`,
+            );
+            await this.pendingOpRepo.remapEntityId(entityId, canonicalId);
+
+            switch (entityType) {
+              case 'task':
+                await this.taskRepo.deleteTaskById(entityId);
+                break;
+            }
+            await this.pendingOpRepo.deleteOperation(id);
+          } else {
+            console.error(
+              `[SyncService] DUPLICATE_ENTITY conflict for operation ${id} but no canonical_id provided. Marking as failed.`,
+              data,
+            );
+            await this.pendingOpRepo.updateOperationStatus(id, 'failed');
+          }
+        } else if (errorCode === 'STALE_DATA') {
+          console.warn(
+            `[SyncService] Stale data conflict for operation ${id}. Deleting operation.`,
+          );
+          await this.pendingOpRepo.deleteOperation(id);
+        } else {
+          console.error(
+            `[SyncService] Unknown 409 conflict for operation ${id}. Marking as failed.`,
+            data,
+          );
+          await this.pendingOpRepo.updateOperationStatus(id, 'failed');
+        }
+      } else if (status === 404) {
         console.warn(
-          `[SyncService] Server error (${status}) for operation ${operationId}. Recording failed attempt.`,
+          `[SyncService] Entity not found (404) for operation ${id}. Deleting operation.`,
         );
-        await this.pendingOpRepo.recordFailedAttempt(operationId);
+        await this.pendingOpRepo.deleteOperation(id);
+      } else if (status === 401) {
+        console.warn(
+          `[SyncService] Unauthorized (401) for operation ${id}. Recording failed attempt.`,
+        );
+        await this.pendingOpRepo.recordFailedAttempt(id);
+      } else if (status >= 500) {
+        console.warn(
+          `[SyncService] Server error (${status}) for operation ${id}. Recording failed attempt.`,
+        );
+        await this.pendingOpRepo.recordFailedAttempt(id);
       } else if (status >= 400) {
+        // Other 4xx errors (400, 422, etc.)
         console.error(
-          `[SyncService] Client error (${status}) for operation ${operationId}. Marking as failed.`,
+          `[SyncService] Client error (${status}) for operation ${id}. Marking as failed.`,
           error.response.data,
         );
-        await this.pendingOpRepo.updateOperationStatus(operationId, 'failed');
+        await this.pendingOpRepo.updateOperationStatus(id, 'failed');
       }
     } else if (error.request) {
+      // Network error (no response received)
       console.warn(
-        `[SyncService] No response received for operation ${operationId}. Recording failed attempt.`,
+        `[SyncService] No response received (network error) for operation ${id}. Recording failed attempt.`,
       );
-      await this.pendingOpRepo.recordFailedAttempt(operationId);
+      await this.pendingOpRepo.recordFailedAttempt(id);
     }
   }
 }
