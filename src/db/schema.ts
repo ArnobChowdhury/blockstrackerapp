@@ -25,8 +25,7 @@ export const V1_SCHEMA = `
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
     user_id TEXT, -- Optional, for logged-in users
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE(name, user_id) -- A user cannot have two spaces with the same name
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
   -- =============================================
@@ -38,8 +37,7 @@ export const V1_SCHEMA = `
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
     user_id TEXT, -- Optional, for logged-in users
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE(name, user_id) -- A user cannot have two tags with the same name
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
   -- =============================================
