@@ -765,7 +765,7 @@ export class TaskRepository {
         modified_at = excluded.modified_at,
         space_id = excluded.space_id,
         repetitive_task_template_id = excluded.repetitive_task_template_id
-      WHERE excluded.modified_at > tasks.modified_at;
+      WHERE excluded.modified_at >= tasks.modified_at;
     `;
 
     for (const task of tasks) {

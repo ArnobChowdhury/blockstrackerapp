@@ -149,7 +149,7 @@ export class SpaceRepository {
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         modified_at = excluded.modified_at
-      WHERE excluded.modified_at > spaces.modified_at;
+      WHERE excluded.modified_at >= spaces.modified_at;
     `;
 
     for (const space of spaces) {

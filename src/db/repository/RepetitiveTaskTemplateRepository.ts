@@ -605,7 +605,7 @@ export class RepetitiveTaskTemplateRepository {
         last_date_of_task_generation = excluded.last_date_of_task_generation,
         modified_at = excluded.modified_at,
         space_id = excluded.space_id
-      WHERE excluded.modified_at > repetitive_task_templates.modified_at;
+      WHERE excluded.modified_at >= repetitive_task_templates.modified_at;
     `;
 
     for (const template of templates) {
