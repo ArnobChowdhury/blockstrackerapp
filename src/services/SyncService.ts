@@ -96,12 +96,12 @@ class SyncService {
         ? JSON.parse(payload)
         : undefined;
 
-    console.log(
-      `[SyncService] Making API call: ${endpointConfig.method} ${url}`,
-    );
-
     try {
-      await this.pendingOpRepo.updateOperationStatus(id, 'processing');
+      await this.pendingOpRepo.updateOperationStatus(
+        id,
+        'processing',
+        undefined,
+      );
       await apiClient({
         method: endpointConfig.method,
         url,
@@ -111,7 +111,7 @@ class SyncService {
       console.log(
         `[SyncService] Operation ${id} synced successfully. Deleting from queue.`,
       );
-      await this.pendingOpRepo.deleteOperation(id);
+      await this.pendingOpRepo.deleteOperation(id, undefined);
     } catch (error) {
       if (axios.isAxiosError(error)) {
         await this.handleAxiosError(error, operation);
@@ -120,7 +120,7 @@ class SyncService {
           `[SyncService] An unexpected network error occurred for operation ${id}. Recording failed attempt.`,
           error,
         );
-        await this.pendingOpRepo.recordFailedAttempt(id);
+        await this.pendingOpRepo.recordFailedAttempt(id, undefined);
       }
     }
   }
@@ -162,31 +162,25 @@ class SyncService {
         console.log(
           '[SyncService] Beginning database transaction for sync pull.',
         );
-        await db.executeAsync('BEGIN TRANSACTION;');
+        await db.transaction(async tx => {
+          if (syncData.spaces?.length > 0) {
+            await this.spaceRepo.upsertMany(syncData.spaces, tx);
+          }
+          if (syncData.repetitiveTaskTemplates?.length > 0) {
+            await this.rttRepo.upsertMany(syncData.repetitiveTaskTemplates, tx);
+          }
+          if (syncData.tasks?.length > 0) {
+            await this.taskRepo.upsertMany(syncData.tasks, tx);
+          }
+          // ... other repositories
 
-        if (syncData.spaces?.length > 0) {
-          await this.spaceRepo.upsertMany(syncData.spaces);
-        }
-        if (syncData.repetitiveTaskTemplates?.length > 0) {
-          await this.rttRepo.upsertMany(syncData.repetitiveTaskTemplates);
-        }
-        if (syncData.tasks?.length > 0) {
-          await this.taskRepo.upsertMany(syncData.tasks);
-        }
-        // ... other repositories
-
-        await this.settingsRepo.setLastChangeId(syncData.latestChangeId);
-
-        await db.executeAsync('COMMIT;');
-        console.log(
-          `[SyncService] PULL phase complete. Transaction committed. Synced up to change ID: ${syncData.latestChangeId}`,
-        );
+          await this.settingsRepo.setLastChangeId(syncData.latestChangeId, tx);
+        });
       } catch (error) {
         console.error(
           '[SyncService] Error during sync pull transaction. Rolling back.',
           error,
         );
-        await db.executeAsync('ROLLBACK;');
         break;
       }
     }
@@ -203,68 +197,70 @@ class SyncService {
       const errorCode = data?.result?.code;
 
       if (status === 409) {
-        if (errorCode === 'DUPLICATE_ENTITY') {
-          const canonicalId = data?.result?.data?.canonical_id;
-          if (canonicalId) {
-            console.warn(
-              `[SyncService] Duplicate entity conflict for operation ${id} (entityId: ${entityId}). Canonical ID: ${canonicalId}. Remapping and deleting local entity.`,
-            );
-            await this.pendingOpRepo.remapEntityId(entityId, canonicalId);
+        await db.transaction(async tx => {
+          if (errorCode === 'DUPLICATE_ENTITY') {
+            const canonicalId = data?.result?.data?.canonical_id;
+            if (canonicalId) {
+              console.warn(
+                `[SyncService] Duplicate entity conflict for operation ${id} (entityId: ${entityId}). Canonical ID: ${canonicalId}. Remapping and deleting local entity.`,
+              );
+              await this.pendingOpRepo.remapEntityId(entityId, canonicalId, tx);
 
-            switch (entityType) {
-              case 'task':
-                await this.taskRepo.deleteTaskById(entityId);
-                break;
+              switch (entityType) {
+                case 'task':
+                  await this.taskRepo.deleteTaskById(entityId, tx);
+                  break;
+              }
+              await this.pendingOpRepo.deleteOperation(id, tx);
+            } else {
+              console.error(
+                `[SyncService] DUPLICATE_ENTITY conflict for operation ${id} but no canonical_id provided. Marking as failed.`,
+                data,
+              );
+              await this.pendingOpRepo.updateOperationStatus(id, 'failed', tx);
             }
-            await this.pendingOpRepo.deleteOperation(id);
+          } else if (errorCode === 'STALE_DATA') {
+            console.warn(
+              `[SyncService] Stale data conflict for operation ${id}. Deleting operation.`,
+            );
+            await this.pendingOpRepo.deleteOperation(id, tx);
           } else {
             console.error(
-              `[SyncService] DUPLICATE_ENTITY conflict for operation ${id} but no canonical_id provided. Marking as failed.`,
+              `[SyncService] Unknown 409 conflict for operation ${id}. Marking as failed.`,
               data,
             );
-            await this.pendingOpRepo.updateOperationStatus(id, 'failed');
+            await this.pendingOpRepo.updateOperationStatus(id, 'failed', tx);
           }
-        } else if (errorCode === 'STALE_DATA') {
-          console.warn(
-            `[SyncService] Stale data conflict for operation ${id}. Deleting operation.`,
-          );
-          await this.pendingOpRepo.deleteOperation(id);
-        } else {
-          console.error(
-            `[SyncService] Unknown 409 conflict for operation ${id}. Marking as failed.`,
-            data,
-          );
-          await this.pendingOpRepo.updateOperationStatus(id, 'failed');
-        }
+        });
       } else if (status === 404) {
         console.warn(
           `[SyncService] Entity not found (404) for operation ${id}. Deleting operation.`,
         );
-        await this.pendingOpRepo.deleteOperation(id);
+        await this.pendingOpRepo.deleteOperation(id, undefined);
       } else if (status === 401) {
         console.warn(
           `[SyncService] Unauthorized (401) for operation ${id}. Recording failed attempt.`,
         );
-        await this.pendingOpRepo.recordFailedAttempt(id);
+        await this.pendingOpRepo.recordFailedAttempt(id, undefined);
       } else if (status >= 500) {
         console.warn(
           `[SyncService] Server error (${status}) for operation ${id}. Recording failed attempt.`,
         );
-        await this.pendingOpRepo.recordFailedAttempt(id);
+        await this.pendingOpRepo.recordFailedAttempt(id, undefined);
       } else if (status >= 400) {
         // Other 4xx errors (400, 422, etc.)
         console.error(
           `[SyncService] Client error (${status}) for operation ${id}. Marking as failed.`,
           error.response.data,
         );
-        await this.pendingOpRepo.updateOperationStatus(id, 'failed');
+        await this.pendingOpRepo.updateOperationStatus(id, 'failed', undefined);
       }
     } else if (error.request) {
       // Network error (no response received)
       console.warn(
         `[SyncService] No response received (network error) for operation ${id}. Recording failed attempt.`,
       );
-      await this.pendingOpRepo.recordFailedAttempt(id);
+      await this.pendingOpRepo.recordFailedAttempt(id, undefined);
     }
   }
 }

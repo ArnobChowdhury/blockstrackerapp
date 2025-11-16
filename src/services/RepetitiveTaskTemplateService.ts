@@ -36,43 +36,42 @@ export class RepetitiveTaskTemplateService {
     templateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
   ): Promise<string> {
-    let newTemplate: RepetitiveTaskTemplate;
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-
-      newTemplate = await this.rttRepo.createRepetitiveTaskTemplate(
+    let createdTemplate: RepetitiveTaskTemplate | undefined;
+    await db.transaction(async tx => {
+      createdTemplate = await this.rttRepo.createRepetitiveTaskTemplate(
         templateData,
         userId,
+        tx,
       );
 
       if (userId) {
         console.log(
           '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation.',
         );
-
-        await this.pendingOpRepo.enqueueOperation({
-          userId: userId,
-          operation_type: 'create',
-          entity_type: 'repetitive_task_template',
-          entity_id: newTemplate.id,
-          payload: JSON.stringify({ ...newTemplate, tags: [] }),
-        });
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            userId: userId,
+            operation_type: 'create',
+            entity_type: 'repetitive_task_template',
+            entity_id: createdTemplate.id,
+            payload: JSON.stringify({ ...createdTemplate, tags: [] }),
+          },
+          tx,
+        );
       }
+    });
 
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        '[RepetitiveTaskTemplateService] Transaction for creating template failed. Rolling back.',
-        error,
+    if (!createdTemplate) {
+      throw new Error(
+        'Repetitive Task Template creation failed within transaction.',
       );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
     }
-    return newTemplate.id;
+
+    if (userId) {
+      syncService.runSync();
+    }
+
+    return createdTemplate.id;
   }
 
   async updateRepetitiveTaskTemplate(
@@ -80,14 +79,13 @@ export class RepetitiveTaskTemplateService {
     templateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
   ): Promise<void> {
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-
+    await db.transaction(async tx => {
       const updatedTemplate =
         await this.rttRepo.updateRepetitiveTaskTemplateById(
           templateId,
           templateData,
           userId,
+          tx,
         );
 
       if (userId) {
@@ -96,34 +94,22 @@ export class RepetitiveTaskTemplateService {
             `[RepetitiveTaskTemplateService] Cannot update non-existent or unauthorized template with ID ${templateId}`,
           );
         }
-
-        console.log(
-          '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation for update.',
-        );
-
         const remotePayload = { ...updatedTemplate, tags: [] };
-
-        await this.pendingOpRepo.enqueueOperation({
-          operation_type: 'update',
-          entity_type: 'repetitive_task_template',
-          entity_id: templateId,
-          payload: JSON.stringify(remotePayload),
-          userId,
-        });
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            operation_type: 'update',
+            entity_type: 'repetitive_task_template',
+            entity_id: templateId,
+            payload: JSON.stringify(remotePayload),
+            userId,
+          },
+          tx,
+        );
       }
+    });
 
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        `[RepetitiveTaskTemplateService] Transaction for updating template ${templateId} failed. Rolling back.`,
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    if (userId) {
+      syncService.runSync();
     }
   }
 
@@ -131,14 +117,12 @@ export class RepetitiveTaskTemplateService {
     templateId: string,
     userId: string | null,
   ): Promise<void> {
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-
+    await db.transaction(async tx => {
       const originalTemplate = await this.rttRepo.stopRepetitiveTask(
         templateId,
         userId,
+        tx,
       );
-
       if (userId) {
         console.log(
           '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation to stop template.',
@@ -148,30 +132,22 @@ export class RepetitiveTaskTemplateService {
             `[RepetitiveTaskTemplateService] Cannot stop non-existent or unauthorized template with ID ${templateId}`,
           );
         }
-
         const remotePayload = { ...originalTemplate };
-
-        await this.pendingOpRepo.enqueueOperation({
-          operation_type: 'update',
-          entity_type: 'repetitive_task_template',
-          entity_id: templateId,
-          payload: JSON.stringify(remotePayload),
-          userId,
-        });
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            operation_type: 'update',
+            entity_type: 'repetitive_task_template',
+            entity_id: templateId,
+            payload: JSON.stringify(remotePayload),
+            userId,
+          },
+          tx,
+        );
       }
+    });
 
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        `[RepetitiveTaskTemplateService] Transaction for stopping template ${templateId} failed. Rolling back.`,
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    if (userId) {
+      syncService.runSync();
     }
   }
 
@@ -198,13 +174,16 @@ export class RepetitiveTaskTemplateService {
         '[RepetitiveTaskTemplateService] Enqueuing pending operation for last_date_of_task_generation update.',
       );
 
-      await this.pendingOpRepo.enqueueOperation({
-        operation_type: 'update',
-        entity_type: 'repetitive_task_template',
-        entity_id: templateId,
-        payload: JSON.stringify({ ...updatedTemplate, tags: [] }),
-        userId,
-      });
+      await this.pendingOpRepo.enqueueOperation(
+        {
+          operation_type: 'update',
+          entity_type: 'repetitive_task_template',
+          entity_id: templateId,
+          payload: JSON.stringify({ ...updatedTemplate, tags: [] }),
+          userId,
+        },
+        tx,
+      );
     }
   }
 

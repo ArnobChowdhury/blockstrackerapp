@@ -1,6 +1,7 @@
 import {
   type NitroSQLiteConnection,
   type QueryResult,
+  type Transaction,
 } from 'react-native-nitro-sqlite';
 
 const LAST_CHANGE_ID_KEY = 'last_change_id';
@@ -34,7 +35,7 @@ export class SettingsRepository {
     }
   }
 
-  async setLastChangeId(id: number): Promise<void> {
+  async setLastChangeId(id: number, tx?: Transaction): Promise<void> {
     const sql = `
       INSERT INTO settings (key, value) VALUES (?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value;
@@ -42,7 +43,8 @@ export class SettingsRepository {
     const params = [LAST_CHANGE_ID_KEY, id.toString()];
 
     try {
-      await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      await dbOrTx.executeAsync(sql, params);
       console.log(`[DB Repo] Updated last_change_id to ${id}`);
     } catch (error: any) {
       console.error('[DB Repo] Failed to set last_change_id:', error);

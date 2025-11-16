@@ -1,4 +1,8 @@
-import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
+import {
+  NitroSQLiteConnection,
+  QueryResult,
+  Transaction,
+} from 'react-native-nitro-sqlite';
 
 export interface PendingOperation {
   id: number;
@@ -25,7 +29,10 @@ export class PendingOperationRepository {
     this.db = database;
   }
 
-  async enqueueOperation(opData: PendingOperationData): Promise<QueryResult> {
+  async enqueueOperation(
+    opData: PendingOperationData,
+    tx?: Transaction,
+  ): Promise<QueryResult> {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO pending_operations (
@@ -44,7 +51,8 @@ export class PendingOperationRepository {
     console.log('[DB Repo] Enqueuing pending operation:', { sql, params });
 
     try {
-      return await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      return await dbOrTx.executeAsync(sql, params);
     } catch (error: any) {
       console.error('[DB Repo] Failed to enqueue operation:', error);
       throw new Error(
@@ -96,6 +104,7 @@ export class PendingOperationRepository {
   async updateOperationStatus(
     operationId: number,
     status: 'processing' | 'failed',
+    tx?: Transaction,
   ): Promise<QueryResult> {
     const sql = 'UPDATE pending_operations SET status = ? WHERE id = ?;';
     const params = [status, operationId];
@@ -103,7 +112,8 @@ export class PendingOperationRepository {
     console.log('[DB Repo] Updating operation status:', { sql, params });
 
     try {
-      return await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      return await dbOrTx.executeAsync(sql, params);
     } catch (error: any) {
       console.error('[DB Repo] Failed to update operation status:', error);
       throw new Error(
@@ -119,7 +129,11 @@ export class PendingOperationRepository {
    * @param oldId The client-generated ID that was found to be a duplicate.
    * @param newId The canonical ID provided by the server.
    */
-  async remapEntityId(oldId: string, newId: string): Promise<QueryResult> {
+  async remapEntityId(
+    oldId: string,
+    newId: string,
+    tx?: Transaction,
+  ): Promise<QueryResult> {
     const sql =
       'UPDATE pending_operations SET entity_id = ? WHERE entity_id = ?;';
     const params = [newId, oldId];
@@ -130,7 +144,8 @@ export class PendingOperationRepository {
     });
 
     try {
-      return await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      return await dbOrTx.executeAsync(sql, params);
     } catch (error: any) {
       console.error('[DB Repo] Failed to remap entity ID:', error);
       throw new Error(
@@ -143,14 +158,18 @@ export class PendingOperationRepository {
    * Deletes a pending operation from the queue, typically after a successful sync.
    * @param operationId The ID of the operation to delete.
    */
-  async deleteOperation(operationId: number): Promise<QueryResult> {
+  async deleteOperation(
+    operationId: number,
+    tx?: Transaction,
+  ): Promise<QueryResult> {
     const sql = 'DELETE FROM pending_operations WHERE id = ?;';
     const params = [operationId];
 
     console.log('[DB Repo] Deleting operation:', { sql, params });
 
     try {
-      return await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      return await dbOrTx.executeAsync(sql, params);
     } catch (error: any) {
       console.error('[DB Repo] Failed to delete operation:', error);
       throw new Error(
@@ -164,7 +183,10 @@ export class PendingOperationRepository {
    * resetting the status to 'pending' for a future retry.
    * @param operationId The ID of the operation that failed.
    */
-  async recordFailedAttempt(operationId: number): Promise<QueryResult> {
+  async recordFailedAttempt(
+    operationId: number,
+    tx?: Transaction,
+  ): Promise<QueryResult> {
     const sql = `
       UPDATE pending_operations
       SET
@@ -180,7 +202,8 @@ export class PendingOperationRepository {
     });
 
     try {
-      return await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      return await dbOrTx.executeAsync(sql, params);
     } catch (error: any) {
       console.error('[DB Repo] Failed to record failed attempt:', error);
       throw new Error(

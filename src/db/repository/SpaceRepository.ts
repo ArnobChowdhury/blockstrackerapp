@@ -1,4 +1,8 @@
-import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
+import {
+  NitroSQLiteConnection,
+  QueryResult,
+  Transaction,
+} from 'react-native-nitro-sqlite';
 import uuid from 'react-native-uuid';
 import { Space } from '../../types';
 
@@ -103,7 +107,11 @@ export class SpaceRepository {
     }
   }
 
-  async createSpace(name: string, userId: string | null): Promise<Space> {
+  async createSpace(
+    name: string,
+    userId: string | null,
+    tx?: Transaction,
+  ): Promise<Space> {
     const newId = uuid.v4() as string;
     const now = new Date().toISOString();
     const sql = `
@@ -117,7 +125,8 @@ export class SpaceRepository {
     console.log('[DB Repo] Attempting to INSERT Space:', { sql, params });
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet: QueryResult = await dbOrTx.executeAsync(sql, params);
 
       console.log('[DB Repo] Space INSERT successful for id:', newId);
       if (resultSet.rows && resultSet.rows.length > 0) {
@@ -133,7 +142,7 @@ export class SpaceRepository {
     }
   }
 
-  async upsertMany(spaces: Space[]): Promise<void> {
+  async upsertMany(spaces: Space[], tx?: Transaction): Promise<void> {
     if (spaces.length === 0) {
       return;
     }
@@ -152,6 +161,8 @@ export class SpaceRepository {
       WHERE excluded.modified_at >= spaces.modified_at;
     `;
 
+    const dbOrTx = tx || this.db;
+
     for (const space of spaces) {
       const params = [
         space.id,
@@ -160,7 +171,7 @@ export class SpaceRepository {
         space.modifiedAt,
         space.userId,
       ];
-      await this.db.executeAsync(sql, params);
+      await dbOrTx.executeAsync(sql, params);
     }
   }
 }

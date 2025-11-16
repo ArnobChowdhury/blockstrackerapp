@@ -22,6 +22,7 @@ export class RepetitiveTaskTemplateRepository {
   async createRepetitiveTaskTemplate(
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<RepetitiveTaskTemplate> {
     const newId = uuid.v4() as string;
     const now = new Date().toISOString();
@@ -58,7 +59,8 @@ export class RepetitiveTaskTemplateRepository {
     });
 
     try {
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       console.log(
         '[DB Repo] Repetitive Task Template INSERT successful for id:',
         newId,
@@ -171,6 +173,7 @@ export class RepetitiveTaskTemplateRepository {
     templateId: string,
     repetitiveTaskTemplateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<RepetitiveTaskTemplate | null> {
     const now = new Date().toISOString();
     let sql = `
@@ -228,7 +231,8 @@ export class RepetitiveTaskTemplateRepository {
     );
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet: QueryResult = await dbOrTx.executeAsync(sql, params);
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);
         return this._transformRowToTemplate(row);
@@ -539,6 +543,7 @@ export class RepetitiveTaskTemplateRepository {
   async stopRepetitiveTask(
     repetitiveTaskId: string,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<RepetitiveTaskTemplate | null> {
     const now = new Date().toISOString();
     let sql = `
@@ -562,7 +567,8 @@ export class RepetitiveTaskTemplateRepository {
     });
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet: QueryResult = await dbOrTx.executeAsync(sql, params);
 
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);
@@ -578,7 +584,10 @@ export class RepetitiveTaskTemplateRepository {
     }
   }
 
-  async upsertMany(templates: RepetitiveTaskTemplate[]): Promise<void> {
+  async upsertMany(
+    templates: RepetitiveTaskTemplate[],
+    tx?: Transaction,
+  ): Promise<void> {
     if (templates.length === 0) {
       return;
     }
@@ -614,6 +623,8 @@ export class RepetitiveTaskTemplateRepository {
       WHERE excluded.modified_at >= repetitive_task_templates.modified_at;
     `;
 
+    const dbOrTx = tx || this.db;
+
     for (const template of templates) {
       const params = [
         template.id,
@@ -637,7 +648,7 @@ export class RepetitiveTaskTemplateRepository {
         template.spaceId,
         template.userId,
       ];
-      await this.db.executeAsync(sql, params);
+      await dbOrTx.executeAsync(sql, params);
     }
   }
 }

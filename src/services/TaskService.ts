@@ -48,13 +48,16 @@ export class TaskService {
       console.log(
         '[TaskService] Logged-in user. Enqueuing pending operation for new task.',
       );
-      await this.pendingOpRepo.enqueueOperation({
-        userId: userId,
-        operation_type: 'create',
-        entity_type: 'task',
-        entity_id: newTask.id,
-        payload: JSON.stringify({ ...newTask, tags: [] }),
-      });
+      await this.pendingOpRepo.enqueueOperation(
+        {
+          userId: userId,
+          operation_type: 'create',
+          entity_type: 'task',
+          entity_id: newTask.id,
+          payload: JSON.stringify({ ...newTask, tags: [] }),
+        },
+        tx,
+      );
     }
     return newTask;
   }
@@ -92,13 +95,12 @@ export class TaskService {
     taskData: NewTaskData,
     userId: string | null,
   ): Promise<void> {
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-
+    await db.transaction(async tx => {
       const updatedTask = await this.taskRepo.updateTaskById(
         taskId,
         taskData,
         userId,
+        tx,
       );
 
       if (userId) {
@@ -114,27 +116,21 @@ export class TaskService {
 
         const remoteTaskPayload = { ...updatedTask, tags: [] };
 
-        await this.pendingOpRepo.enqueueOperation({
-          operation_type: 'update',
-          entity_type: 'task',
-          entity_id: taskId,
-          payload: JSON.stringify(remoteTaskPayload),
-          userId,
-        });
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            operation_type: 'update',
+            entity_type: 'task',
+            entity_id: taskId,
+            payload: JSON.stringify(remoteTaskPayload),
+            userId,
+          },
+          tx,
+        );
       }
+    });
 
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        `[TaskService] Transaction for updating task ${taskId} failed. Rolling back.`,
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    if (userId) {
+      syncService.runSync();
     }
   }
 
@@ -144,92 +140,85 @@ export class TaskService {
       return;
     }
 
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
+    await db.transaction(async tx => {
+      const updatedTasks = await this.taskRepo.bulkFailTasks(
+        taskIds,
+        userId,
+        tx,
+      );
 
-      const updatedTasks = await this.taskRepo.bulkFailTasks(taskIds, userId);
-
-      if (userId) {
+      if (userId && updatedTasks.length > 0) {
         console.log(
           '[TaskService] Logged-in user. Enqueuing pending operations for bulk fail.',
         );
-        for (const task of updatedTasks) {
+        const opPromises = updatedTasks.map(task => {
           const remoteTaskPayload = { ...task, tags: [] };
-          await this.pendingOpRepo.enqueueOperation({
-            operation_type: 'update',
-            entity_type: 'task',
-            entity_id: task.id,
-            payload: JSON.stringify(remoteTaskPayload),
-            userId,
-          });
-        }
+          return this.pendingOpRepo.enqueueOperation(
+            {
+              operation_type: 'update',
+              entity_type: 'task',
+              entity_id: task.id,
+              payload: JSON.stringify(remoteTaskPayload),
+              userId,
+            },
+            tx,
+          );
+        });
+        await Promise.all(opPromises);
       }
+    });
 
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        '[TaskService] Transaction for bulk failing tasks failed. Rolling back.',
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    if (userId) {
+      syncService.runSync();
     }
   }
 
   async failAllOverdueTasksAtOnce(userId: string | null): Promise<void> {
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-      const failedTasks = await this.taskRepo.failAllOverdueTasksAtOnce(userId);
+    await db.transaction(async tx => {
+      const failedTasks = await this.taskRepo.failAllOverdueTasksAtOnce(
+        userId,
+        tx,
+      );
 
       if (userId && failedTasks.length > 0) {
         console.log(
           '[TaskService] Logged-in user. Enqueuing pending operations for all overdue tasks.',
         );
-        for (const task of failedTasks) {
+        const opPromises = failedTasks.map(task => {
           const remoteTaskPayload = { ...task, tags: [] };
-          await this.pendingOpRepo.enqueueOperation({
-            operation_type: 'update',
-            entity_type: 'task',
-            entity_id: task.id,
-            payload: JSON.stringify(remoteTaskPayload),
-            userId,
-          });
-        }
+          return this.pendingOpRepo.enqueueOperation(
+            {
+              operation_type: 'update',
+              entity_type: 'task',
+              entity_id: task.id,
+              payload: JSON.stringify(remoteTaskPayload),
+              userId,
+            },
+            tx,
+          );
+        });
+        await Promise.all(opPromises);
       }
-      await db.executeAsync('COMMIT;');
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        '[TaskService] Transaction for failing all overdue tasks failed. Rolling back.',
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    });
+
+    if (userId) {
+      syncService.runSync();
     }
   }
-
   async updateTaskCompletionStatus(
     taskId: string,
     status: TaskCompletionStatusEnum,
     userId: string | null,
     score?: number | null,
   ): Promise<void> {
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-
+    await db.transaction(async tx => {
       const updatedTask = await this.taskRepo.updateTaskCompletionStatus(
         taskId,
         status,
         userId,
         score,
+        tx,
       );
-
       if (userId) {
         if (!updatedTask) {
           throw new Error(
@@ -243,44 +232,34 @@ export class TaskService {
 
         const remoteTaskPayload = { ...updatedTask, tags: [] };
 
-        await this.pendingOpRepo.enqueueOperation({
-          operation_type: 'update',
-          entity_type: 'task',
-          entity_id: taskId,
-          payload: JSON.stringify(remoteTaskPayload),
-          userId,
-        });
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            operation_type: 'update',
+            entity_type: 'task',
+            entity_id: taskId,
+            payload: JSON.stringify(remoteTaskPayload),
+            userId,
+          },
+          tx,
+        );
       }
-
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        `[TaskService] Transaction for updating task completion status for ${taskId} failed. Rolling back.`,
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    });
+    if (userId) {
+      syncService.runSync();
     }
   }
-
   async updateTaskDueDate(
     taskId: string,
     dueDate: Date,
     userId: string | null,
   ): Promise<void> {
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
-
+    await db.transaction(async tx => {
       const updatedTask = await this.taskRepo.updateTaskDueDate(
         taskId,
         dueDate,
         userId,
+        tx,
       );
-
       if (userId) {
         if (!updatedTask) {
           throw new Error(
@@ -294,30 +273,22 @@ export class TaskService {
 
         const remoteTaskPayload = { ...updatedTask, tags: [] };
 
-        await this.pendingOpRepo.enqueueOperation({
-          operation_type: 'update',
-          entity_type: 'task',
-          entity_id: taskId,
-          payload: JSON.stringify(remoteTaskPayload),
-          userId,
-        });
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            operation_type: 'update',
+            entity_type: 'task',
+            entity_id: taskId,
+            payload: JSON.stringify(remoteTaskPayload),
+            userId,
+          },
+          tx,
+        );
       }
-
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        `[TaskService] Transaction for updating task due date for ${taskId} failed. Rolling back.`,
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    });
+    if (userId) {
+      syncService.runSync();
     }
   }
-
   async getActiveTasksByRepetitiveTaskTemplateId(
     templateId: string,
     userId: string | null,

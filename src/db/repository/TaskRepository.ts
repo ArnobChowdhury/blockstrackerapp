@@ -117,6 +117,7 @@ export class TaskRepository {
     taskId: string,
     taskData: NewTaskData,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<Task | null> {
     const now = new Date().toISOString();
     let sql = `
@@ -156,7 +157,8 @@ export class TaskRepository {
     console.log('[DB Repo] Attempting to UPDATE Task:', { sql, params });
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet: QueryResult = await dbOrTx.executeAsync(sql, params);
       console.log('[DB Repo] Task UPDATE successful:', resultSet);
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);
@@ -173,14 +175,15 @@ export class TaskRepository {
     }
   }
 
-  async deleteTaskById(taskId: string): Promise<void> {
+  async deleteTaskById(taskId: string, tx?: Transaction): Promise<void> {
     const sql = 'DELETE FROM tasks WHERE id = ?;';
     const params = [taskId];
 
     console.log('[DB Repo] Attempting to DELETE Task:', { sql, params });
 
     try {
-      await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      await dbOrTx.executeAsync(sql, params);
       console.log('[DB Repo] Task DELETE successful for id:', taskId);
     } catch (error: any) {
       console.error('[DB Repo] Failed to DELETE task:', error);
@@ -326,6 +329,7 @@ export class TaskRepository {
   async bulkFailTasks(
     taskIds: string[],
     userId: string | null,
+    tx?: Transaction,
   ): Promise<Task[]> {
     if (taskIds.length === 0) {
       console.log('[DB Repo] bulkFailTasks called with no task IDs. Skipping.');
@@ -355,7 +359,8 @@ export class TaskRepository {
     console.log('[DB Repo] Attempting to bulk fail tasks:', { sql, params });
 
     try {
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       const updatedTasks: Task[] = [];
       if (resultSet.rows) {
         for (let i = 0; i < resultSet.rows.length; i++) {
@@ -374,7 +379,10 @@ export class TaskRepository {
     }
   }
 
-  async failAllOverdueTasksAtOnce(userId: string | null): Promise<Task[]> {
+  async failAllOverdueTasksAtOnce(
+    userId: string | null,
+    tx?: Transaction,
+  ): Promise<Task[]> {
     const now = new Date().toISOString();
     const todayStart = dayjs().startOf('day').toISOString();
 
@@ -408,7 +416,8 @@ export class TaskRepository {
     });
 
     try {
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       const updatedTasks: Task[] = [];
       if (resultSet.rows) {
         for (let i = 0; i < resultSet.rows.length; i++) {
@@ -630,6 +639,7 @@ export class TaskRepository {
     status: TaskCompletionStatusEnum,
     userId: string | null,
     score?: number | null,
+    tx?: Transaction,
   ): Promise<Task | null> {
     const now = new Date().toISOString();
     let sql = `
@@ -664,7 +674,8 @@ export class TaskRepository {
     );
 
     try {
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);
         if (row) {
@@ -689,6 +700,7 @@ export class TaskRepository {
     taskId: string,
     dueDate: Date,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<Task | null> {
     console.log(
       `[DB Repo] Attempting to update due date for task ID: ${taskId} to ${dueDate.toISOString()}`,
@@ -728,7 +740,8 @@ export class TaskRepository {
         params,
       });
 
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);
         if (row) {
@@ -744,7 +757,7 @@ export class TaskRepository {
     }
   }
 
-  async upsertMany(tasks: Task[]): Promise<void> {
+  async upsertMany(tasks: Task[], tx?: Transaction): Promise<void> {
     if (tasks.length === 0) {
       return;
     }
@@ -775,6 +788,8 @@ export class TaskRepository {
       WHERE excluded.modified_at >= tasks.modified_at;
     `;
 
+    const dbOrTx = tx || this.db;
+
     for (const task of tasks) {
       const params = [
         task.id,
@@ -793,7 +808,7 @@ export class TaskRepository {
         task.spaceId,
         task.userId,
       ];
-      await this.db.executeAsync(sql, params);
+      await dbOrTx.executeAsync(sql, params);
     }
   }
 }
