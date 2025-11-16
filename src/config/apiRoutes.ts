@@ -27,8 +27,8 @@ export const apiEndpoints: Record<string, Partial<EntityEndpoints>> = {
     update: { method: 'PUT', path: '/tags/:id' },
   },
   repetitive_task_template: {
-    create: { method: 'POST', path: '/repetitive-task-templates' },
-    update: { method: 'PUT', path: '/repetitive-task-templates/:id' },
+    create: { method: 'POST', path: '/tasks/repetitive' },
+    update: { method: 'PUT', path: '/tasks/repetitive/:id' },
   },
   sync: {
     fetch: { method: 'GET', path: '/changes/sync' },
