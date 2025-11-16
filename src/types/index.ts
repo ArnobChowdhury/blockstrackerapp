@@ -24,6 +24,7 @@ export interface Task {
   isActive: boolean;
   description: string | null;
   schedule: TaskScheduleTypeEnum;
+  priority: number;
   dueDate: string | null;
   timeOfDay: TimeOfDay | null;
   shouldBeScored: boolean;

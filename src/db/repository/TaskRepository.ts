@@ -23,6 +23,7 @@ export class TaskRepository {
       isActive: (row.is_active === 1) as boolean,
       description: row.description as string | null,
       schedule: row.schedule as TaskScheduleTypeEnum,
+      priority: row.priority as number,
       dueDate: row.due_date as string | null,
       timeOfDay: row.time_of_day as TimeOfDay | null,
       completionStatus: row.completion_status as TaskCompletionStatusEnum,

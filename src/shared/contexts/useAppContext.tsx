@@ -117,9 +117,6 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           if (decoded.user_id && decoded.email) {
             setUser({ id: decoded.user_id, email: decoded.email });
           }
-
-          // Running sync after signing in. However, later we will also have to check if the user is premium user (though we don't have the functionality in place right now).
-          syncService.runSync();
         } else {
           console.log('[AuthContext] No token found in keychain.');
         }
@@ -132,6 +129,12 @@ export const AppProvider = ({ children }: AppProviderProps) => {
 
     loadToken();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      syncService.runSync();
+    }
+  }, [user]);
 
   useEffect(() => {
     setIsDarkMode(getIsDarkMode(userPreferredTheme, colorScheme));
