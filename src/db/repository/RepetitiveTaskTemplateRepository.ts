@@ -1,4 +1,8 @@
-import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
+import {
+  NitroSQLiteConnection,
+  Transaction,
+  QueryResult,
+} from 'react-native-nitro-sqlite';
 import uuid from 'react-native-uuid';
 import {
   TaskScheduleTypeEnum,
@@ -445,6 +449,7 @@ export class RepetitiveTaskTemplateRepository {
   async updateLastDateOfTaskGeneration(
     templateId: string,
     lastDate: string,
+    tx?: Transaction,
   ): Promise<RepetitiveTaskTemplate | null> {
     const sql =
       'UPDATE repetitive_task_templates SET last_date_of_task_generation = ?, modified_at = ? WHERE id = ? RETURNING *;';
@@ -455,7 +460,8 @@ export class RepetitiveTaskTemplateRepository {
     );
 
     try {
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);
         if (row) {

@@ -1,3 +1,4 @@
+import { Transaction } from 'react-native-nitro-sqlite';
 import { db } from '../db';
 import { TaskRepository, PendingOperationRepository } from '../db/repository';
 import type { NewTaskData, Task } from '../types';
@@ -39,8 +40,9 @@ export class TaskService {
   async _createTaskInternal(
     taskData: NewTaskData,
     userId: string | null,
+    tx: Transaction,
   ): Promise<Task> {
-    const newTask = await this.taskRepo.createTask(taskData, userId);
+    const newTask = await this.taskRepo.createTask(taskData, userId, tx);
 
     if (userId) {
       console.log(
@@ -69,25 +71,19 @@ export class TaskService {
     taskData: NewTaskData,
     userId: string | null,
   ): Promise<string> {
-    let newTask: Task;
-    try {
-      await db.executeAsync('BEGIN TRANSACTION;');
+    let newTask: Task | undefined;
+    await db.transaction(async tx => {
+      newTask = await this._createTaskInternal(taskData, userId, tx);
+    });
 
-      newTask = await this._createTaskInternal(taskData, userId);
-
-      await db.executeAsync('COMMIT;');
-
-      if (userId) {
-        syncService.runSync();
-      }
-    } catch (error) {
-      console.error(
-        '[TaskService] Transaction for creating task failed. Rolling back.',
-        error,
-      );
-      await db.executeAsync('ROLLBACK;');
-      throw error;
+    if (!newTask) {
+      throw new Error('Task creation failed within transaction.');
     }
+
+    if (userId) {
+      syncService.runSync();
+    }
+
     return newTask.id;
   }
 

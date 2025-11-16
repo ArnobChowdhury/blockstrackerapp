@@ -1,4 +1,8 @@
-import { NitroSQLiteConnection, QueryResult } from 'react-native-nitro-sqlite';
+import {
+  NitroSQLiteConnection,
+  Transaction,
+  QueryResult,
+} from 'react-native-nitro-sqlite';
 import uuid from 'react-native-uuid';
 import dayjs from 'dayjs';
 
@@ -61,6 +65,7 @@ export class TaskRepository {
   async createTask(
     taskData: NewTaskData,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<Task> {
     const newId = uuid.v4() as string;
     const now = new Date().toISOString();
@@ -89,7 +94,8 @@ export class TaskRepository {
     console.log('[DB Repo] Attempting to INSERT Task:', { sql, params });
 
     try {
-      const resultSet = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
       console.log('[DB Repo] Task INSERT successful for id:', newId);
       if (resultSet.rows && resultSet.rows.length > 0) {
         const row = resultSet.rows.item(0);

@@ -1,3 +1,4 @@
+import { Transaction } from 'react-native-nitro-sqlite';
 import { db } from '../db';
 import {
   RepetitiveTaskTemplateRepository,
@@ -178,10 +179,12 @@ export class RepetitiveTaskTemplateService {
     templateId: string,
     lastDate: string,
     userId: string | null,
+    tx: Transaction,
   ): Promise<void> {
     const updatedTemplate = await this.rttRepo.updateLastDateOfTaskGeneration(
       templateId,
       lastDate,
+      tx,
     );
 
     if (userId) {
@@ -223,76 +226,80 @@ export class RepetitiveTaskTemplateService {
     const isPremium = !!userId;
 
     for (const template of dueTemplates) {
-      try {
-        await db.executeAsync('BEGIN TRANSACTION;');
+      await db
+        .transaction(async tx => {
+          const todayStart = dayjs().startOf('day');
+          let lastGenDate = template.lastDateOfTaskGeneration;
 
-        const todayStart = dayjs().startOf('day');
-        let lastGenDate = template.lastDateOfTaskGeneration;
-
-        if (!lastGenDate) {
-          const templateCreationDate = dayjs(template.createdAt).startOf('day');
-          lastGenDate = templateCreationDate.isSame(todayStart)
-            ? todayStart.subtract(1, 'day').toISOString()
-            : template.createdAt;
-        }
-
-        const daysToGenerate = todayStart.diff(
-          dayjs(lastGenDate).startOf('day'),
-          'day',
-        );
-
-        let latestDueDateForTemplate: Dayjs | undefined;
-
-        for (let i = 0; i < daysToGenerate; i += 1) {
-          const targetDueDate = dayjs(lastGenDate)
-            .startOf('day')
-            .add(i + 1, 'day');
-          const dayOfWeekLowercase = targetDueDate
-            .format('dddd')
-            .toLowerCase() as keyof RepetitiveTaskTemplate;
-
-          let shouldGenerateTask = false;
-          if (template.schedule === TaskScheduleTypeEnum.Daily) {
-            shouldGenerateTask = true;
-          } else if (
-            template.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
-          ) {
-            shouldGenerateTask = !!template[dayOfWeekLowercase];
+          if (!lastGenDate) {
+            const templateCreationDate = dayjs(template.createdAt).startOf(
+              'day',
+            );
+            lastGenDate = templateCreationDate.isSame(todayStart)
+              ? todayStart.subtract(1, 'day').toISOString()
+              : template.createdAt;
           }
 
-          if (shouldGenerateTask) {
-            const newTaskData: NewTaskData = {
-              title: template.title,
-              description: template.description || undefined,
-              schedule: template.schedule,
-              dueDate: targetDueDate.toDate(),
-              timeOfDay: template.timeOfDay,
-              repetitiveTaskTemplateId: template.id,
-              shouldBeScored: template.shouldBeScored ? 1 : 0,
-              spaceId: template.spaceId,
-            };
-
-            await this.taskService._createTaskInternal(newTaskData, userId);
-            latestDueDateForTemplate = targetDueDate;
-          }
-        }
-
-        if (latestDueDateForTemplate) {
-          await this.updateLastDateOfTaskGeneration(
-            template.id,
-            latestDueDateForTemplate.toISOString(),
-            userId,
+          const daysToGenerate = todayStart.diff(
+            dayjs(lastGenDate).startOf('day'),
+            'day',
           );
-        }
 
-        await db.executeAsync('COMMIT;');
-      } catch (error) {
-        console.error(
-          `[RepetitiveTaskTemplateService] Transaction failed for template ${template.id}. Rolling back.`,
-          error,
-        );
-        await db.executeAsync('ROLLBACK;');
-      }
+          let latestDueDateForTemplate: Dayjs | undefined;
+
+          for (let i = 0; i < daysToGenerate; i += 1) {
+            const targetDueDate = dayjs(lastGenDate)
+              .startOf('day')
+              .add(i + 1, 'day');
+            const dayOfWeekLowercase = targetDueDate
+              .format('dddd')
+              .toLowerCase() as keyof RepetitiveTaskTemplate;
+
+            let shouldGenerateTask = false;
+            if (template.schedule === TaskScheduleTypeEnum.Daily) {
+              shouldGenerateTask = true;
+            } else if (
+              template.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
+            ) {
+              shouldGenerateTask = !!template[dayOfWeekLowercase];
+            }
+
+            if (shouldGenerateTask) {
+              const newTaskData: NewTaskData = {
+                title: template.title,
+                description: template.description || undefined,
+                schedule: template.schedule,
+                dueDate: targetDueDate.toDate(),
+                timeOfDay: template.timeOfDay,
+                repetitiveTaskTemplateId: template.id,
+                shouldBeScored: template.shouldBeScored ? 1 : 0,
+                spaceId: template.spaceId,
+              };
+
+              await this.taskService._createTaskInternal(
+                newTaskData,
+                userId,
+                tx,
+              );
+              latestDueDateForTemplate = targetDueDate;
+            }
+          }
+
+          if (latestDueDateForTemplate) {
+            await this.updateLastDateOfTaskGeneration(
+              template.id,
+              latestDueDateForTemplate.toISOString(),
+              userId,
+              tx,
+            );
+          }
+        })
+        .catch(error => {
+          console.error(
+            `[RepetitiveTaskTemplateService] Transaction failed for template ${template.id}. Rolling back.`,
+            error,
+          );
+        });
     }
 
     if (isPremium) {
