@@ -33,6 +33,7 @@ import {
 } from '../shared/hooks';
 import { formatDate, truncateString } from '../shared/utils';
 import { TaskService } from '../services/TaskService';
+import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import TaskScoring from '../shared/components/TaskScoring';
 import { Task, TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { DatePickerModal } from 'react-native-paper-dates';
@@ -77,13 +78,11 @@ const OverdueScreen = ({ navigation }: Props) => {
   const [screenRequestError, setScreenRequestError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
 
-  const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
-    string | null
-  >(null);
-  const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
-    useState<Date>();
-
   const taskService = useMemo(() => new TaskService(), []);
+  const repetitiveTaskTemplateService = useMemo(
+    () => new RepetitiveTaskTemplateService(),
+    [],
+  );
 
   const fetchOverdueTasks = useCallback(async () => {
     if (isDbLoading) {
@@ -118,8 +117,19 @@ const OverdueScreen = ({ navigation }: Props) => {
     error: toggleTaskCompletionError,
   } = useToggleTaskCompletionStatus(taskService, fetchOverdueTasks);
 
-  const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskService, fetchOverdueTasks);
+  const {
+    onTaskReschedule,
+    handleRescheduleIconTap,
+    isDatePickerVisible,
+    selectedDateForTaskReschedule,
+    resetTaskRescheduling,
+    datePickerStartDate,
+    datePickerEndDate,
+  } = useTaskReschedule(
+    taskService,
+    repetitiveTaskTemplateService,
+    fetchOverdueTasks,
+  );
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -127,13 +137,6 @@ const OverdueScreen = ({ navigation }: Props) => {
       setShowSnackbar(true);
     }
   }, [toggleTaskCompletionError]);
-
-  useEffect(() => {
-    if (toggleTaskScheduleError) {
-      setScreenRequestError(toggleTaskScheduleError);
-      setShowSnackbar(true);
-    }
-  }, [toggleTaskScheduleError]);
 
   useFocusEffect(
     useCallback(() => {
@@ -149,26 +152,6 @@ const OverdueScreen = ({ navigation }: Props) => {
       setScreenRequestError('');
     }, 1000);
   };
-
-  const handleTaskRescheduling = useCallback(
-    async (params: { date: Date | undefined }) => {
-      if (!taskIdToBeRescheduled || !params.date) {
-        setScreenRequestError(
-          'An error occurred while rescheduling the task. Please try again.',
-        );
-        return;
-      }
-
-      await onTaskReschedule(
-        taskIdToBeRescheduled,
-        params.date,
-        user && user.id,
-      );
-      setTaskIdToBeRescheduled(null);
-      setSelectedDateForTaskReschedule(undefined);
-    },
-    [taskIdToBeRescheduled, onTaskReschedule, user],
-  );
 
   const [taskToBeCompleted, setTaskToBeCompleted] = useState<Task>();
   const [scoreForTaskToBeCompleted, setScoreForTaskToBeCompleted] =
@@ -288,12 +271,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                   <IconButton
                     icon="calendar-refresh"
                     size={20}
-                    onPress={() => {
-                      setSelectedDateForTaskReschedule(
-                        new Date(item.dueDate as string),
-                      );
-                      setTaskIdToBeRescheduled(item.id);
-                    }}
+                    onPress={() => handleRescheduleIconTap(item)}
                     iconColor={theme.colors.secondary}
                     disabled={
                       item.completionStatus ===
@@ -335,6 +313,7 @@ const OverdueScreen = ({ navigation }: Props) => {
       navigation,
       handleTaskCompletion,
       theme.colors.secondary,
+      handleRescheduleIconTap,
       onToggleTaskCompletionStatus,
       user,
     ],
@@ -479,15 +458,18 @@ const OverdueScreen = ({ navigation }: Props) => {
       <DatePickerModal
         locale="en"
         mode="single"
-        visible={!!taskIdToBeRescheduled}
-        onDismiss={() => setTaskIdToBeRescheduled(null)}
+        visible={isDatePickerVisible}
+        onDismiss={resetTaskRescheduling}
         date={selectedDateForTaskReschedule}
-        onConfirm={handleTaskRescheduling}
+        onConfirm={onTaskReschedule}
         label="Task Date"
         calendarIcon="calendar-outline"
         saveLabel="Reschedule Task"
         animationType="slide"
-        validRange={{ startDate: dayjs().startOf('day').toDate() }}
+        validRange={{
+          startDate: datePickerStartDate,
+          endDate: datePickerEndDate,
+        }}
       />
       <Portal>
         <Dialog

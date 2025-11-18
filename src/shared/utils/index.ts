@@ -75,3 +75,41 @@ export const removeData = async (key: string) => {
     console.error('Failed to remove data.', e);
   }
 };
+
+const weekDays = {
+  [DaysInAWeek.Sunday]: 0,
+  [DaysInAWeek.Monday]: 1,
+  [DaysInAWeek.Tuesday]: 2,
+  [DaysInAWeek.Wednesday]: 3,
+  [DaysInAWeek.Thursday]: 4,
+  [DaysInAWeek.Friday]: 5,
+  [DaysInAWeek.Saturday]: 6,
+};
+
+export const getNextIterationDateForRepetitiveTask = (
+  template: RepetitiveTaskTemplate,
+  currentIterationDay: Dayjs,
+) => {
+  const scheduledDays = getScheduledWeekDaysFromRepetitiveTask(template).sort(
+    (a, b) => weekDays[a] - weekDays[b],
+  );
+
+  if (scheduledDays.length === 0) {
+    return null;
+  }
+
+  const nextDayInWeek = scheduledDays.find(
+    day => weekDays[day] > currentIterationDay.day(),
+  );
+
+  if (nextDayInWeek) {
+    const dayNumber = weekDays[nextDayInWeek];
+    return currentIterationDay.day(dayNumber).startOf('day');
+  } else {
+    const firstDayNextWeekNumber = weekDays[scheduledDays[0]];
+    return currentIterationDay
+      .add(1, 'week')
+      .day(firstDayNextWeekNumber)
+      .startOf('day');
+  }
+};

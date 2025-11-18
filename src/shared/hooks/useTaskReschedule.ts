@@ -1,36 +1,118 @@
 import { useCallback } from 'react';
 import { useState } from 'react';
+import { Task, TaskScheduleTypeEnum } from '../../types';
 import { TaskService } from '../../services/TaskService';
+import { RepetitiveTaskTemplateService } from '../../services/RepetitiveTaskTemplateService';
+import { useAppContext } from '../contexts/useAppContext';
+import { getNextIterationDateForRepetitiveTask } from '../utils';
+import dayjs from 'dayjs';
 
 export const useTaskReschedule = (
   taskService: TaskService,
+  repetitiveTaskTemplateService: RepetitiveTaskTemplateService,
   cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
-  const [error, setError] = useState('');
+  const { user, showSnackbar } = useAppContext();
+  const [datePickerStartDate, _setDatePickerStartDate] = useState<
+    Date | undefined
+  >(dayjs().startOf('day').toDate());
+  const [datePickerEndDate, setDatePickerEndDate] = useState<
+    Date | undefined
+  >();
+  const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
+    string | null
+  >(null);
+
+  const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
+    useState<Date>();
+
+  const resetTaskRescheduling = useCallback(() => {
+    setTaskIdToBeRescheduled(null);
+    setSelectedDateForTaskReschedule(undefined);
+    setDatePickerEndDate(undefined);
+  }, []);
 
   const onTaskReschedule = useCallback(
-    async (taskId: string, rescheduledTime: Date, userId: string | null) => {
-      setError('');
+    async (params: { date: Date | undefined }) => {
+      if (!taskIdToBeRescheduled || !params.date) {
+        showSnackbar(
+          'An error occurred while rescheduling the task. Please try again.',
+        );
+        return;
+      }
       setRequestOnGoing(true);
+
       try {
-        await taskService.updateTaskDueDate(taskId, rescheduledTime, userId);
+        await taskService.updateTaskDueDate(
+          taskIdToBeRescheduled,
+          params.date,
+          user && user.id,
+        );
 
         if (cb) {
           await cb();
         }
+        resetTaskRescheduling();
       } catch (err: any) {
-        setError(err.message);
+        showSnackbar(err.message);
       } finally {
         setRequestOnGoing(false);
       }
     },
-    [cb, taskService],
+    [
+      cb,
+      resetTaskRescheduling,
+      showSnackbar,
+      taskIdToBeRescheduled,
+      taskService,
+      user,
+    ],
   );
+
+  const handleRescheduleIconTap = async (task: Task) => {
+    setSelectedDateForTaskReschedule(new Date(task.dueDate as string));
+    setTaskIdToBeRescheduled(task.id);
+
+    if (
+      task.schedule !== TaskScheduleTypeEnum.SpecificDaysInAWeek ||
+      !task.repetitiveTaskTemplateId
+    ) {
+      return;
+    }
+
+    const repetitiveTaskTemplate =
+      await repetitiveTaskTemplateService.getRepetitiveTaskTemplateById(
+        task.repetitiveTaskTemplateId,
+        user && user.id,
+      );
+
+    if (!repetitiveTaskTemplate) {
+      return;
+    }
+    const nextIterationDate = getNextIterationDateForRepetitiveTask(
+      repetitiveTaskTemplate,
+      dayjs(task.dueDate as string),
+    );
+
+    if (!nextIterationDate) {
+      return;
+    }
+
+    setDatePickerEndDate(
+      nextIterationDate.subtract(1, 'day').startOf('day').toDate(),
+    );
+  };
 
   return {
     requestOnGoing,
-    error,
+    taskIdToBeRescheduled,
+    handleRescheduleIconTap,
+    datePickerStartDate,
+    datePickerEndDate,
     onTaskReschedule,
+    isDatePickerVisible: !!taskIdToBeRescheduled,
+    selectedDateForTaskReschedule,
+    resetTaskRescheduling,
   };
 };

@@ -141,12 +141,6 @@ const TodayScreen = ({ navigation }: Props) => {
   const [screenRequestError, setScreenRequestError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
 
-  const [taskIdToBeRescheduled, setTaskIdToBeRescheduled] = useState<
-    string | null
-  >(null);
-  const [selectedDateForTaskReschedule, setSelectedDateForTaskReschedule] =
-    useState<Date>();
-
   const animatedValue = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
     if (isSyncing) {
@@ -212,8 +206,19 @@ const TodayScreen = ({ navigation }: Props) => {
   const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
     useToggleTaskCompletionStatus(taskService, refreshCurrentView);
 
-  const { onTaskReschedule, error: toggleTaskScheduleError } =
-    useTaskReschedule(taskService, refreshCurrentView);
+  const {
+    onTaskReschedule,
+    isDatePickerVisible,
+    selectedDateForTaskReschedule,
+    resetTaskRescheduling,
+    datePickerStartDate,
+    datePickerEndDate,
+    handleRescheduleIconTap,
+  } = useTaskReschedule(
+    taskService,
+    repetitiveTaskTemplateService,
+    refreshCurrentView,
+  );
 
   useEffect(() => {
     if (toggleTaskCompletionError) {
@@ -221,13 +226,6 @@ const TodayScreen = ({ navigation }: Props) => {
       setShowSnackbar(true);
     }
   }, [toggleTaskCompletionError]);
-
-  useEffect(() => {
-    if (toggleTaskScheduleError) {
-      setScreenRequestError(toggleTaskScheduleError);
-      setShowSnackbar(true);
-    }
-  }, [toggleTaskScheduleError]);
 
   useFocusEffect(
     useCallback(() => {
@@ -260,26 +258,6 @@ const TodayScreen = ({ navigation }: Props) => {
       setScreenRequestError('');
     }, 1000);
   };
-
-  const handleTaskRescheduling = useCallback(
-    async (params: { date: Date | undefined }) => {
-      if (!taskIdToBeRescheduled || !params.date) {
-        setScreenRequestError(
-          'An error occurred while rescheduling the task. Please try again.',
-        );
-        return;
-      }
-
-      await onTaskReschedule(
-        taskIdToBeRescheduled,
-        params.date,
-        user && user.id,
-      );
-      setTaskIdToBeRescheduled(null);
-      setSelectedDateForTaskReschedule(undefined);
-    },
-    [taskIdToBeRescheduled, onTaskReschedule, user],
-  );
 
   const handleRefreshToNewDay = useCallback(() => {
     const newDate = dayjs().startOf('day');
@@ -373,12 +351,7 @@ const TodayScreen = ({ navigation }: Props) => {
                   <IconButton
                     icon="calendar-refresh"
                     size={20}
-                    onPress={() => {
-                      setSelectedDateForTaskReschedule(
-                        new Date(item.dueDate as string),
-                      );
-                      setTaskIdToBeRescheduled(item.id);
-                    }}
+                    onPress={() => handleRescheduleIconTap(item)}
                     iconColor={theme.colors.secondary}
                     disabled={
                       item.completionStatus ===
@@ -428,6 +401,7 @@ const TodayScreen = ({ navigation }: Props) => {
       );
     },
     [
+      handleRescheduleIconTap,
       handleTaskCompletion,
       navigation,
       onToggleTaskCompletionStatus,
@@ -623,15 +597,18 @@ const TodayScreen = ({ navigation }: Props) => {
       <DatePickerModal
         locale="en"
         mode="single"
-        visible={!!taskIdToBeRescheduled}
-        onDismiss={() => setTaskIdToBeRescheduled(null)}
+        visible={isDatePickerVisible}
+        onDismiss={resetTaskRescheduling}
         date={selectedDateForTaskReschedule}
-        onConfirm={handleTaskRescheduling}
+        onConfirm={onTaskReschedule}
         label="Task Date"
         calendarIcon="calendar-outline"
         saveLabel="Reschedule Task"
         animationType="slide"
-        validRange={{ startDate: dayjs().startOf('day').toDate() }}
+        validRange={{
+          startDate: datePickerStartDate,
+          endDate: datePickerEndDate,
+        }}
       />
       <Portal>
         <Dialog

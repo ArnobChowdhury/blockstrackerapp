@@ -1,17 +1,26 @@
 import { Transaction } from 'react-native-nitro-sqlite';
 import { db } from '../db';
-import { TaskRepository, PendingOperationRepository } from '../db/repository';
+import {
+  TaskRepository,
+  RepetitiveTaskTemplateRepository,
+  PendingOperationRepository,
+} from '../db/repository';
+import { getNextIterationDateForRepetitiveTask } from '../shared/utils';
+
 import type { NewTaskData, Task } from '../types';
-import { TaskCompletionStatusEnum } from '../types';
+import { TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { syncService } from './SyncService';
+import dayjs from 'dayjs';
 
 export class TaskService {
   private taskRepo: TaskRepository;
   private pendingOpRepo: PendingOperationRepository;
+  private rttRepo: RepetitiveTaskTemplateRepository;
 
   constructor() {
     this.taskRepo = new TaskRepository(db);
     this.pendingOpRepo = new PendingOperationRepository(db);
+    this.rttRepo = new RepetitiveTaskTemplateRepository(db);
   }
 
   async getTaskById(id: string, userId: string | null): Promise<Task | null> {
@@ -253,6 +262,51 @@ export class TaskService {
     dueDate: Date,
     userId: string | null,
   ): Promise<void> {
+    const task = await this.getTaskById(taskId, userId);
+    if (!task) {
+      throw new Error(
+        `[TaskService] Cannot update due date for non-existent or unauthorized task with ID ${taskId}`,
+      );
+    }
+
+    if (task.schedule === TaskScheduleTypeEnum.Daily) {
+      throw new Error('[TaskService] Cannot update due date for a daily tasks');
+    }
+
+    if (
+      task.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
+      task.repetitiveTaskTemplateId
+    ) {
+      const repetitiveTaskTemplate =
+        await this.rttRepo.getRepetitiveTaskTemplateById(
+          task.repetitiveTaskTemplateId,
+          userId,
+        );
+
+      if (!repetitiveTaskTemplate) {
+        throw new Error(
+          `[TaskService] Cannot update due date for a repetitive task with non-existent or unauthorized repetitive task template with ID ${task.repetitiveTaskTemplateId}`,
+        );
+      }
+
+      const nextIterationDate = getNextIterationDateForRepetitiveTask(
+        repetitiveTaskTemplate,
+        dayjs(task.dueDate),
+      );
+
+      if (!nextIterationDate) {
+        throw new Error(
+          `[TaskService] Cannot update due date for a repetitive task with non-existent or unauthorized repetitive task template with ID ${task.repetitiveTaskTemplateId}`,
+        );
+      }
+
+      if (!dayjs(dueDate).isBefore(nextIterationDate)) {
+        throw new Error(
+          '[TaskService] Cannot update due date for a repetitive task to a date that is not before the next iteration date',
+        );
+      }
+    }
+
     await db.transaction(async tx => {
       const updatedTask = await this.taskRepo.updateTaskDueDate(
         taskId,
