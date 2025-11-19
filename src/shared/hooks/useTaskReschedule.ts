@@ -14,9 +14,9 @@ export const useTaskReschedule = (
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
   const { user, showSnackbar } = useAppContext();
-  const [datePickerStartDate, _setDatePickerStartDate] = useState<
+  const [datePickerStartDate, setDatePickerStartDate] = useState<
     Date | undefined
-  >(dayjs().startOf('day').toDate());
+  >();
   const [datePickerEndDate, setDatePickerEndDate] = useState<
     Date | undefined
   >();
@@ -46,7 +46,7 @@ export const useTaskReschedule = (
       try {
         await taskService.updateTaskDueDate(
           taskIdToBeRescheduled,
-          params.date,
+          dayjs(params.date).startOf('day').toDate(),
           user && user.id,
         );
 
@@ -99,6 +99,7 @@ export const useTaskReschedule = (
       return;
     }
 
+    setDatePickerStartDate(dayjs().startOf('day').toDate());
     setDatePickerEndDate(
       nextIterationDate.subtract(1, 'day').startOf('day').toDate(),
     );
