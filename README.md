@@ -8,7 +8,7 @@ Built with **React Native**, backed by an embedded SQLite database.
 
 - **React Native CLI**
 - **TypeScript**
-- **SQLite** via `react-native-quick-sqlite`
+- **SQLite** via `react-native-nitro-sqlite`
 - **React Context API** for state management
 
 ## 🚀 Getting Started
@@ -18,6 +18,19 @@ npm install
 npx pod-install    # iOS only
 npx react-native run-android   # or run-ios
 ```
+
+## 🐛 Debugging
+
+### Inspecting the Local Database (Android)
+
+To inspect the contents of the local SQLite database on an Android emulator or device, you can copy the database file to your computer using the following command:
+
+```bash
+adb exec-out run-as com.blockstrackerapp cat files/blockstracker.sqlite > ~/Work/blockstracker.sqlite
+
+```
+
+You can open the `blockstracker.sqlite` file with any SQLite database browser or with VS Code SQLite extension.
 
 ## 📦 Features
 
