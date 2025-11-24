@@ -51,14 +51,18 @@ class SyncService {
 
     try {
       console.log('[SyncService] Starting PUSH phase...');
+      const processedInThisRun: number[] = [];
       while (true) {
-        const operation = await this.pendingOpRepo.getOldestPendingOperation();
+        const operation = await this.pendingOpRepo.getOldestPendingOperation(
+          processedInThisRun,
+        );
         if (!operation) {
           console.log(
             '[SyncService] Local queue is empty. PUSH phase complete.',
           );
           break;
         }
+        processedInThisRun.push(operation.id);
         await this.processOperation(operation);
       }
 

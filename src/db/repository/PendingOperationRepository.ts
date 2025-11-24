@@ -65,13 +65,19 @@ export class PendingOperationRepository {
    * Retrieves the single oldest pending operation from the queue.
    * @returns The pending operation object or null if the queue is empty.
    */
-  async getOldestPendingOperation(): Promise<PendingOperation | null> {
+  async getOldestPendingOperation(
+    excludedIds: number[],
+  ): Promise<PendingOperation | null> {
+    const hasExcluded = excludedIds.length > 0;
+    const placeholders = excludedIds.map(() => '?').join(',');
+
     const sql = `
       SELECT *
       FROM pending_operations po1
       WHERE
-        po1.status = 'pending' AND
-        NOT EXISTS (
+        po1.status = 'pending' 
+        ${hasExcluded ? `AND po1.id NOT IN (${placeholders})` : ''}
+        AND NOT EXISTS (
           SELECT 1
           FROM pending_operations po2
           WHERE
@@ -83,7 +89,7 @@ export class PendingOperationRepository {
     `;
 
     try {
-      const result = await this.db.executeAsync(sql);
+      const result = await this.db.executeAsync(sql, excludedIds);
       if (result.rows && result.rows.length > 0) {
         return result.rows.item(0) as unknown as PendingOperation;
       }
