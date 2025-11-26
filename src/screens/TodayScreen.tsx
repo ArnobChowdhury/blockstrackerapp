@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import dayjs from 'dayjs';
 import {
   StyleSheet,
@@ -409,6 +415,15 @@ const TodayScreen = ({ navigation }: Props) => {
       user,
     ],
   );
+
+  // refresh after sync logic
+  const shouldRefresh = useRef(false);
+  useEffect(() => {
+    if (user && !isSyncing && shouldRefresh.current) {
+      refreshCurrentView();
+    }
+    shouldRefresh.current = isSyncing;
+  }, [isSyncing, refreshCurrentView, user]);
 
   if (isDbLoading) {
     return (

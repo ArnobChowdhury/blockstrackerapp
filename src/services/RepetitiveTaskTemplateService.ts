@@ -204,6 +204,8 @@ export class RepetitiveTaskTemplateService {
 
     const isPremium = !!userId;
 
+    let writeOperationOccurred = false;
+
     for (const template of dueTemplates) {
       await db
         .transaction(async tx => {
@@ -261,6 +263,7 @@ export class RepetitiveTaskTemplateService {
                 tx,
               );
               latestDueDateForTemplate = targetDueDate;
+              writeOperationOccurred = true;
             }
           }
 
@@ -281,7 +284,7 @@ export class RepetitiveTaskTemplateService {
         });
     }
 
-    if (isPremium) {
+    if (isPremium && writeOperationOccurred) {
       syncService.runSync();
     }
   }
