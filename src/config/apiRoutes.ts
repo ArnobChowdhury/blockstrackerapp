@@ -9,7 +9,9 @@ interface EndpointConfig {
   path: string;
 }
 
-type EntityEndpoints<T extends string = 'create' | 'update' | 'fetch'> = {
+type EntityEndpoints<
+  T extends string = 'create' | 'update' | 'fetch' | 'lastGenDateUpdate',
+> = {
   [K in T]: EndpointConfig;
 };
 
@@ -29,6 +31,10 @@ export const apiEndpoints: Record<string, Partial<EntityEndpoints>> = {
   repetitive_task_template: {
     create: { method: 'POST', path: '/tasks/repetitive' },
     update: { method: 'PUT', path: '/tasks/repetitive/:id' },
+    lastGenDateUpdate: {
+      method: 'PUT',
+      path: '/tasks/repetitive/:id/last-gen-date',
+    },
   },
   sync: {
     fetch: { method: 'GET', path: '/changes/sync' },

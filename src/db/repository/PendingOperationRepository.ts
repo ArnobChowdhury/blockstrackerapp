@@ -16,7 +16,7 @@ export interface PendingOperation {
 }
 export interface PendingOperationData {
   userId: string;
-  operation_type: 'create' | 'update' | 'delete';
+  operation_type: 'create' | 'update' | 'delete' | 'lastGenDateUpdate';
   entity_type: 'task' | 'space' | 'tag' | 'repetitive_task_template';
   entity_id: string;
   payload: string;
