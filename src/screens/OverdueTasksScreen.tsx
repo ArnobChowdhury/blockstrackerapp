@@ -30,6 +30,7 @@ import {
   useDatabase,
   useToggleTaskCompletionStatus,
   useTaskReschedule,
+  useRefreshScreenAfterSync,
 } from '../shared/hooks';
 import { formatDate, truncateString } from '../shared/utils';
 import { TaskService } from '../services/TaskService';
@@ -137,6 +138,8 @@ const OverdueScreen = ({ navigation }: Props) => {
       setShowSnackbar(true);
     }
   }, [toggleTaskCompletionError]);
+
+  useRefreshScreenAfterSync(fetchOverdueTasks, 'Overdue');
 
   useFocusEffect(
     useCallback(() => {

@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   StyleSheet,
@@ -37,6 +31,7 @@ import {
   useDatabase,
   useToggleTaskCompletionStatus,
   useTaskReschedule,
+  useRefreshScreenAfterSync,
 } from '../shared/hooks';
 import { formatDate, capitalize, truncateString } from '../shared/utils';
 import { TaskService } from '../services/TaskService';
@@ -416,14 +411,7 @@ const TodayScreen = ({ navigation }: Props) => {
     ],
   );
 
-  // refresh after sync logic
-  const shouldRefresh = useRef(false);
-  useEffect(() => {
-    if (user && !isSyncing && shouldRefresh.current) {
-      refreshCurrentView();
-    }
-    shouldRefresh.current = isSyncing;
-  }, [isSyncing, refreshCurrentView, user]);
+  useRefreshScreenAfterSync(refreshCurrentView, 'Today');
 
   if (isDbLoading) {
     return (

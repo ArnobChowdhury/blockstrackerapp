@@ -26,6 +26,7 @@ import {
   useDatabase,
   useToggleTaskCompletionStatus,
   useTaskReschedule,
+  useRefreshScreenAfterSync,
 } from '../shared/hooks';
 import {
   Task,
@@ -168,6 +169,8 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     repetitiveTaskTemplateService,
     fetchTasksByCategory,
   );
+
+  useRefreshScreenAfterSync(fetchTasksByCategory, 'TaskList');
 
   useEffect(() => {
     if (toggleTaskCompletionError) {

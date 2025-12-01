@@ -23,7 +23,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TrackerStackParamList } from '../navigation/RootNavigator';
-import { useDatabase } from '../shared/hooks';
+import { useDatabase, useRefreshScreenAfterSync } from '../shared/hooks';
 import { RepetitiveTaskTemplate, Task } from '../types';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { TaskService } from '../services/TaskService';
@@ -185,6 +185,8 @@ const HabitsScreen = ({ navigation }: Props) => {
       }
     }, [fetchHabits, isDbLoading]),
   );
+
+  useRefreshScreenAfterSync(fetchHabits, 'Habits');
 
   const [viewableItems, setViewableItems] = useState<string[]>([]);
   const viewabilityConfig = {
