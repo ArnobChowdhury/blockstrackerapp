@@ -58,12 +58,15 @@ export default function CustomDrawerContent(
             />
           </View>
           {user ? (
-            <Drawer.Item
-              label="Sign Out"
-              onPress={signOut}
-              style={styles.item}
-              icon="logout"
-            />
+            <View style={styles.modeContainer}>
+              <Text variant="bodyMedium">{user.email}</Text>
+              <Drawer.Item
+                label="Sign Out"
+                onPress={signOut}
+                style={styles.signOutButton}
+                icon="logout"
+              />
+            </View>
           ) : (
             <Drawer.Item
               label="Sign in or Sign up"
@@ -92,5 +95,8 @@ const styles = StyleSheet.create({
   modeHeader: {
     paddingLeft: 16,
     marginBottom: 10,
+  },
+  signOutButton: {
+    marginLeft: 0,
   },
 });
