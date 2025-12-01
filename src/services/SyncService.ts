@@ -49,25 +49,46 @@ class SyncService {
     isSyncing = true;
     this.onSyncStatusChange?.(true);
 
-    try {
-      console.log('[SyncService] Starting PUSH phase...');
-      const processedInThisRun: number[] = [];
-      while (true) {
-        const operation = await this.pendingOpRepo.getOldestPendingOperation(
-          processedInThisRun,
-        );
-        if (!operation) {
-          console.log(
-            '[SyncService] Local queue is empty. PUSH phase complete.',
-          );
-          break;
-        }
-        processedInThisRun.push(operation.id);
-        await this.processOperation(operation);
-      }
+    const processedInCurrentRun: number[] = [];
 
-      console.log('[SyncService] Starting PULL phase...');
-      await this.pullRemoteChanges();
+    try {
+      while (true) {
+        console.log('[SyncService] Starting PUSH phase...');
+
+        while (true) {
+          const operation = await this.pendingOpRepo.getOldestPendingOperation(
+            processedInCurrentRun,
+          );
+
+          if (!operation) {
+            console.log(
+              '[SyncService] Local queue is empty of new operations. PUSH phase complete.',
+            );
+            break;
+          }
+
+          console.log(`[SyncService] Processing operation ID: ${operation.id}`);
+          processedInCurrentRun.push(operation.id);
+          await this.processOperation(operation);
+        }
+
+        console.log('[SyncService] Starting PULL phase...');
+        await this.pullRemoteChanges();
+
+        const newOperationCheck =
+          await this.pendingOpRepo.getOldestPendingOperation(
+            processedInCurrentRun,
+          );
+
+        if (!newOperationCheck) {
+          console.log('[SyncService] System is stable. Finishing sync cycle.');
+          break;
+        } else {
+          console.log(
+            '[SyncService] New operations found after PULL. Looping to restart PUSH phase.',
+          );
+        }
+      }
     } catch (error) {
       console.error(
         '[SyncService] An unexpected error occurred in runSync:',
