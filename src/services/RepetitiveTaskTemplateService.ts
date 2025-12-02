@@ -340,4 +340,12 @@ export class RepetitiveTaskTemplateService {
 
     return this.rttRepo.countActiveRepetitiveTasksBySpaceId(spaceId, userId);
   }
+
+  findTemplatesWithRecentTasks = async (
+    userId: string | null,
+    schedule: TaskScheduleTypeEnum,
+    day: number,
+  ): Promise<RepetitiveTaskTemplate[]> => {
+    return this.rttRepo.findTemplatesWithRecentTasks(userId, schedule, day);
+  };
 }

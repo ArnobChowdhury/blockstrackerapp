@@ -24,7 +24,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TrackerStackParamList } from '../navigation/RootNavigator';
 import { useDatabase, useRefreshScreenAfterSync } from '../shared/hooks';
-import { RepetitiveTaskTemplate, Task } from '../types';
+import { RepetitiveTaskTemplate, Task, TaskScheduleTypeEnum } from '../types';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { TaskService } from '../services/TaskService';
 import HabitHeatmap from '../shared/components/HabitHeatmap';
@@ -41,6 +41,7 @@ const flatListAvailableContentWidth =
 const calculatedCardWidth =
   flatListAvailableContentWidth / numColumns - cardMarginVal * 2;
 
+const FETCH_TASKS_LIMIT = 50;
 type Props = NativeStackScreenProps<TrackerStackParamList, 'HabitsList'>;
 
 export interface HabitsSection {
@@ -59,7 +60,6 @@ interface HabitCardItemProps {
 const HabitCardItem: React.FC<HabitCardItemProps> = React.memo(
   ({ habit, isViewable, taskService, onPress, activityBgColor }) => {
     const { user } = useAppContext();
-    const FETCH_TASKS_LIMIT = 50;
     const [heatmapTasks, setHeatmapTasks] = useState<Task[]>([]);
     const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
     const [hasFetched, setHasFetched] = useState(false);
@@ -139,12 +139,16 @@ const HabitsScreen = ({ navigation }: Props) => {
 
     try {
       const dailies =
-        await repetitiveTaskTemplateService.getAllActiveDailyRepetitiveTaskTemplates(
+        await repetitiveTaskTemplateService.findTemplatesWithRecentTasks(
           user && user.id,
+          TaskScheduleTypeEnum.Daily,
+          FETCH_TASKS_LIMIT,
         );
       const weeklies =
-        await repetitiveTaskTemplateService.getAllActiveSpecificDaysInAWeekRepetitiveTaskTemplates(
+        await repetitiveTaskTemplateService.findTemplatesWithRecentTasks(
           user && user.id,
+          TaskScheduleTypeEnum.SpecificDaysInAWeek,
+          FETCH_TASKS_LIMIT,
         );
 
       console.log('[Habits] Fetched daily tasks count:', dailies.length);

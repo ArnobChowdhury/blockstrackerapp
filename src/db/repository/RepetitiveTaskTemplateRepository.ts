@@ -4,6 +4,7 @@ import {
   QueryResult,
 } from 'react-native-nitro-sqlite';
 import uuid from 'react-native-uuid';
+import dayjs from 'dayjs';
 import {
   TaskScheduleTypeEnum,
   TimeOfDay,
@@ -583,6 +584,76 @@ export class RepetitiveTaskTemplateRepository {
       );
     }
   }
+
+  findTemplatesWithRecentTasks = async (
+    userId: string | null,
+    schedule: TaskScheduleTypeEnum,
+    day: number,
+  ): Promise<RepetitiveTaskTemplate[]> => {
+    const startDate = dayjs().subtract(day, 'day').startOf('day').toISOString();
+    const endDate = dayjs().endOf('day').toISOString();
+
+    let sql = `
+      SELECT id, title, description, schedule, time_of_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+       created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id, user_id
+      FROM repetitive_task_templates
+      WHERE schedule = ?
+    `;
+
+    const params: any[] = [schedule];
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+
+    sql += `
+      AND EXISTS (
+        SELECT 1 FROM tasks
+        WHERE
+          tasks.repetitive_task_template_id = repetitive_task_templates.id
+          AND tasks.due_date >= ?
+          AND tasks.due_date <= ?
+      );
+    `;
+
+    params.push(startDate, endDate);
+
+    try {
+      console.log(
+        '[DB Repo] Getting list of repetitive task templates with recent tasks:',
+        { sql, params },
+      );
+      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+
+      const repetitiveTaskTemplates: RepetitiveTaskTemplate[] = [];
+
+      if (resultSet.rows) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const repetitiveTaskTemplate = resultSet.rows.item(i);
+          if (repetitiveTaskTemplate) {
+            repetitiveTaskTemplates.push(
+              this._transformRowToTemplate(repetitiveTaskTemplate),
+            );
+          }
+        }
+      }
+
+      return repetitiveTaskTemplates;
+    } catch (err: any) {
+      console.error(
+        '[DB Repo] Failed to get list of repetitive task templates with recent tasks:',
+        err,
+      );
+      throw new Error(
+        `Failed to get list of repetitive task templates with recent tasks: ${
+          err.message || 'Unknown error'
+        }`,
+      );
+    }
+  };
 
   async upsertMany(
     templates: RepetitiveTaskTemplate[],
