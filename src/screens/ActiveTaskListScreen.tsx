@@ -5,7 +5,13 @@ import React, {
   useLayoutEffect,
   useMemo,
 } from 'react';
-import { StyleSheet, View, ActivityIndicator, FlatList } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  ActivityIndicator,
+  FlatList,
+  SectionList,
+} from 'react-native';
 import {
   Text,
   Checkbox,
@@ -40,13 +46,53 @@ import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplat
 import { DatePickerModal } from 'react-native-paper-dates';
 import dayjs from 'dayjs';
 import { useAppContext } from '../shared/contexts/useAppContext';
+import advancedFormat from 'dayjs/plugin/advancedFormat';
 
-const taskSeparator = () => <Divider />;
+dayjs.extend(advancedFormat);
+
+const taskSeparator = () => (
+  <Divider style={[styles.marginLeftTen, styles.marginRightTen]} />
+);
+
+const listEmptyComponent = () => (
+  <View style={[styles.centered, styles.paddingTwenty]}>
+    <Text style={styles.infoText}>
+      No active tasks found for this category.
+    </Text>
+  </View>
+);
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<ActiveStackParamList, 'ActiveTaskList'>,
   NativeStackScreenProps<RootStackParamList>
 >;
+
+type SectionProps = {
+  date: string;
+  data: Task[];
+};
+
+const groupTasksByDate = (tasks: Task[]): SectionProps[] => {
+  const sortedByDate = tasks.sort((a, b) =>
+    dayjs(a.dueDate).diff(dayjs(b.dueDate)),
+  );
+
+  const grouped: Record<string, Task[]> = {};
+  sortedByDate.forEach(task => {
+    const dateKey = dayjs(task.dueDate).format('Do MMM, YYYY');
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = [];
+    }
+    grouped[dateKey].push(task);
+  });
+
+  return Object.entries(grouped).map(([date, _tasks]) => {
+    return {
+      date,
+      data: _tasks,
+    };
+  });
+};
 
 const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   const { user } = useAppContext();
@@ -59,6 +105,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
 
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
   const [tasks, setTasks] = useState<Task[] | RepetitiveTaskTemplate[]>([]);
+  const [onceTasksByDate, setOnceTasksByDate] = useState<SectionProps[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
@@ -141,6 +188,9 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         fetchedTasks.length,
       );
       setTasks(fetchedTasks);
+      if (category === TaskScheduleTypeEnum.Once) {
+        setOnceTasksByDate(groupTasksByDate(fetchedTasks as Task[]));
+      }
     } catch (error: any) {
       console.error(`[TaskList-${category}] Failed to fetch tasks:`, error);
       setErrorLoadingTasks(
@@ -303,9 +353,25 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }, 1000);
   };
 
+  const renderSectionHeader = ({
+    section: { date },
+  }: {
+    section: SectionProps;
+  }) => {
+    return (
+      <View style={styles.sectionHeaderContainer}>
+        <View style={[styles.line, styles.marginLeftTen]} />
+        <Text variant="titleSmall" style={styles.sectionHeaderText}>
+          {date}
+        </Text>
+        <View style={[styles.line, styles.marginRightTen]} />
+      </View>
+    );
+  };
+
   if (isDbLoading) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <SafeAreaView style={[styles.centered, styles.paddingTwenty]}>
         <ActivityIndicator size="large" />
         <Text style={styles.loadingText}>Connecting to Database...</Text>
       </SafeAreaView>
@@ -313,7 +379,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   }
   if (dbError) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <SafeAreaView style={[styles.centered, styles.paddingTwenty]}>
         <Text style={styles.errorText}>Database Connection Error</Text>
         <Text style={styles.errorText}>{dbError.message}</Text>
       </SafeAreaView>
@@ -323,33 +389,39 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']}>
       {isLoadingTasks ? (
-        <View style={styles.centered}>
+        <View style={[styles.centered, styles.paddingTwenty]}>
           <ActivityIndicator size="large" />
           <Text style={styles.loadingText}>Loading Tasks...</Text>
         </View>
       ) : errorLoadingTasks ? (
-        <View style={styles.centered}>
+        <View style={[styles.centered, styles.paddingTwenty]}>
           <Text style={styles.errorText}>Failed to Load Tasks</Text>
           <Text style={styles.errorText}>{errorLoadingTasks}</Text>
           <IconButton icon="refresh" size={30} onPress={fetchTasksByCategory} />
         </View>
       ) : (
-        <FlatList
-          data={tasks}
-          renderItem={renderTaskItem}
-          keyExtractor={item => item.id.toString()}
-          ItemSeparatorComponent={taskSeparator}
-          ListEmptyComponent={
-            <View style={styles.centered}>
-              <Text style={styles.infoText}>
-                No active tasks found for this category.
-              </Text>
-            </View>
-          }
-          contentContainerStyle={
-            tasks.length === 0 ? styles.emptyListContainer : null
-          }
-        />
+        <>
+          {category !== TaskScheduleTypeEnum.Once ? (
+            <FlatList
+              data={tasks}
+              renderItem={renderTaskItem}
+              keyExtractor={item => item.id.toString()}
+              ItemSeparatorComponent={taskSeparator}
+              ListEmptyComponent={listEmptyComponent}
+              contentContainerStyle={
+                tasks.length === 0 ? styles.emptyListContainer : null
+              }
+            />
+          ) : (
+            <SectionList
+              sections={onceTasksByDate}
+              renderSectionHeader={renderSectionHeader}
+              renderItem={renderTaskItem}
+              ItemSeparatorComponent={taskSeparator}
+              ListEmptyComponent={listEmptyComponent}
+            />
+          )}
+        </>
       )}
 
       <Snackbar
@@ -387,6 +459,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  paddingTwenty: {
     padding: 20,
   },
   emptyListContainer: {
@@ -443,6 +517,26 @@ const styles = StyleSheet.create({
   snackbarText: {
     color: 'white',
     paddingRight: 10,
+  },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  line: {
+    flex: 1,
+    height: 0.5,
+    backgroundColor: '#888',
+  },
+  marginRightTen: {
+    marginRight: 10,
+  },
+  marginLeftTen: {
+    marginLeft: 10,
+  },
+  sectionHeaderText: {
+    marginHorizontal: 10,
+    color: '#888',
   },
 });
 

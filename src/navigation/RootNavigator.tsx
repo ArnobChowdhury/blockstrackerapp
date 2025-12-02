@@ -88,6 +88,7 @@ const ActiveStackNavigator = () => {
         headerTitle: ({ children }) => (
           <Text variant="titleLarge">{children}</Text>
         ),
+        headerShadowVisible: false,
       }}>
       <ActiveStack.Screen
         name="ActiveCategoryList"
@@ -110,6 +111,7 @@ const TrackerStackNavigator = () => {
         headerTitle: ({ children }) => (
           <Text variant="titleLarge">{children}</Text>
         ),
+        headerShadowVisible: false,
       }}>
       <TrackerStack.Screen
         name="HabitsList"
@@ -292,6 +294,7 @@ const DrawerNavigator = () => {
         options={{
           headerTitle: () => <Text variant="titleLarge">Overdue Tasks</Text>,
           headerShown: true,
+          headerShadowVisible: false,
         }}
       />
     </Drawer.Navigator>
@@ -327,6 +330,7 @@ const RootNavigator = () => {
         component={OverdueScreen}
         options={{
           headerTitle: () => <Text variant="titleLarge">Overdue Tasks</Text>,
+          headerShadowVisible: false,
         }}
       />
       <RootStack.Screen
@@ -334,6 +338,7 @@ const RootNavigator = () => {
         component={AuthScreen}
         options={{
           headerTitle: () => <Text variant="titleLarge">Sign in/Sign up</Text>,
+          headerShadowVisible: false,
         }}
       />
       <RootStack.Screen
@@ -341,6 +346,7 @@ const RootNavigator = () => {
         component={SignInOrSignupScreen}
         options={{
           headerTitleStyle: { fontFamily: 'HankenGrotesk-SemiBold' },
+          headerShadowVisible: false,
         }}
       />
     </RootStack.Navigator>
