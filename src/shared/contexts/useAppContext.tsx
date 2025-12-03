@@ -19,6 +19,8 @@ import apiClient, {
 } from '../../lib/apiClient';
 import { jwtDecode } from 'jwt-decode';
 import { UserService } from '../../services/UserService';
+import { eventManager } from '../../services/EventManager';
+import { SYNC_TRIGGER_REQUESTED } from '../constants';
 
 export interface User {
   id: string;
@@ -253,6 +255,19 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     registerAuthFailureHandler(handleAuthFailure);
     registerTokenRefreshHandler(updateTokens);
   }, [handleAuthFailure, updateTokens]);
+
+  const runAndRescheduleSync = () => {};
+
+  useEffect(() => {
+    const unsubscribe = eventManager.on(
+      SYNC_TRIGGER_REQUESTED,
+      runAndRescheduleSync,
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [runAndRescheduleSync]);
 
   const value = useMemo(
     () => ({

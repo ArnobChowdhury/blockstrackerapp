@@ -8,3 +8,6 @@ export const scoreColorConfigs = {
   noActivity: '#eeeeee',
   padding: 'transparent',
 };
+
+export const SYNC_TRIGGER_REQUESTED = 'SYNC_TRIGGER_REQUESTED';
+export const SYNC_COMPLETED = 'SYNC_COMPLETED';
