@@ -8,7 +8,7 @@ import React, {
   useRef,
 } from 'react';
 import { readData, storeData } from '../utils';
-import { useColorScheme } from 'react-native';
+import { AppState, AppStateStatus, useColorScheme } from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { syncService } from '../../services/SyncService';
@@ -21,6 +21,8 @@ import { jwtDecode } from 'jwt-decode';
 import { UserService } from '../../services/UserService';
 import { eventManager } from '../../services/EventManager';
 import { SYNC_TRIGGER_REQUESTED } from '../constants';
+import { SettingsRepository } from '../../db/repository';
+import { db } from '../../db';
 
 export interface User {
   id: string;
@@ -68,6 +70,10 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const netInfo = useNetInfo();
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const settingsRepo = useMemo(() => new SettingsRepository(db), []);
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const appState = useRef(AppState.currentState);
+  const TWO_MINUTES = 2 * 60 * 1000;
   const [isSnackbarVisible, setIsSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
@@ -133,34 +139,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      syncService.runSync();
-    }
-  }, [user]);
-
-  useEffect(() => {
     setIsDarkMode(getIsDarkMode(userPreferredTheme, colorScheme));
   }, [userPreferredTheme, colorScheme]);
-
-  const wasOnline = useRef(false);
-
-  useEffect(() => {
-    const isOnline =
-      netInfo.isConnected === true && netInfo.isInternetReachable === true;
-
-    if (isOnline && !wasOnline.current && user) {
-      console.log(
-        '[Network] Connection restored. Checking for pending operations.',
-      );
-      syncService.runSync();
-    }
-
-    wasOnline.current = isOnline;
-  }, [netInfo.isConnected, netInfo.isInternetReachable, user]);
-
-  useEffect(() => {
-    syncService.initialize({ onSyncStatusChange: setIsSyncing });
-  }, []);
 
   const updateTokens = useCallback(
     async (accessToken: string, refreshToken: string) => {
@@ -256,7 +236,90 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     registerTokenRefreshHandler(updateTokens);
   }, [handleAuthFailure, updateTokens]);
 
-  const runAndRescheduleSync = () => {};
+  const runAndRescheduleSync = useCallback(async () => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+    }
+
+    if (appState.current === 'active' && user) {
+      console.log('[SyncManager] App is active, running sync...');
+      setIsSyncing(true);
+      try {
+        await syncService.runSync();
+        await settingsRepo.setLastSync(Date.now());
+      } catch (error) {
+        console.error('[SyncManager] Error during sync execution:', error);
+      } finally {
+        setIsSyncing(false);
+      }
+    } else {
+      console.log(
+        '[SyncManager] Skipping sync run (app not active or no user).',
+      );
+    }
+
+    console.log(
+      `[SyncManager] Scheduling next sync in ${TWO_MINUTES / 1000} seconds.`,
+    );
+    syncTimerRef.current = setTimeout(runAndRescheduleSync, TWO_MINUTES);
+  }, [user, settingsRepo, TWO_MINUTES]);
+
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      appState.current = nextAppState;
+      if (nextAppState === 'active') {
+        console.log('[SyncManager] App has come to the foreground.');
+        if (syncTimerRef.current) {
+          clearTimeout(syncTimerRef.current);
+        }
+
+        const lastSync = await settingsRepo.getLastSync();
+        const now = Date.now();
+
+        if (now - lastSync > TWO_MINUTES) {
+          console.log(
+            '[SyncManager] Last sync was more than 2 minutes ago. Syncing immediately.',
+          );
+          runAndRescheduleSync();
+        } else {
+          const timeUntilNextSync = TWO_MINUTES - (now - lastSync);
+          console.log(
+            `[SyncManager] Scheduling next sync in ${Math.round(
+              timeUntilNextSync / 1000,
+            )} seconds.`,
+          );
+          syncTimerRef.current = setTimeout(
+            runAndRescheduleSync,
+            timeUntilNextSync,
+          );
+        }
+      } else {
+        console.log(
+          '[SyncManager] App has gone to the background. Clearing scheduled sync.',
+        );
+        if (syncTimerRef.current) {
+          clearTimeout(syncTimerRef.current);
+          syncTimerRef.current = null;
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
+    );
+
+    if (appState.current === 'active') {
+      runAndRescheduleSync();
+    }
+
+    return () => {
+      subscription.remove();
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, [runAndRescheduleSync, settingsRepo, TWO_MINUTES]);
 
   useEffect(() => {
     const unsubscribe = eventManager.on(
@@ -268,6 +331,27 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       unsubscribe();
     };
   }, [runAndRescheduleSync]);
+
+  const wasOnline = useRef(false);
+
+  useEffect(() => {
+    const isOnline =
+      netInfo.isConnected === true && netInfo.isInternetReachable === true;
+
+    if (isOnline && !wasOnline.current && user) {
+      console.log(
+        '[Network] Connection restored. Checking for pending operations.',
+      );
+      runAndRescheduleSync();
+    }
+
+    wasOnline.current = isOnline;
+  }, [
+    netInfo.isConnected,
+    netInfo.isInternetReachable,
+    runAndRescheduleSync,
+    user,
+  ]);
 
   const value = useMemo(
     () => ({

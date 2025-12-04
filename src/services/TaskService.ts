@@ -9,7 +9,6 @@ import { getNextIterationDateForRepetitiveTask } from '../shared/utils';
 
 import type { NewTaskData, Task } from '../types';
 import { TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
-import { syncService } from './SyncService';
 import { eventManager } from './EventManager';
 import { SYNC_TRIGGER_REQUESTED } from '../shared/constants';
 import dayjs from 'dayjs';
@@ -95,7 +94,6 @@ export class TaskService {
     }
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
@@ -142,7 +140,6 @@ export class TaskService {
     });
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }
@@ -182,7 +179,6 @@ export class TaskService {
     });
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }
@@ -216,7 +212,6 @@ export class TaskService {
     });
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }
@@ -260,7 +255,6 @@ export class TaskService {
       }
     });
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }
@@ -347,7 +341,6 @@ export class TaskService {
       }
     });
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }

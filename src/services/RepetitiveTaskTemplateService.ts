@@ -12,7 +12,6 @@ import {
 } from '../types';
 import { TaskService } from './TaskService';
 import dayjs, { Dayjs } from 'dayjs';
-import { syncService } from './SyncService';
 import { eventManager } from './EventManager';
 import { SYNC_TRIGGER_REQUESTED } from '../shared/constants';
 
@@ -70,7 +69,6 @@ export class RepetitiveTaskTemplateService {
     }
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
@@ -112,7 +110,6 @@ export class RepetitiveTaskTemplateService {
     });
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }
@@ -151,7 +148,6 @@ export class RepetitiveTaskTemplateService {
     });
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }
@@ -293,7 +289,6 @@ export class RepetitiveTaskTemplateService {
     }
 
     if (isPremium && writeOperationOccurred) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
   }

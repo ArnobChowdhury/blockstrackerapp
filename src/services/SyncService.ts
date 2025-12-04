@@ -22,7 +22,6 @@ class SyncService {
   private spaceRepo: SpaceRepository;
   // private tagRepo: TagRepository;
   private rttRepo: RepetitiveTaskTemplateRepository;
-  private onSyncStatusChange: ((isSyncing: boolean) => void) | null = null;
 
   constructor() {
     this.pendingOpRepo = new PendingOperationRepository(db);
@@ -33,12 +32,6 @@ class SyncService {
     this.rttRepo = new RepetitiveTaskTemplateRepository(db);
   }
 
-  public initialize(callbacks: {
-    onSyncStatusChange: (isSyncing: boolean) => void;
-  }) {
-    this.onSyncStatusChange = callbacks.onSyncStatusChange;
-  }
-
   public async runSync(): Promise<void> {
     if (isSyncing) {
       console.log('[SyncService] Sync process already running. Exiting.');
@@ -47,7 +40,6 @@ class SyncService {
 
     console.log('[SyncService] Starting sync process...');
     isSyncing = true;
-    this.onSyncStatusChange?.(true);
 
     const processedInCurrentRun: number[] = [];
 
@@ -96,7 +88,6 @@ class SyncService {
       );
     } finally {
       isSyncing = false;
-      this.onSyncStatusChange?.(false);
       console.log('[SyncService] Sync process finished.');
     }
   }

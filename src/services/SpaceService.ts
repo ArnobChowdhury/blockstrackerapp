@@ -1,7 +1,6 @@
 import { db } from '../db';
 import { SpaceRepository, PendingOperationRepository } from '../db/repository';
 import type { Space } from '../types';
-import { syncService } from './SyncService';
 import { eventManager } from './EventManager';
 import { SYNC_TRIGGER_REQUESTED } from '../shared/constants';
 
@@ -49,7 +48,6 @@ export class SpaceService {
     }
 
     if (userId) {
-      syncService.runSync();
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
