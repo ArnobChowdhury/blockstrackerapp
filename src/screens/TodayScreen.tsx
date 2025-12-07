@@ -121,7 +121,7 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { user, isSyncing } = useAppContext();
+  const { user, isSyncing, firstSyncDone } = useAppContext();
   const repetitiveTaskTemplateService = useMemo(
     () => new RepetitiveTaskTemplateService(),
     [],
@@ -230,10 +230,16 @@ const TodayScreen = ({ navigation }: Props) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!isDbLoading && !newDayBannerVisible) {
+      if (!isDbLoading && !newDayBannerVisible && firstSyncDone) {
         fetchTasksForDate(displayDate);
       }
-    }, [isDbLoading, fetchTasksForDate, displayDate, newDayBannerVisible]),
+    }, [
+      isDbLoading,
+      newDayBannerVisible,
+      firstSyncDone,
+      fetchTasksForDate,
+      displayDate,
+    ]),
   );
 
   useEffect(() => {

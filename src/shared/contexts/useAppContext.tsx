@@ -42,6 +42,7 @@ interface AppContextProps {
   snackbarMessage: string;
   showSnackbar: (message: string) => void;
   hideSnackbar: () => void;
+  firstSyncDone: boolean;
 }
 
 const AppContext = React.createContext<AppContextProps | undefined>(undefined);
@@ -109,6 +110,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
 
   const [user, setUser] = useState<User | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(true);
+  const [firstSyncDone, setFirstSyncDone] = useState(true);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -124,6 +126,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           );
           if (decoded.user_id && decoded.email) {
             setUser({ id: decoded.user_id, email: decoded.email });
+            setFirstSyncDone(false);
           }
         } else {
           console.log('[AuthContext] No token found in keychain.');
@@ -178,6 +181,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
 
         await updateTokens(accessToken, refreshToken);
         setUser({ id: decoded.user_id, email: decoded.email });
+        setFirstSyncDone(false);
       } catch (error: any) {
         console.error(
           '[AuthContext] Failed to process sign-in:',
@@ -210,6 +214,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         await Keychain.resetGenericPassword();
         await Keychain.resetGenericPassword({ service: 'refreshToken' });
         setUser(null);
+        setFirstSyncDone(true);
         setInMemoryToken(null);
         console.log(
           '[AuthContext] Local user session and tokens cleared successfully.',
@@ -251,6 +256,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         console.error('[SyncManager] Error during sync execution:', error);
       } finally {
         setIsSyncing(false);
+        setFirstSyncDone(true);
       }
     } else {
       console.log(
@@ -367,6 +373,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       snackbarMessage,
       showSnackbar,
       hideSnackbar,
+      firstSyncDone,
     }),
     [
       userPreferredTheme,
@@ -381,6 +388,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       snackbarMessage,
       showSnackbar,
       hideSnackbar,
+      firstSyncDone,
     ],
   );
 
