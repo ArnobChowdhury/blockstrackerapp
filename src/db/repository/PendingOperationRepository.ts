@@ -6,6 +6,7 @@ import {
 
 export interface PendingOperation {
   id: number;
+  user_id: string;
   operation_type: 'create' | 'update';
   entity_type: 'task' | 'space' | 'tag' | 'repetitive_task_template';
   entity_id: string;
@@ -66,6 +67,7 @@ export class PendingOperationRepository {
    * @returns The pending operation object or null if the queue is empty.
    */
   async getOldestPendingOperation(
+    userId: string,
     excludedIds: number[],
   ): Promise<PendingOperation | null> {
     const hasExcluded = excludedIds.length > 0;
@@ -75,21 +77,25 @@ export class PendingOperationRepository {
       SELECT *
       FROM pending_operations po1
       WHERE
-        po1.status = 'pending' 
+        po1.user_id = ? AND
+        po1.status = 'pending'
         ${hasExcluded ? `AND po1.id NOT IN (${placeholders})` : ''}
         AND NOT EXISTS (
           SELECT 1
           FROM pending_operations po2
           WHERE
             po2.entity_id = po1.entity_id AND
+            po2.user_id = po1.user_id AND
             po2.status IN ('processing', 'failed')
         )
       ORDER BY po1.id ASC
       LIMIT 1;
     `;
 
+    const params = [userId, ...excludedIds];
+
     try {
-      const result = await this.db.executeAsync(sql, excludedIds);
+      const result = await this.db.executeAsync(sql, params);
       if (result.rows && result.rows.length > 0) {
         return result.rows.item(0) as unknown as PendingOperation;
       }

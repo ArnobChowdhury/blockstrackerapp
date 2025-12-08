@@ -154,9 +154,14 @@ export const V1_SCHEMA = `
   -- Settings Table for app metadata
   -- =============================================
   CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY NOT NULL,
-    value TEXT NOT NULL
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (user_id, key),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE INDEX IF NOT EXISTS idx_settings_user_id ON settings(user_id);
 
   -- Set initial schema version
   PRAGMA user_version = 1;

@@ -250,8 +250,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       console.log('[SyncManager] App is active, running sync...');
       setIsSyncing(true);
       try {
-        await syncService.runSync();
-        await settingsRepo.setLastSync(Date.now());
+        await syncService.runSync(user.id);
+        await settingsRepo.setLastSync(Date.now(), user.id);
       } catch (error) {
         console.error('[SyncManager] Error during sync execution:', error);
       } finally {
@@ -273,13 +273,13 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       appState.current = nextAppState;
-      if (nextAppState === 'active') {
+      if (nextAppState === 'active' && user) {
         console.log('[SyncManager] App has come to the foreground.');
         if (syncTimerRef.current) {
           clearTimeout(syncTimerRef.current);
         }
 
-        const lastSync = await settingsRepo.getLastSync();
+        const lastSync = await settingsRepo.getLastSync(user.id);
         const now = Date.now();
 
         if (now - lastSync > TWO_MINUTES) {
@@ -325,7 +325,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         clearTimeout(syncTimerRef.current);
       }
     };
-  }, [runAndRescheduleSync, settingsRepo, TWO_MINUTES]);
+  }, [runAndRescheduleSync, settingsRepo, TWO_MINUTES, user]);
 
   useEffect(() => {
     const unsubscribe = eventManager.on(

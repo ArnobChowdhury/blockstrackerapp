@@ -32,7 +32,7 @@ class SyncService {
     this.rttRepo = new RepetitiveTaskTemplateRepository(db);
   }
 
-  public async runSync(): Promise<void> {
+  public async runSync(userId: string): Promise<void> {
     if (isSyncing) {
       console.log('[SyncService] Sync process already running. Exiting.');
       return;
@@ -49,6 +49,7 @@ class SyncService {
 
         while (true) {
           const operation = await this.pendingOpRepo.getOldestPendingOperation(
+            userId,
             processedInCurrentRun,
           );
 
@@ -65,10 +66,11 @@ class SyncService {
         }
 
         console.log('[SyncService] Starting PULL phase...');
-        await this.pullRemoteChanges();
+        await this.pullRemoteChanges(userId);
 
         const newOperationCheck =
           await this.pendingOpRepo.getOldestPendingOperation(
+            userId,
             processedInCurrentRun,
           );
 
@@ -141,7 +143,7 @@ class SyncService {
     }
   }
 
-  private async pullRemoteChanges(): Promise<void> {
+  private async pullRemoteChanges(userId: string): Promise<void> {
     while (true) {
       let syncData;
       let lastChangeId;
@@ -170,7 +172,10 @@ class SyncService {
         syncData.repetitiveTaskTemplates?.length > 0;
 
       if (!hasNewChanges) {
-        await this.settingsRepo.setLastChangeId(syncData.latestChangeId);
+        await this.settingsRepo.setLastChangeId(
+          syncData.latestChangeId,
+          userId,
+        );
         break;
       }
 
@@ -190,7 +195,11 @@ class SyncService {
           }
           // ... other repositories
 
-          await this.settingsRepo.setLastChangeId(syncData.latestChangeId, tx);
+          await this.settingsRepo.setLastChangeId(
+            syncData.latestChangeId,
+            userId,
+            tx,
+          );
         });
       } catch (error) {
         console.error(

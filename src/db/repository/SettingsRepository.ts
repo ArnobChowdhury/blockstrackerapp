@@ -14,9 +14,9 @@ export class SettingsRepository {
     this.db = database;
   }
 
-  async getLastChangeId(): Promise<number> {
-    const sql = 'SELECT value FROM settings WHERE key = ?';
-    const params = [LAST_CHANGE_ID_KEY];
+  async getLastChangeId(userId: string): Promise<number> {
+    const sql = 'SELECT value FROM settings WHERE key = ? AND user_id = ?';
+    const params = [LAST_CHANGE_ID_KEY, userId];
 
     try {
       const resultSet: QueryResult = await this.db.executeAsync(sql, params);
@@ -36,12 +36,16 @@ export class SettingsRepository {
     }
   }
 
-  async setLastChangeId(id: number, tx?: Transaction): Promise<void> {
+  async setLastChangeId(
+    id: number,
+    userId: string,
+    tx?: Transaction,
+  ): Promise<void> {
     const sql = `
-      INSERT INTO settings (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+      INSERT INTO settings (user_id, key, value) VALUES (?, ?, ?)
+      ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value;
     `;
-    const params = [LAST_CHANGE_ID_KEY, id.toString()];
+    const params = [userId, LAST_CHANGE_ID_KEY, id.toString()];
 
     try {
       const dbOrTx = tx || this.db;
@@ -59,9 +63,9 @@ export class SettingsRepository {
    * Retrieves the timestamp of the last successful sync.
    * @returns The timestamp in milliseconds since epoch, or 0 if not found.
    */
-  async getLastSync(): Promise<number> {
-    const sql = 'SELECT value FROM settings WHERE key = ?';
-    const params = [LAST_SYNC_TIMESTAMP_KEY];
+  async getLastSync(userId: string): Promise<number> {
+    const sql = 'SELECT value FROM settings WHERE key = ? AND user_id = ?';
+    const params = [LAST_SYNC_TIMESTAMP_KEY, userId];
 
     try {
       const resultSet: QueryResult = await this.db.executeAsync(sql, params);
@@ -88,12 +92,16 @@ export class SettingsRepository {
    * @param timestamp The timestamp in milliseconds since epoch.
    * @param tx Optional transaction object.
    */
-  async setLastSync(timestamp: number, tx?: Transaction): Promise<void> {
+  async setLastSync(
+    timestamp: number,
+    userId: string,
+    tx?: Transaction,
+  ): Promise<void> {
     const sql = `
-      INSERT INTO settings (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+      INSERT INTO settings (user_id, key, value) VALUES (?, ?, ?)
+      ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value;
     `;
-    const params = [LAST_SYNC_TIMESTAMP_KEY, timestamp.toString()];
+    const params = [userId, LAST_SYNC_TIMESTAMP_KEY, timestamp.toString()];
 
     const dbOrTx = tx || this.db;
     await dbOrTx.executeAsync(sql, params);
