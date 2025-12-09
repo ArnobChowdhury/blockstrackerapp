@@ -71,7 +71,9 @@ export const useTaskReschedule = (
   );
 
   const handleRescheduleIconTap = async (task: Task) => {
-    setSelectedDateForTaskReschedule(new Date(task.dueDate as string));
+    setSelectedDateForTaskReschedule(
+      task.dueDate ? new Date(task.dueDate) : new Date(),
+    );
     setTaskIdToBeRescheduled(task.id);
 
     if (

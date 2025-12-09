@@ -442,7 +442,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
         mode="single"
         visible={isDatePickerVisible}
         onDismiss={resetTaskRescheduling}
-        date={selectedDateForTaskReschedule}
+        date={selectedDateForTaskReschedule || new Date()}
         onConfirm={onTaskReschedule}
         label="Task Date"
         calendarIcon="calendar-outline"

@@ -143,7 +143,10 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
           setIsRepetitiveTask(true);
           setTaskTemplateId(task.repetitiveTaskTemplateId);
         }
-        setSelectedDate(dayjs(task.dueDate).toDate());
+
+        if (task.dueDate) {
+          setSelectedDate(dayjs(task.dueDate).toDate());
+        }
 
         fetchedTaskOrTemplate = task;
       } else {
