@@ -317,11 +317,14 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     setSelectedDateVisible(false);
   };
 
-  const descriptionSource = {
-    html: taskDescription
-      ? truncate(taskDescription, 40)
-      : '<p>Task Description</p>',
-  };
+  const descriptionSource = useMemo(
+    () => ({
+      html: taskDescription
+        ? truncate(taskDescription, 40)
+        : '<p>Task Description</p>',
+    }),
+    [taskDescription],
+  );
 
   const descriptionInputFieldBaseStyles = useMemo(() => {
     return {
