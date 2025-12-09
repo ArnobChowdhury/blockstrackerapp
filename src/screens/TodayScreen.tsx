@@ -487,7 +487,7 @@ const TodayScreen = ({ navigation }: Props) => {
       ) : (
         <>
           <Banner
-            visible={numberOfTaskOverdue > 0}
+            visible={numberOfTaskOverdue > 0 && !newDayBannerVisible}
             actions={[
               {
                 label: 'Review now',
