@@ -45,6 +45,7 @@ import type { RepetitiveTaskTemplate, Task, Space } from '../types';
 import {
   capitalize,
   getScheduledWeekDaysFromRepetitiveTask,
+  getNextIterationDateForRepetitiveTask,
 } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useAppContext } from '../shared/contexts/useAppContext';
@@ -84,6 +85,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const [selectedDateVisible, setSelectedDateVisible] = useState(false);
   const [temporaryDate, setTemporaryDate] = useState<Date>();
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [datePickerEndDate, setDatePickerEndDate] = useState<
+    Date | undefined
+  >();
   const [selectedDays, setSelectedDays] = useState<DaysInAWeek[]>([]);
 
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
@@ -146,6 +150,37 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
         if (task.dueDate) {
           setSelectedDate(dayjs(task.dueDate).toDate());
+        }
+
+        if (
+          task.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
+          task.dueDate &&
+          task.repetitiveTaskTemplateId
+        ) {
+          const repetitiveTaskTemplate =
+            await repetitiveTaskTemplateService.getRepetitiveTaskTemplateById(
+              task.repetitiveTaskTemplateId,
+              user && user.id,
+            );
+
+          if (!repetitiveTaskTemplate) {
+            throw new Error(
+              `Repetitive Task Template with ID ${task.repetitiveTaskTemplateId} not found.`,
+            );
+          }
+          const nextIterationDate = getNextIterationDateForRepetitiveTask(
+            repetitiveTaskTemplate,
+            dayjs(task.dueDate),
+          );
+
+          if (!nextIterationDate) {
+            throw new Error(
+              `Next iteration date not found for Repetitive Task Template with ID ${task.repetitiveTaskTemplateId}.`,
+            );
+          }
+          setDatePickerEndDate(
+            nextIterationDate.subtract(1, 'day').startOf('day').toDate(),
+          );
         }
 
         fetchedTaskOrTemplate = task;
@@ -269,7 +304,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     } catch (error: any) {
       console.error('[DB] Failed to INSERT task:', error);
       Alert.alert(
-        'Database Error',
+        'Error',
         `Failed to save the task: ${error.message || 'Unknown error'}`,
       );
     } finally {
@@ -535,7 +570,16 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
                 <Chip
                   icon={'calendar-outline'}
                   style={styles.marginBottom}
-                  onPress={() => setSelectedDateVisible(true)}>
+                  onPress={() => {
+                    if (selectedScheduleType !== TaskScheduleTypeEnum.Daily) {
+                      setSelectedDateVisible(true);
+                    } else {
+                      setSnackbarMessage(
+                        'Daily tasks cannot change their due date.',
+                      );
+                      setSnackbarVisible(true);
+                    }
+                  }}>
                   {sDate}
                 </Chip>
                 <Divider style={styles.marginTop} />
@@ -652,7 +696,10 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         saveLabel="Select Date"
         saveLabelDisabled={!temporaryDate}
         animationType="slide"
-        validRange={{ startDate: dayjs().startOf('day').toDate() }}
+        validRange={{
+          startDate: dayjs().startOf('day').toDate(),
+          endDate: datePickerEndDate,
+        }}
       />
     </SafeAreaView>
   );

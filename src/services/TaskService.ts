@@ -106,6 +106,20 @@ export class TaskService {
     userId: string | null,
   ): Promise<void> {
     await db.transaction(async tx => {
+      const task = await this.getTaskById(taskId, userId);
+      if (!task) {
+        throw new Error(
+          `Cannot update non-existent or unauthorized task with ID ${taskId}`,
+        );
+      }
+      if (
+        task.schedule === TaskScheduleTypeEnum.Daily &&
+        taskData.dueDate !== undefined &&
+        !dayjs(task.dueDate).isSame(taskData.dueDate, 'day')
+      ) {
+        throw new Error('Daily tasks cannot change their due date.');
+      }
+
       const updatedTask = await this.taskRepo.updateTaskById(
         taskId,
         taskData,
