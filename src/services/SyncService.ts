@@ -114,6 +114,11 @@ class SyncService {
         ? JSON.parse(payload)
         : undefined;
 
+    console.log(`[SyncService] PUSHING data for operation ${id}:`, {
+      method: endpointConfig.method,
+      url,
+      data,
+    });
     try {
       await this.pendingOpRepo.updateOperationStatus(
         id,
@@ -148,7 +153,7 @@ class SyncService {
       let syncData;
       let lastChangeId;
       try {
-        lastChangeId = await this.settingsRepo.getLastChangeId();
+        lastChangeId = await this.settingsRepo.getLastChangeId(userId);
         console.log(
           `[SyncService] Fetching changes since change ID: ${lastChangeId}`,
         );
@@ -158,6 +163,10 @@ class SyncService {
           params: { last_change_id: lastChangeId },
         });
         syncData = response.data.result.data;
+        console.log(
+          '[SyncService] PULL response from server:',
+          JSON.stringify(syncData, null, 2),
+        );
       } catch (error) {
         console.error(
           '[SyncService] Failed to fetch remote changes from API:',
@@ -172,6 +181,9 @@ class SyncService {
         syncData.repetitiveTaskTemplates?.length > 0;
 
       if (!hasNewChanges) {
+        console.log(
+          `[SyncService] No new changes found. Synced up to change ID: ${syncData.latestChangeId}`,
+        );
         await this.settingsRepo.setLastChangeId(
           syncData.latestChangeId,
           userId,
@@ -185,12 +197,21 @@ class SyncService {
         );
         await db.transaction(async tx => {
           if (syncData.spaces?.length > 0) {
+            console.log(
+              `[SyncService] Upserting ${syncData.spaces.length} spaces.`,
+            );
             await this.spaceRepo.upsertMany(syncData.spaces, tx);
           }
           if (syncData.repetitiveTaskTemplates?.length > 0) {
+            console.log(
+              `[SyncService] Upserting ${syncData.repetitiveTaskTemplates.length} repetitive task templates.`,
+            );
             await this.rttRepo.upsertMany(syncData.repetitiveTaskTemplates, tx);
           }
           if (syncData.tasks?.length > 0) {
+            console.log(
+              `[SyncService] Upserting ${syncData.tasks.length} tasks.`,
+            );
             await this.taskRepo.upsertMany(syncData.tasks, tx);
           }
           // ... other repositories
@@ -201,6 +222,9 @@ class SyncService {
             tx,
           );
         });
+        console.log(
+          `[SyncService] PULL phase complete. Transaction committed. Synced up to change ID: ${syncData.latestChangeId}`,
+        );
       } catch (error) {
         console.error(
           '[SyncService] Error during sync pull transaction. Rolling back.',
@@ -216,6 +240,11 @@ class SyncService {
     operation: PendingOperation,
   ) {
     const { id, entity_type: entityType, entity_id: entityId } = operation;
+    console.log(
+      `[SyncService] Handling Axios error for operation ${id}:`,
+      error.message,
+      error.response?.data,
+    );
 
     if (error.response) {
       const { status, data } = error.response;
