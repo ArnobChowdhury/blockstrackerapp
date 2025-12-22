@@ -655,6 +655,64 @@ export class RepetitiveTaskTemplateRepository {
     }
   };
 
+  async getCountOfIncompleteRepetitiveTasksForTimeOfDay(
+    userId: string | null,
+    timeOfDay: TimeOfDay,
+    date: Date,
+  ): Promise<number> {
+    const targetDateStr = dayjs(date).format('YYYY-MM-DD');
+    const dayOfWeekColumnName = dayjs(date).format('dddd').toLowerCase();
+
+    let sql = `
+      SELECT COUNT(*) as count
+      FROM repetitive_task_templates
+      WHERE
+        is_active = 1 AND
+        time_of_day = ? AND
+        (
+          DATE(last_date_of_task_generation, 'localtime') < ? OR
+          last_date_of_task_generation IS NULL
+        ) AND
+        (
+          schedule = ? OR
+          (schedule = ? AND ${dayOfWeekColumnName} = 1)
+        )
+    `;
+
+    const params: any[] = [
+      timeOfDay,
+      targetDateStr,
+      TaskScheduleTypeEnum.Daily,
+      TaskScheduleTypeEnum.SpecificDaysInAWeek,
+    ];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
+
+    console.log(
+      '[DB Repo] Attempting to count incomplete repetitive tasks for time of day:',
+      { sql, params },
+    );
+
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      const count = result.rows?.item(0)?.count ?? 0;
+      return count as number;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to count incomplete repetitive tasks for time of day:',
+        error,
+      );
+      throw new Error(
+        `Failed to fetch count: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
   async upsertMany(
     templates: RepetitiveTaskTemplate[],
     tx?: Transaction,

@@ -13,7 +13,10 @@ import {
 import { TaskService } from './TaskService';
 import dayjs, { Dayjs } from 'dayjs';
 import { eventManager } from './EventManager';
-import { SYNC_TRIGGER_REQUESTED } from '../shared/constants';
+import {
+  SYNC_TRIGGER_REQUESTED,
+  WRITE_OPERATION_COMPLETED,
+} from '../shared/constants';
 
 export class RepetitiveTaskTemplateService {
   private rttRepo: RepetitiveTaskTemplateRepository;
@@ -72,6 +75,8 @@ export class RepetitiveTaskTemplateService {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
+
     return createdTemplate.id;
   }
 
@@ -112,6 +117,8 @@ export class RepetitiveTaskTemplateService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 
   async stopRepetitiveTask(
@@ -150,6 +157,8 @@ export class RepetitiveTaskTemplateService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 
   async updateLastDateOfTaskGeneration(
@@ -290,6 +299,10 @@ export class RepetitiveTaskTemplateService {
 
     if (isPremium && writeOperationOccurred) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
+    }
+
+    if (writeOperationOccurred) {
+      eventManager.emit(WRITE_OPERATION_COMPLETED);
     }
   }
 

@@ -11,3 +11,6 @@ export const scoreColorConfigs = {
 
 export const SYNC_TRIGGER_REQUESTED = 'SYNC_TRIGGER_REQUESTED';
 export const SYNC_COMPLETED = 'SYNC_COMPLETED';
+export const WRITE_OPERATION_COMPLETED = 'WRITE_OPERATION_COMPLETED';
+
+export const ANDROID_TASK_REMINDER_NOTIFICATION_CHANNEL_ID = 'task-reminders';

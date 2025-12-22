@@ -2,7 +2,10 @@ import { db } from '../db';
 import { SpaceRepository, PendingOperationRepository } from '../db/repository';
 import type { Space } from '../types';
 import { eventManager } from './EventManager';
-import { SYNC_TRIGGER_REQUESTED } from '../shared/constants';
+import {
+  SYNC_TRIGGER_REQUESTED,
+  WRITE_OPERATION_COMPLETED,
+} from '../shared/constants';
 
 export class SpaceService {
   private spaceRepo: SpaceRepository;
@@ -50,6 +53,8 @@ export class SpaceService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
 
     return createdSpace.id;
   }

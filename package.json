@@ -9,6 +9,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-google-signin/google-signin": "^15.0.0",
@@ -22,6 +23,7 @@
     "jwt-decode": "^4.0.0",
     "react": "19.0.0",
     "react-native": "0.78.2",
+    "react-native-background-fetch": "^4.2.8",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^2.25.0",
     "react-native-keychain": "^10.0.0",

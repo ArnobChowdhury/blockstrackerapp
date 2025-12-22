@@ -20,9 +20,13 @@ import apiClient, {
 import { jwtDecode } from 'jwt-decode';
 import { UserService } from '../../services/UserService';
 import { eventManager } from '../../services/EventManager';
-import { SYNC_TRIGGER_REQUESTED } from '../constants';
+import {
+  SYNC_TRIGGER_REQUESTED,
+  WRITE_OPERATION_COMPLETED,
+} from '../constants';
 import { SettingsRepository } from '../../db/repository';
 import { db } from '../../db';
+import { notificationService } from '../../services/NotificationService';
 
 export interface User {
   id: string;
@@ -127,9 +131,13 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           if (decoded.user_id && decoded.email) {
             setUser({ id: decoded.user_id, email: decoded.email });
             setFirstSyncDone(false);
+            await notificationService.recalculateAndScheduleNotifications(
+              decoded.user_id,
+            );
           }
         } else {
           console.log('[AuthContext] No token found in keychain.');
+          await notificationService.recalculateAndScheduleNotifications(null);
         }
       } catch (error) {
         console.error("[AuthContext] Couldn't load token from keychain", error);
@@ -182,6 +190,9 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         await updateTokens(accessToken, refreshToken);
         setUser({ id: decoded.user_id, email: decoded.email });
         setFirstSyncDone(false);
+        await notificationService.recalculateAndScheduleNotifications(
+          decoded.user_id,
+        );
       } catch (error: any) {
         console.error(
           '[AuthContext] Failed to process sign-in:',
@@ -219,6 +230,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         console.log(
           '[AuthContext] Local user session and tokens cleared successfully.',
         );
+        await notificationService.recalculateAndScheduleNotifications(null);
       } catch (keychainError: any) {
         console.error(
           '[AuthContext] Failed to clear local tokens from keychain:',
@@ -252,6 +264,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       try {
         await syncService.runSync(user.id);
         await settingsRepo.setLastSync(Date.now(), user.id);
+        await notificationService.recalculateAndScheduleNotifications(user.id);
       } catch (error) {
         console.error('[SyncManager] Error during sync execution:', error);
       } finally {
@@ -273,31 +286,37 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       appState.current = nextAppState;
-      if (nextAppState === 'active' && user) {
-        console.log('[SyncManager] App has come to the foreground.');
-        if (syncTimerRef.current) {
-          clearTimeout(syncTimerRef.current);
-        }
+      if (nextAppState === 'active') {
+        await notificationService.recalculateAndScheduleNotifications(
+          user ? user.id : null,
+        );
 
-        const lastSync = await settingsRepo.getLastSync(user.id);
-        const now = Date.now();
+        if (user) {
+          console.log('[SyncManager] App has come to the foreground.');
+          if (syncTimerRef.current) {
+            clearTimeout(syncTimerRef.current);
+          }
 
-        if (now - lastSync > TWO_MINUTES) {
-          console.log(
-            '[SyncManager] Last sync was more than 2 minutes ago. Syncing immediately.',
-          );
-          runAndRescheduleSync();
-        } else {
-          const timeUntilNextSync = TWO_MINUTES - (now - lastSync);
-          console.log(
-            `[SyncManager] Scheduling next sync in ${Math.round(
-              timeUntilNextSync / 1000,
-            )} seconds.`,
-          );
-          syncTimerRef.current = setTimeout(
-            runAndRescheduleSync,
-            timeUntilNextSync,
-          );
+          const lastSync = await settingsRepo.getLastSync(user.id);
+          const now = Date.now();
+
+          if (now - lastSync > TWO_MINUTES) {
+            console.log(
+              '[SyncManager] Last sync was more than 2 minutes ago. Syncing immediately.',
+            );
+            runAndRescheduleSync();
+          } else {
+            const timeUntilNextSync = TWO_MINUTES - (now - lastSync);
+            console.log(
+              `[SyncManager] Scheduling next sync in ${Math.round(
+                timeUntilNextSync / 1000,
+              )} seconds.`,
+            );
+            syncTimerRef.current = setTimeout(
+              runAndRescheduleSync,
+              timeUntilNextSync,
+            );
+          }
         }
       } else {
         console.log(
@@ -358,6 +377,21 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     runAndRescheduleSync,
     user,
   ]);
+
+  useEffect(() => {
+    const onWriteOperation = () => {
+      notificationService.recalculateAndScheduleNotifications(
+        user ? user.id : null,
+      );
+    };
+
+    // sourcery skip: inline-immediately-returned-variable
+    const unsubscribe = eventManager.on(
+      WRITE_OPERATION_COMPLETED,
+      onWriteOperation,
+    );
+    return unsubscribe;
+  }, [user]);
 
   const value = useMemo(
     () => ({

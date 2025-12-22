@@ -10,7 +10,10 @@ import { getNextIterationDateForRepetitiveTask } from '../shared/utils';
 import type { NewTaskData, Task } from '../types';
 import { TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { eventManager } from './EventManager';
-import { SYNC_TRIGGER_REQUESTED } from '../shared/constants';
+import {
+  SYNC_TRIGGER_REQUESTED,
+  WRITE_OPERATION_COMPLETED,
+} from '../shared/constants';
 import dayjs from 'dayjs';
 
 export class TaskService {
@@ -97,6 +100,7 @@ export class TaskService {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
     return newTask.id;
   }
 
@@ -156,6 +160,8 @@ export class TaskService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 
   async bulkFailTasks(taskIds: string[], userId: string | null): Promise<void> {
@@ -195,6 +201,7 @@ export class TaskService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 
   async failAllOverdueTasksAtOnce(userId: string | null): Promise<void> {
@@ -228,6 +235,7 @@ export class TaskService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
   async updateTaskCompletionStatus(
     taskId: string,
@@ -271,6 +279,7 @@ export class TaskService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
   async updateTaskDueDate(
     taskId: string,
@@ -357,6 +366,7 @@ export class TaskService {
     if (userId) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
   async getActiveTasksByRepetitiveTaskTemplateId(
     templateId: string,

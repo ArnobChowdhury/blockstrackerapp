@@ -634,6 +634,56 @@ export class TaskRepository {
     }
   }
 
+  async getIncompleteTasksCountForTimeOfDay(
+    userId: string | null,
+    timeOfDay: TimeOfDay,
+    date: Date,
+  ): Promise<number> {
+    const targetDate = dayjs(date).format('YYYY-MM-DD');
+
+    let sql = `
+      SELECT COUNT(*) as count
+      FROM tasks
+      WHERE
+        DATE(due_date, 'localtime') = ? AND
+        completion_status = ? AND
+        is_active = 1 AND
+        time_of_day = ?
+    `;
+
+    const params: any[] = [
+      targetDate,
+      TaskCompletionStatusEnum.INCOMPLETE,
+      timeOfDay,
+    ];
+
+    if (userId) {
+      sql += ' AND user_id = ?;';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL;';
+    }
+
+    console.log(
+      '[DB Repo] Attempting to count incomplete tasks for time of day:',
+      { sql, params },
+    );
+
+    try {
+      const result = await this.db.executeAsync(sql, params);
+      const count = result.rows?.item(0)?.count ?? 0;
+      return count as number;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to count incomplete tasks for time of day:',
+        error,
+      );
+      throw new Error(
+        `Failed to fetch count: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
   async updateTaskCompletionStatus(
     taskId: string,
     status: TaskCompletionStatusEnum,

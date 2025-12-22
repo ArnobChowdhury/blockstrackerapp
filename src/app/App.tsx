@@ -8,7 +8,10 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import { Text, Snackbar } from 'react-native-paper';
-import { initializeDatabase } from '../db'; // Adjust path if needed
+import { initializeDatabase } from '../db';
+import { ANDROID_TASK_REMINDER_NOTIFICATION_CHANNEL_ID } from '../shared/constants';
+import notifee, { AndroidImportance } from '@notifee/react-native';
+import BackgroundFetch from 'react-native-background-fetch';
 import 'react-native-gesture-handler';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -25,6 +28,7 @@ import { AppProvider, useAppContext } from '../shared/contexts/useAppContext';
 import { enableSimpleNullHandling } from 'react-native-nitro-sqlite';
 import { en, registerTranslation } from 'react-native-paper-dates';
 import { configureGoogleSignIn } from '../lib/googleAuth';
+import { backgroundTask } from '../services/BackgroundTask';
 
 configureGoogleSignIn();
 enableSimpleNullHandling();
@@ -81,6 +85,41 @@ const AppContent = () => {
 function App(): React.JSX.Element {
   const [isDbInitialized, setIsDBInitialized] = useState(false);
   const [dbError, setDbError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const setupNotificationChannel = async () => {
+      await notifee.createChannel({
+        id: ANDROID_TASK_REMINDER_NOTIFICATION_CHANNEL_ID,
+        name: 'Task reminders',
+        importance: AndroidImportance.DEFAULT,
+      });
+      console.log('[App] Notification channel created/ensured.');
+    };
+
+    setupNotificationChannel();
+  }, []);
+
+  useEffect(() => {
+    BackgroundFetch.configure(
+      {
+        minimumFetchInterval: 15,
+        stopOnTerminate: false,
+        startOnBoot: true,
+        enableHeadless: true,
+        requiredNetworkType: BackgroundFetch.NETWORK_TYPE_ANY,
+      },
+      async taskId => {
+        console.log('[App] BackgroundFetch event received:', taskId);
+        await backgroundTask({ taskId, timeout: false });
+      },
+      taskId => {
+        console.log('[App] BackgroundFetch timeout:', taskId);
+        BackgroundFetch.finish(taskId);
+      },
+    ).then(status => {
+      console.log('[App] BackgroundFetch configured. Status:', status);
+    });
+  }, []);
 
   useEffect(() => {
     console.log('[App] Attempting to initialize database...');
