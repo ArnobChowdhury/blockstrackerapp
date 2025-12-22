@@ -6,7 +6,6 @@ import {
   DrawerContentScrollView,
   DrawerContentComponentProps,
 } from '@react-navigation/drawer';
-import { SegmentedButtons } from 'react-native-paper';
 import { useAppContext } from '../../shared/contexts/useAppContext';
 
 export default function CustomDrawerContent(
@@ -15,7 +14,7 @@ export default function CustomDrawerContent(
   const { navigation, state } = props;
   const activeRoute = state.routeNames[state.index];
 
-  const { user, signOut, userPreferredTheme, changeTheme } = useAppContext();
+  const { user, signOut } = useAppContext();
 
   return (
     <SafeAreaView style={styles.flexOne}>
@@ -35,28 +34,12 @@ export default function CustomDrawerContent(
             onPress={() => navigation.navigate('Overdue')}
             style={styles.item}
           />
-          <View style={styles.modeContainer}>
-            <Text style={styles.modeHeader} variant="bodyMedium">
-              Mode
-            </Text>
-            <SegmentedButtons
-              value={userPreferredTheme}
-              onValueChange={changeTheme}
-              buttons={[
-                {
-                  value: 'light',
-                  label: 'Light',
-                  icon: 'white-balance-sunny',
-                },
-                {
-                  value: 'dark',
-                  label: 'Dark',
-                  icon: 'moon-waxing-crescent',
-                },
-                { value: 'system', label: 'System', icon: 'cellphone' },
-              ]}
-            />
-          </View>
+          <Drawer.Item
+            label="Settings"
+            active={activeRoute === 'Settings'}
+            onPress={() => navigation.navigate('Settings')}
+            style={styles.item}
+          />
           {user ? (
             <View style={styles.modeContainer}>
               <Text variant="bodyMedium">{user.email}</Text>

@@ -7,7 +7,7 @@ export interface DeviceSettings {
 }
 
 const defaultSettings: DeviceSettings = {
-  notificationsEnabled: true,
+  notificationsEnabled: false,
 };
 
 class DeviceSettingsService {

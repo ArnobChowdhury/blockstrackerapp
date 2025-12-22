@@ -33,6 +33,7 @@ import {
 } from '../shared/components/icons';
 import CustomDrawerContent from '../shared/components/CustomDrawerComponent';
 import { useAppContext } from '../shared/contexts/useAppContext';
+import SettingsScreen from '../screens/SettingsScreen';
 
 export type ActiveStackParamList = {
   ActiveCategoryList: undefined;
@@ -71,6 +72,7 @@ export type RootStackParamList = {
 export type DrawerParamList = {
   Home: NavigatorScreenParams<BottomTabParamList>;
   Overdue: undefined;
+  Settings: undefined;
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -293,6 +295,15 @@ const DrawerNavigator = () => {
         component={OverdueScreen}
         options={{
           headerTitle: () => <Text variant="titleLarge">Overdue Tasks</Text>,
+          headerShown: true,
+          headerShadowVisible: false,
+        }}
+      />
+      <Drawer.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          headerTitle: () => <Text variant="titleLarge">Settings</Text>,
           headerShown: true,
           headerShadowVisible: false,
         }}
