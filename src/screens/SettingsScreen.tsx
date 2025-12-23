@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { List, Switch, SegmentedButtons, Divider } from 'react-native-paper';
+import {
+  List,
+  Switch,
+  SegmentedButtons,
+  Divider,
+  // Button,
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppContext } from '../shared/contexts/useAppContext';
 import { deviceSettingsService } from '../services/DeviceSettingsService';
@@ -82,6 +88,16 @@ const SettingsScreen = () => {
           )}
         />
       </List.Section>
+      {/* <Divider />
+      <List.Section>
+        <List.Subheader>Debug</List.Subheader>
+        <Button
+          mode="contained"
+          onPress={() => notificationService.sendTestNotification()}
+          style={styles.debugButton}>
+          Test Notification (5s)
+        </Button>
+      </List.Section> */}
     </SafeAreaView>
   );
 };
@@ -93,6 +109,10 @@ const styles = StyleSheet.create({
   themeContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  debugButton: {
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
 });
 

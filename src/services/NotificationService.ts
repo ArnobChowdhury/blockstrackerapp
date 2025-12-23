@@ -130,6 +130,12 @@ class NotificationService {
               } to complete.`,
               android: {
                 channelId: ANDROID_TASK_REMINDER_NOTIFICATION_CHANNEL_ID,
+                smallIcon: 'ic_notification',
+                largeIcon: 'ic_notification_large',
+                color: '#008ab4',
+                pressAction: {
+                  id: 'default',
+                },
               },
             },
             trigger,
@@ -151,6 +157,36 @@ class NotificationService {
   public async cancelAllNotifications(): Promise<void> {
     console.log('[NotificationService] Cancelling all notifications...');
     await notifee.cancelAllNotifications();
+  }
+
+  /**
+   * Sends a test notification 5 seconds from now.
+   * Useful for verifying permissions and appearance.
+   */
+  public async sendTestNotification(): Promise<void> {
+    console.log('[NotificationService] Scheduling test notification for 5s...');
+    const trigger: TimestampTrigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: Date.now() + 5000, // 5 seconds from now
+    };
+
+    await notifee.createTriggerNotification(
+      {
+        id: 'test_notification',
+        title: 'Test Notification',
+        body: 'This is a test notification to verify the system works.',
+        android: {
+          channelId: ANDROID_TASK_REMINDER_NOTIFICATION_CHANNEL_ID,
+          smallIcon: 'ic_notification',
+          largeIcon: 'ic_notification_large',
+          color: '#008ab4',
+          pressAction: {
+            id: 'default',
+          },
+        },
+      },
+      trigger,
+    );
   }
 }
 
