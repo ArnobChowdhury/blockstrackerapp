@@ -31,6 +31,7 @@ import { notificationService } from '../../services/NotificationService';
 export interface User {
   id: string;
   email: string;
+  isPremium?: boolean;
 }
 
 interface AppContextProps {
@@ -125,11 +126,17 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           const accessToken = credentials.password;
           setInMemoryToken(accessToken);
 
-          const decoded = jwtDecode<{ email: string; user_id: string }>(
-            accessToken,
-          );
+          const decoded = jwtDecode<{
+            email: string;
+            user_id: string;
+            is_premium?: boolean;
+          }>(accessToken);
           if (decoded.user_id && decoded.email) {
-            setUser({ id: decoded.user_id, email: decoded.email });
+            setUser({
+              id: decoded.user_id,
+              email: decoded.email,
+              isPremium: decoded.is_premium,
+            });
             setFirstSyncDone(false);
             await notificationService.recalculateAndScheduleNotifications(
               decoded.user_id,
@@ -173,9 +180,11 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     async (accessToken: string, refreshToken: string) => {
       setIsSigningIn(true);
       try {
-        const decoded = jwtDecode<{ email: string; user_id: string }>(
-          accessToken,
-        );
+        const decoded = jwtDecode<{
+          email: string;
+          user_id: string;
+          is_premium?: boolean;
+        }>(accessToken);
 
         if (!decoded.user_id || !decoded.email) {
           throw new Error('Invalid token received from server.');
@@ -188,7 +197,11 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         });
 
         await updateTokens(accessToken, refreshToken);
-        setUser({ id: decoded.user_id, email: decoded.email });
+        setUser({
+          id: decoded.user_id,
+          email: decoded.email,
+          isPremium: decoded.is_premium,
+        });
         setFirstSyncDone(false);
         await notificationService.recalculateAndScheduleNotifications(
           decoded.user_id,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Drawer, Text } from 'react-native-paper';
 import {
@@ -7,6 +7,7 @@ import {
   DrawerContentComponentProps,
 } from '@react-navigation/drawer';
 import { useAppContext } from '../../shared/contexts/useAppContext';
+import { iapService } from '../../services/IAPService';
 
 export default function CustomDrawerContent(
   props: DrawerContentComponentProps,
@@ -15,6 +16,27 @@ export default function CustomDrawerContent(
   const activeRoute = state.routeNames[state.index];
 
   const { user, signOut } = useAppContext();
+
+  const handlePurchase = async () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to be signed in to upgrade to Premium.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Auth') },
+        ],
+      );
+      return;
+    }
+
+    try {
+      await iapService.requestPurchase();
+    } catch (error) {
+      console.error('Purchase failed', error);
+      Alert.alert('Error', 'Failed to initiate purchase.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.flexOne}>
@@ -34,6 +56,14 @@ export default function CustomDrawerContent(
             onPress={() => navigation.navigate('Overdue')}
             style={styles.item}
           />
+          {!user?.isPremium && (
+            <Drawer.Item
+              label="Go Premium"
+              icon="star"
+              onPress={handlePurchase}
+              style={styles.item}
+            />
+          )}
           <Drawer.Item
             label="Settings"
             active={activeRoute === 'Settings'}
