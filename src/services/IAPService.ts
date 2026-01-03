@@ -15,6 +15,7 @@ import {
 } from 'react-native-iap';
 import { Platform, EmitterSubscription } from 'react-native';
 import apiClient from '../lib/apiClient';
+import { eventManager } from './EventManager';
 
 // TODO: Switch to 'blockstracker_premium_monthly' when verified
 const PRODUCT_ID = 'android.test.purchased';
@@ -186,11 +187,23 @@ class IAPService {
     );
 
     try {
-      await apiClient.post('/billing/google/verify', {
+      const response = await apiClient.post('/billing/google/verify', {
         purchaseToken: purchase.purchaseToken,
         productId: purchase.productId,
       });
-      console.log('[IAPService] Backend verification successful.');
+      console.log('[IAPService] Backend verification response:', response.data);
+
+      const { accessToken, refreshToken } = response.data.result.data;
+      if (accessToken && refreshToken) {
+        console.log(
+          '[IAPService] Backend verification successful. Refreshing session...',
+        );
+        eventManager.emit('PREMIUM_STATUS_UPDATED', {
+          accessToken,
+          refreshToken,
+        });
+      }
+
       // Note: The backend should update the user's 'is_premium' status in the DB.
       // The client might need to refresh the user profile/token after this to see the change immediately.
     } catch (error) {

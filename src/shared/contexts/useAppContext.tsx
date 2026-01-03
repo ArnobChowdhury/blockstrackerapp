@@ -406,6 +406,22 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     return unsubscribe;
   }, [user]);
 
+  useEffect(() => {
+    const onPremiumStatusUpdated = (data: any) => {
+      console.log('[AppContext] Premium status updated. Refreshing tokens.');
+      if (data?.accessToken && data?.refreshToken) {
+        signIn(data.accessToken, data.refreshToken);
+      }
+    };
+
+    // sourcery skip: inline-immediately-returned-variable
+    const unsubscribe = eventManager.on(
+      'PREMIUM_STATUS_UPDATED',
+      onPremiumStatusUpdated,
+    );
+    return unsubscribe;
+  }, [signIn]);
+
   const value = useMemo(
     () => ({
       userPreferredTheme,

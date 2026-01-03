@@ -19,6 +19,14 @@ npx pod-install    # iOS only
 npx react-native run-android   # or run-ios
 ```
 
+## ⚙️ Configuration
+
+Create a .env file in the root directory of the project. For local development (Android Emulator), use:
+
+```
+API_URL=http://10.0.2.2:5000
+```
+
 ## 🐛 Debugging
 
 ### Inspecting the Local Database (Android)
