@@ -174,4 +174,28 @@ export class SpaceRepository {
       await dbOrTx.executeAsync(sql, params);
     }
   }
+
+  async hasAnonymousData(): Promise<boolean> {
+    const sql = 'SELECT 1 FROM spaces WHERE user_id IS NULL LIMIT 1';
+    try {
+      const result = await this.db.executeAsync(sql);
+      return (result.rows?.length ?? 0) > 0;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to check for anonymous spaces:', error);
+      return false;
+    }
+  }
+
+  async assignAnonymousSpacesToUser(
+    userId: string,
+    tx?: Transaction,
+  ): Promise<void> {
+    console.log(`[DB Repo] Assigning anonymous spaces to user: ${userId}`);
+    const now = new Date().toISOString();
+    const sql =
+      'UPDATE spaces SET user_id = ?, modified_at = ? WHERE user_id IS NULL';
+    const params = [userId, now];
+    const dbOrTx = tx || this.db;
+    await dbOrTx.executeAsync(sql, params);
+  }
 }

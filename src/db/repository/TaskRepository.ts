@@ -861,4 +861,57 @@ export class TaskRepository {
       await dbOrTx.executeAsync(sql, params);
     }
   }
+
+  async assignAnonymousTasksToUser(
+    userId: string,
+    tx?: Transaction,
+  ): Promise<void> {
+    console.log(`[DB Repo] Assigning anonymous tasks to user: ${userId}`);
+    const now = new Date().toISOString();
+    const sql = `
+      UPDATE tasks
+      SET user_id = ?, modified_at = ?
+      WHERE user_id IS NULL
+    `;
+    const params = [userId, now];
+    const dbOrTx = tx || this.db;
+    await dbOrTx.executeAsync(sql, params);
+  }
+
+  async getTasksForSyncBootstrap(
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<Task[]> {
+    const sql = `
+      SELECT *
+      FROM tasks
+      WHERE user_id = ?
+      ORDER BY created_at ASC
+      LIMIT ? OFFSET ?
+    `;
+    const params = [userId, limit, offset];
+    const result = await this.db.executeAsync(sql, params);
+    const tasks: Task[] = [];
+    if (result.rows) {
+      for (let i = 0; i < result.rows.length; i++) {
+        const row = result.rows.item(i);
+        if (row) {
+          tasks.push(this._transformRowToTask(row));
+        }
+      }
+    }
+    return tasks;
+  }
+
+  async hasAnonymousData(): Promise<boolean> {
+    const sql = 'SELECT 1 FROM tasks WHERE user_id IS NULL LIMIT 1';
+    try {
+      const result = await this.db.executeAsync(sql);
+      return (result.rows?.length ?? 0) > 0;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to check for anonymous tasks:', error);
+      return false;
+    }
+  }
 }

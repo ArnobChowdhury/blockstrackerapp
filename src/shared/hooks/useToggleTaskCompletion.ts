@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { TaskCompletionStatusEnum } from '../../types';
 import { TaskService } from '../../services/TaskService';
+import { useAppContext } from '../contexts/useAppContext';
 
 export const useToggleTaskCompletionStatus = (
   taskService: TaskService,
   cb?: () => Promise<void>,
 ) => {
   const [requestOnGoing, setRequestOnGoing] = useState(false);
-  const [error, setError] = useState('');
+  const { showSnackbar } = useAppContext();
 
   const onToggleTaskCompletionStatus = async (
     id: string,
@@ -15,7 +16,6 @@ export const useToggleTaskCompletionStatus = (
     userId: string | null,
     taskScore?: number | null,
   ) => {
-    setError('');
     setRequestOnGoing(true);
     try {
       await taskService.updateTaskCompletionStatus(
@@ -29,7 +29,7 @@ export const useToggleTaskCompletionStatus = (
         cb();
       }
     } catch (err: any) {
-      setError(err.message);
+      showSnackbar(err.message);
     } finally {
       setRequestOnGoing(false);
     }
@@ -37,7 +37,6 @@ export const useToggleTaskCompletionStatus = (
 
   return {
     requestOnGoing,
-    error,
     onToggleTaskCompletionStatus,
   };
 };

@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
 const AuthScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { signIn } = useAppContext();
+  const { signIn, setCheckAnonData } = useAppContext();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
@@ -44,7 +44,8 @@ const AuthScreen = ({ navigation }: Props) => {
       const responseData = response.data;
 
       const { accessToken, refreshToken } = responseData.result.data;
-      await signIn(accessToken, refreshToken);
+      setCheckAnonData(true);
+      signIn(accessToken, refreshToken);
     } catch (error: any) {
       console.log('error', error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {

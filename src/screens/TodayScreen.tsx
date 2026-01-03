@@ -13,7 +13,6 @@ import {
   List,
   Divider,
   IconButton,
-  Snackbar,
   Portal,
   Dialog,
   Button,
@@ -36,6 +35,7 @@ import {
 import { formatDate, capitalize, truncateString } from '../shared/utils';
 import { TaskService } from '../services/TaskService';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
+import { dataMigrationService } from '../services/DataMigrationService';
 import { Logo } from '../shared/components/icons';
 import TaskScoring from '../shared/components/TaskScoring';
 import {
@@ -121,7 +121,14 @@ export const groupTasks = (tasks: Task[]): TaskSection[] => {
 
 const TodayScreen = ({ navigation }: Props) => {
   const theme = useTheme();
-  const { user, isSyncing, firstSyncDone } = useAppContext();
+  const {
+    user,
+    isSyncing,
+    firstSyncDone,
+    checkAnonData,
+    setCheckAnonData,
+    showSnackbar,
+  } = useAppContext();
   const repetitiveTaskTemplateService = useMemo(
     () => new RepetitiveTaskTemplateService(),
     [],
@@ -138,9 +145,6 @@ const TodayScreen = ({ navigation }: Props) => {
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
-
-  const [screenRequestError, setScreenRequestError] = useState('');
-  const [showSnackbar, setShowSnackbar] = useState(false);
 
   const animatedValue = useMemo(() => new Animated.Value(0), []);
   useEffect(() => {
@@ -204,8 +208,10 @@ const TodayScreen = ({ navigation }: Props) => {
     await fetchTasksForDate(displayDate);
   }, [fetchTasksForDate, displayDate]);
 
-  const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskService, refreshCurrentView);
+  const { onToggleTaskCompletionStatus } = useToggleTaskCompletionStatus(
+    taskService,
+    refreshCurrentView,
+  );
 
   const {
     onTaskReschedule,
@@ -220,13 +226,6 @@ const TodayScreen = ({ navigation }: Props) => {
     repetitiveTaskTemplateService,
     refreshCurrentView,
   );
-
-  useEffect(() => {
-    if (toggleTaskCompletionError) {
-      setScreenRequestError(toggleTaskCompletionError);
-      setShowSnackbar(true);
-    }
-  }, [toggleTaskCompletionError]);
 
   useFocusEffect(
     useCallback(() => {
@@ -258,13 +257,6 @@ const TodayScreen = ({ navigation }: Props) => {
 
     return () => clearInterval(intervalId);
   }, [displayDate, newDayBannerVisible]);
-
-  const handleSnackbarDismiss = () => {
-    setShowSnackbar(false);
-    setTimeout(() => {
-      setScreenRequestError('');
-    }, 1000);
-  };
 
   const handleRefreshToNewDay = useCallback(() => {
     const newDate = dayjs().startOf('day');
@@ -417,7 +409,33 @@ const TodayScreen = ({ navigation }: Props) => {
     ],
   );
 
+  const [hasAnonymousData, setHasAnonymousData] = useState(false);
+  useEffect(() => {
+    if (checkAnonData) {
+      console.log('[TodayScreen] checking anonymous data...', checkAnonData);
+      dataMigrationService.hasAnonymousData().then(setHasAnonymousData);
+    }
+  }, [checkAnonData, setCheckAnonData]);
+
   useRefreshScreenAfterSync(refreshCurrentView, 'Today');
+
+  const handleDataMigration = async () => {
+    if (user) {
+      try {
+        await dataMigrationService.assignAnonymousDataToUser(user.id);
+        setCheckAnonData(false);
+        setHasAnonymousData(false);
+        refreshCurrentView();
+      } catch (err: any) {
+        showSnackbar(err.message);
+      }
+    }
+  };
+
+  const handleDismissMigration = () => {
+    setCheckAnonData(false);
+    setHasAnonymousData(false);
+  };
 
   if (isDbLoading) {
     return (
@@ -591,18 +609,6 @@ const TodayScreen = ({ navigation }: Props) => {
           />
         </>
       )}
-      <Snackbar
-        visible={showSnackbar}
-        onDismiss={handleSnackbarDismiss}
-        onIconPress={handleSnackbarDismiss}
-        duration={3000}>
-        <View style={styles.snackbarContainer}>
-          <IconButton icon="alert-circle-outline" iconColor="red" />
-          <Text variant="bodyMedium" style={styles.snackbarText}>
-            {screenRequestError}
-          </Text>
-        </View>
-      </Snackbar>
       <DatePickerModal
         locale="en"
         mode="single"
@@ -620,6 +626,20 @@ const TodayScreen = ({ navigation }: Props) => {
         }}
       />
       <Portal>
+        <Dialog visible={hasAnonymousData} onDismiss={handleDismissMigration}>
+          <Dialog.Title>Import Local Data</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              We found some data (tasks, spaces, or templates) created while you
+              were signed out. Would you like to import them to your account
+              now?
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={handleDismissMigration}>No, thanks</Button>
+            <Button onPress={handleDataMigration}>Import</Button>
+          </Dialog.Actions>
+        </Dialog>
         <Dialog
           dismissable
           dismissableBackButton={true}

@@ -48,6 +48,8 @@ interface AppContextProps {
   showSnackbar: (message: string) => void;
   hideSnackbar: () => void;
   firstSyncDone: boolean;
+  checkAnonData: boolean;
+  setCheckAnonData: (value: boolean) => void;
 }
 
 const AppContext = React.createContext<AppContextProps | undefined>(undefined);
@@ -82,6 +84,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const TWO_MINUTES = 2 * 60 * 1000;
   const [isSnackbarVisible, setIsSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [checkAnonData, setCheckAnonData] = useState(false);
 
   const showSnackbar = useCallback((message: string) => {
     setSnackbarMessage(message);
@@ -437,6 +440,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       showSnackbar,
       hideSnackbar,
       firstSyncDone,
+      checkAnonData,
+      setCheckAnonData,
     }),
     [
       userPreferredTheme,
@@ -452,6 +457,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       showSnackbar,
       hideSnackbar,
       firstSyncDone,
+      checkAnonData,
+      setCheckAnonData,
     ],
   );
 

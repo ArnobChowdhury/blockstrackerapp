@@ -780,4 +780,63 @@ export class RepetitiveTaskTemplateRepository {
       await dbOrTx.executeAsync(sql, params);
     }
   }
+
+  async assignAnonymousTemplatesToUser(
+    userId: string,
+    tx?: Transaction,
+  ): Promise<void> {
+    console.log(
+      `[DB Repo] Assigning anonymous repetitive task templates to user: ${userId}`,
+    );
+    const now = new Date().toISOString();
+    const sql = `
+      UPDATE repetitive_task_templates
+      SET user_id = ?, modified_at = ?
+      WHERE user_id IS NULL
+    `;
+    const params = [userId, now];
+    const dbOrTx = tx || this.db;
+    await dbOrTx.executeAsync(sql, params);
+  }
+
+  async getTemplatesForSyncBootstrap(
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<RepetitiveTaskTemplate[]> {
+    const sql = `
+      SELECT *
+      FROM repetitive_task_templates
+      WHERE user_id = ?
+      ORDER BY created_at ASC
+      LIMIT ? OFFSET ?
+    `;
+    const params = [userId, limit, offset];
+    const result = await this.db.executeAsync(sql, params);
+    const templates: RepetitiveTaskTemplate[] = [];
+    if (result.rows) {
+      for (let i = 0; i < result.rows.length; i++) {
+        const row = result.rows.item(i);
+        if (row) {
+          templates.push(this._transformRowToTemplate(row));
+        }
+      }
+    }
+    return templates;
+  }
+
+  async hasAnonymousData(): Promise<boolean> {
+    const sql =
+      'SELECT 1 FROM repetitive_task_templates WHERE user_id IS NULL LIMIT 1';
+    try {
+      const result = await this.db.executeAsync(sql);
+      return (result.rows?.length ?? 0) > 0;
+    } catch (error: any) {
+      console.error(
+        '[DB Repo] Failed to check for anonymous repetitive task templates:',
+        error,
+      );
+      return false;
+    }
+  }
 }
