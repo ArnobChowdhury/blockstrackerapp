@@ -423,6 +423,9 @@ const TodayScreen = ({ navigation }: Props) => {
     if (user) {
       try {
         await dataMigrationService.assignAnonymousDataToUser(user.id);
+        if (user.isPremium) {
+          await dataMigrationService.queueAllDataForSync(user.id);
+        }
         setCheckAnonData(false);
         setHasAnonymousData(false);
         refreshCurrentView();

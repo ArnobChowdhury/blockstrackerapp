@@ -198,4 +198,28 @@ export class SpaceRepository {
     const dbOrTx = tx || this.db;
     await dbOrTx.executeAsync(sql, params);
   }
+
+  async getSpacesForSyncBootstrap(
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<Space[]> {
+    const sql = `
+      SELECT id, name, created_at, modified_at, user_id
+      FROM spaces
+      WHERE user_id = ?
+      ORDER BY created_at ASC
+      LIMIT ? OFFSET ?
+    `;
+    const params = [userId, limit, offset];
+    const result = await this.db.executeAsync(sql, params);
+    const spaces: Space[] = [];
+    if (result.rows) {
+      for (let i = 0; i < result.rows.length; i++) {
+        const row = result.rows.item(i);
+        if (row) spaces.push(this._transformRowToSpace(row));
+      }
+    }
+    return spaces;
+  }
 }

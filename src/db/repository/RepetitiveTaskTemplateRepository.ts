@@ -799,7 +799,7 @@ export class RepetitiveTaskTemplateRepository {
     await dbOrTx.executeAsync(sql, params);
   }
 
-  async getTemplatesForSyncBootstrap(
+  async getRepetitiveTaskTemplatesForSyncBootstrap(
     userId: string,
     limit: number,
     offset: number,

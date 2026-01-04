@@ -27,6 +27,7 @@ import {
 import { SettingsRepository } from '../../db/repository';
 import { db } from '../../db';
 import { notificationService } from '../../services/NotificationService';
+import { dataMigrationService } from '../../services/DataMigrationService';
 
 export interface User {
   id: string;
@@ -410,10 +411,21 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   }, [user]);
 
   useEffect(() => {
-    const onPremiumStatusUpdated = (data: any) => {
+    const onPremiumStatusUpdated = async (data: any) => {
       console.log('[AppContext] Premium status updated. Refreshing tokens.');
       if (data?.accessToken && data?.refreshToken) {
-        signIn(data.accessToken, data.refreshToken);
+        await signIn(data.accessToken, data.refreshToken);
+        try {
+          const decoded = jwtDecode<{ user_id: string }>(data.accessToken);
+          if (decoded.user_id) {
+            console.log(
+              '[AppContext] Queuing data for sync for new premium user.',
+            );
+            await dataMigrationService.queueAllDataForSync(decoded.user_id);
+          }
+        } catch (error) {
+          console.error('[AppContext] Failed to queue data for sync:', error);
+        }
       }
     };
 
