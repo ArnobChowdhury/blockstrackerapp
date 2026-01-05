@@ -141,13 +141,18 @@ export const AppProvider = ({ children }: AppProviderProps) => {
               email: decoded.email,
               isPremium: decoded.is_premium,
             });
-            setFirstSyncDone(false);
+            if (decoded.is_premium) {
+              setFirstSyncDone(false);
+            } else {
+              setFirstSyncDone(true);
+            }
             await notificationService.recalculateAndScheduleNotifications(
               decoded.user_id,
             );
           }
         } else {
           console.log('[AuthContext] No token found in keychain.');
+          setFirstSyncDone(true);
           await notificationService.recalculateAndScheduleNotifications(null);
         }
       } catch (error) {
@@ -206,7 +211,11 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           email: decoded.email,
           isPremium: decoded.is_premium,
         });
-        setFirstSyncDone(false);
+        if (decoded.is_premium) {
+          setFirstSyncDone(false);
+        } else {
+          setFirstSyncDone(true);
+        }
         await notificationService.recalculateAndScheduleNotifications(
           decoded.user_id,
         );
@@ -275,7 +284,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       clearTimeout(syncTimerRef.current);
     }
 
-    if (appState.current === 'active' && user) {
+    if (appState.current === 'active' && user && user.isPremium) {
       console.log('[SyncManager] App is active, running sync...');
       setIsSyncing(true);
       try {
@@ -288,16 +297,16 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         setIsSyncing(false);
         setFirstSyncDone(true);
       }
+
+      console.log(
+        `[SyncManager] Scheduling next sync in ${TWO_MINUTES / 1000} seconds.`,
+      );
+      syncTimerRef.current = setTimeout(runAndRescheduleSync, TWO_MINUTES);
     } else {
       console.log(
-        '[SyncManager] Skipping sync run (app not active or no user).',
+        '[SyncManager] Skipping sync run (app not active or user not premium).',
       );
     }
-
-    console.log(
-      `[SyncManager] Scheduling next sync in ${TWO_MINUTES / 1000} seconds.`,
-    );
-    syncTimerRef.current = setTimeout(runAndRescheduleSync, TWO_MINUTES);
   }, [user, settingsRepo, TWO_MINUTES]);
 
   useEffect(() => {
@@ -308,7 +317,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           user ? user.id : null,
         );
 
-        if (user) {
+        if (user && user.isPremium) {
           console.log('[SyncManager] App has come to the foreground.');
           if (syncTimerRef.current) {
             clearTimeout(syncTimerRef.current);
@@ -351,7 +360,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       handleAppStateChange,
     );
 
-    if (appState.current === 'active') {
+    if (appState.current === 'active' && user && user.isPremium) {
       runAndRescheduleSync();
     }
 
@@ -380,7 +389,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     const isOnline =
       netInfo.isConnected === true && netInfo.isInternetReachable === true;
 
-    if (isOnline && !wasOnline.current && user) {
+    if (isOnline && !wasOnline.current && user && user.isPremium) {
       console.log(
         '[Network] Connection restored. Checking for pending operations.',
       );

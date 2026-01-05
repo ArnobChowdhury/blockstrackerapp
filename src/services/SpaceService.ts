@@ -24,12 +24,16 @@ export class SpaceService {
     return this.spaceRepo.getSpaceById(id, userId);
   }
 
-  async createSpace(name: string, userId: string | null): Promise<string> {
+  async createSpace(
+    name: string,
+    userId: string | null,
+    isPremium: boolean,
+  ): Promise<string> {
     let createdSpace: Space | undefined;
     await db.transaction(async tx => {
       createdSpace = await this.spaceRepo.createSpace(name, userId, tx);
 
-      if (userId) {
+      if (userId && isPremium) {
         console.log(
           '[SpaceService] Logged-in user. Enqueuing pending operation.',
         );
@@ -50,7 +54,7 @@ export class SpaceService {
       throw new Error('Space creation failed within transaction.');
     }
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 

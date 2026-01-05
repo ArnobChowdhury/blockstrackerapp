@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-} from 'react';
+import React, { useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,7 +12,6 @@ import {
   IconButton,
   List,
   Divider,
-  Snackbar,
   Button,
 } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -202,11 +195,10 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     }
   }, [category, spaceId, taskService, repetitiveTaskTemplateService, user]);
 
-  const [screenRequestError, setScreenRequestError] = useState('');
-  const [showSnackbar, setShowSnackbar] = useState(false);
-
-  const { onToggleTaskCompletionStatus, error: toggleTaskCompletionError } =
-    useToggleTaskCompletionStatus(taskService, fetchTasksByCategory);
+  const { onToggleTaskCompletionStatus } = useToggleTaskCompletionStatus(
+    taskService,
+    fetchTasksByCategory,
+  );
 
   const {
     onTaskReschedule,
@@ -221,13 +213,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
   );
 
   useRefreshScreenAfterSync(fetchTasksByCategory, 'TaskList');
-
-  useEffect(() => {
-    if (toggleTaskCompletionError) {
-      setScreenRequestError(toggleTaskCompletionError);
-      setShowSnackbar(true);
-    }
-  }, [toggleTaskCompletionError]);
 
   useFocusEffect(
     useCallback(() => {
@@ -248,6 +233,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
     await repetitiveTaskTemplateService.stopRepetitiveTask(
       repetitiveTaskTemplateId,
       user && user.id,
+      user?.isPremium ?? false,
     );
     await fetchTasksByCategory();
   };
@@ -290,6 +276,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
                           ? TaskCompletionStatusEnum.INCOMPLETE
                           : TaskCompletionStatusEnum.COMPLETE,
                         user && user.id,
+                        user?.isPremium ?? false,
                       )
                     }
                   />
@@ -315,6 +302,7 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
                         item.id,
                         TaskCompletionStatusEnum.FAILED,
                         user && user.id,
+                        user?.isPremium ?? false,
                       )
                     }
                     style={styles.iconButton}
@@ -344,13 +332,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
           : {})}
       />
     );
-  };
-
-  const handleSnackbarDismiss = () => {
-    setShowSnackbar(false);
-    setTimeout(() => {
-      setScreenRequestError('');
-    }, 1000);
   };
 
   const renderSectionHeader = ({
@@ -423,19 +404,6 @@ const ActiveTaskListScreen = ({ route, navigation }: Props) => {
           )}
         </>
       )}
-
-      <Snackbar
-        visible={showSnackbar}
-        onDismiss={handleSnackbarDismiss}
-        onIconPress={handleSnackbarDismiss}
-        duration={3000}>
-        <View style={styles.snackbarContainer}>
-          <IconButton icon="alert-circle-outline" iconColor="red" />
-          <Text variant="bodyMedium" style={styles.snackbarText}>
-            {screenRequestError}
-          </Text>
-        </View>
-      </Snackbar>
 
       <DatePickerModal
         locale="en"

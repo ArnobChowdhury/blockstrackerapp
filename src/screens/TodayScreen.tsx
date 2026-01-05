@@ -180,6 +180,7 @@ const TodayScreen = ({ navigation }: Props) => {
       try {
         await repetitiveTaskTemplateService.generateDueRepetitiveTasks(
           user && user.id,
+          user?.isPremium ?? false,
         );
 
         const countOfTaskOverdue = await taskService.getCountOfTasksOverdue(
@@ -277,6 +278,7 @@ const TodayScreen = ({ navigation }: Props) => {
           task.id,
           TaskCompletionStatusEnum.INCOMPLETE,
           user && user.id,
+          user?.isPremium ?? false,
         );
         return;
       }
@@ -286,6 +288,7 @@ const TodayScreen = ({ navigation }: Props) => {
           task.id,
           TaskCompletionStatusEnum.COMPLETE,
           user && user.id,
+          user?.isPremium ?? false,
         );
         return;
       }
@@ -373,6 +376,7 @@ const TodayScreen = ({ navigation }: Props) => {
                         item.id,
                         TaskCompletionStatusEnum.FAILED,
                         user && user.id,
+                        user?.isPremium ?? false,
                       )
                     }
                     style={styles.iconButton}
@@ -388,6 +392,7 @@ const TodayScreen = ({ navigation }: Props) => {
                         item.id,
                         TaskCompletionStatusEnum.INCOMPLETE,
                         user && user.id,
+                        user?.isPremium ?? false,
                       )
                     }
                     style={styles.iconButton}
@@ -695,6 +700,7 @@ const TodayScreen = ({ navigation }: Props) => {
                   taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
                   user && user.id,
+                  user?.isPremium ?? false,
                   scoreForTaskToBeCompleted + 1,
                 );
                 setTaskToBeCompleted(undefined);

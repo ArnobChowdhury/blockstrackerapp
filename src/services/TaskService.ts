@@ -54,10 +54,11 @@ export class TaskService {
     taskData: NewTaskData,
     userId: string | null,
     tx: Transaction,
+    isPremium: boolean,
   ): Promise<Task> {
     const newTask = await this.taskRepo.createTask(taskData, userId, tx);
 
-    if (userId) {
+    if (userId && isPremium) {
       console.log(
         '[TaskService] Logged-in user. Enqueuing pending operation for new task.',
       );
@@ -86,17 +87,18 @@ export class TaskService {
   async createTask(
     taskData: NewTaskData,
     userId: string | null,
+    isPremium: boolean,
   ): Promise<string> {
     let newTask: Task | undefined;
     await db.transaction(async tx => {
-      newTask = await this._createTaskInternal(taskData, userId, tx);
+      newTask = await this._createTaskInternal(taskData, userId, tx, isPremium);
     });
 
     if (!newTask) {
       throw new Error('Task creation failed within transaction.');
     }
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
@@ -108,6 +110,7 @@ export class TaskService {
     taskId: string,
     taskData: NewTaskData,
     userId: string | null,
+    isPremium: boolean,
   ): Promise<void> {
     await db.transaction(async tx => {
       const task = await this.getTaskById(taskId, userId);
@@ -131,7 +134,7 @@ export class TaskService {
         tx,
       );
 
-      if (userId) {
+      if (userId && isPremium) {
         if (!updatedTask) {
           throw new Error(
             `[TaskService] Cannot update non-existent or unauthorized task with ID ${taskId}`,
@@ -157,14 +160,18 @@ export class TaskService {
       }
     });
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
     eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 
-  async bulkFailTasks(taskIds: string[], userId: string | null): Promise<void> {
+  async bulkFailTasks(
+    taskIds: string[],
+    userId: string | null,
+    isPremium: boolean,
+  ): Promise<void> {
     if (taskIds.length === 0) {
       console.log('[TaskService] bulkFailTasks called with no task IDs.');
       return;
@@ -177,7 +184,7 @@ export class TaskService {
         tx,
       );
 
-      if (userId && updatedTasks.length > 0) {
+      if (userId && isPremium && updatedTasks.length > 0) {
         console.log(
           '[TaskService] Logged-in user. Enqueuing pending operations for bulk fail.',
         );
@@ -198,20 +205,23 @@ export class TaskService {
       }
     });
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
     eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 
-  async failAllOverdueTasksAtOnce(userId: string | null): Promise<void> {
+  async failAllOverdueTasksAtOnce(
+    userId: string | null,
+    isPremium: boolean,
+  ): Promise<void> {
     await db.transaction(async tx => {
       const failedTasks = await this.taskRepo.failAllOverdueTasksAtOnce(
         userId,
         tx,
       );
 
-      if (userId && failedTasks.length > 0) {
+      if (userId && isPremium && failedTasks.length > 0) {
         console.log(
           '[TaskService] Logged-in user. Enqueuing pending operations for all overdue tasks.',
         );
@@ -232,7 +242,7 @@ export class TaskService {
       }
     });
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
     eventManager.emit(WRITE_OPERATION_COMPLETED);
@@ -241,6 +251,7 @@ export class TaskService {
     taskId: string,
     status: TaskCompletionStatusEnum,
     userId: string | null,
+    isPremium: boolean,
     score?: number | null,
   ): Promise<void> {
     await db.transaction(async tx => {
@@ -251,7 +262,7 @@ export class TaskService {
         score,
         tx,
       );
-      if (userId) {
+      if (userId && isPremium) {
         if (!updatedTask) {
           throw new Error(
             `[TaskService] Cannot update completion status for non-existent or unauthorized task with ID ${taskId}`,
@@ -276,7 +287,7 @@ export class TaskService {
         );
       }
     });
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
     eventManager.emit(WRITE_OPERATION_COMPLETED);
@@ -285,6 +296,7 @@ export class TaskService {
     taskId: string,
     dueDate: Date,
     userId: string | null,
+    isPremium: boolean,
   ): Promise<void> {
     const task = await this.getTaskById(taskId, userId);
     if (!task) {
@@ -338,7 +350,7 @@ export class TaskService {
         userId,
         tx,
       );
-      if (userId) {
+      if (userId && isPremium) {
         if (!updatedTask) {
           throw new Error(
             `[TaskService] Cannot update due date for non-existent or unauthorized task with ID ${taskId}`,
@@ -363,7 +375,7 @@ export class TaskService {
         );
       }
     });
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
     eventManager.emit(WRITE_OPERATION_COMPLETED);

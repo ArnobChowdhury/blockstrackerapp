@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   StyleSheet,
@@ -13,7 +13,6 @@ import {
   List,
   Divider,
   IconButton,
-  Snackbar,
   Portal,
   Dialog,
   Button,
@@ -67,7 +66,7 @@ export const groupTasksByDate = (tasks: Task[]): TaskSection[] => {
 const OverdueScreen = ({ navigation }: Props) => {
   const theme = useTheme();
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
-  const { user } = useAppContext();
+  const { user, showSnackbar } = useAppContext();
   const [overdueTaskSections, setOverdueTaskSections] = useState<TaskSection[]>(
     [],
   );
@@ -75,9 +74,6 @@ const OverdueScreen = ({ navigation }: Props) => {
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
-
-  const [screenRequestError, setScreenRequestError] = useState('');
-  const [showSnackbar, setShowSnackbar] = useState(false);
 
   const taskService = useMemo(() => new TaskService(), []);
   const repetitiveTaskTemplateService = useMemo(
@@ -115,7 +111,6 @@ const OverdueScreen = ({ navigation }: Props) => {
   const {
     onToggleTaskCompletionStatus,
     requestOnGoing: toggleTaskCompletionRequestOnGoing,
-    error: toggleTaskCompletionError,
   } = useToggleTaskCompletionStatus(taskService, fetchOverdueTasks);
 
   const {
@@ -132,13 +127,6 @@ const OverdueScreen = ({ navigation }: Props) => {
     fetchOverdueTasks,
   );
 
-  useEffect(() => {
-    if (toggleTaskCompletionError) {
-      setScreenRequestError(toggleTaskCompletionError);
-      setShowSnackbar(true);
-    }
-  }, [toggleTaskCompletionError]);
-
   useRefreshScreenAfterSync(fetchOverdueTasks, 'Overdue');
 
   useFocusEffect(
@@ -148,13 +136,6 @@ const OverdueScreen = ({ navigation }: Props) => {
       }
     }, [isDbLoading, fetchOverdueTasks]),
   );
-
-  const handleSnackbarDismiss = () => {
-    setShowSnackbar(false);
-    setTimeout(() => {
-      setScreenRequestError('');
-    }, 1000);
-  };
 
   const [taskToBeCompleted, setTaskToBeCompleted] = useState<Task>();
   const [scoreForTaskToBeCompleted, setScoreForTaskToBeCompleted] =
@@ -167,6 +148,7 @@ const OverdueScreen = ({ navigation }: Props) => {
           task.id,
           TaskCompletionStatusEnum.INCOMPLETE,
           user && user.id,
+          user?.isPremium ?? false,
         );
         return;
       }
@@ -176,6 +158,7 @@ const OverdueScreen = ({ navigation }: Props) => {
           task.id,
           TaskCompletionStatusEnum.COMPLETE,
           user && user.id,
+          user?.isPremium ?? false,
         );
         return;
       }
@@ -188,15 +171,17 @@ const OverdueScreen = ({ navigation }: Props) => {
   const handleBulkFailures = async (data: Task[]) => {
     const taskIds = data.map(task => task.id);
     setBulkFailureOnGoing(true);
-    setScreenRequestError('');
     try {
-      await taskService.bulkFailTasks(taskIds, user && user.id);
+      await taskService.bulkFailTasks(
+        taskIds,
+        user && user.id,
+        user?.isPremium ?? false,
+      );
       await fetchOverdueTasks();
     } catch (err) {
-      setScreenRequestError(
+      showSnackbar(
         'An error occurred while marking tasks as failed. Please try again.',
       );
-      setShowSnackbar(true);
     } finally {
       setBulkFailureOnGoing(false);
     }
@@ -204,15 +189,16 @@ const OverdueScreen = ({ navigation }: Props) => {
 
   const handleFailAllOverdueTasksAtOnce = async () => {
     setBulkFailureOnGoing(true);
-    setScreenRequestError('');
     try {
-      await taskService.failAllOverdueTasksAtOnce(user && user.id);
+      await taskService.failAllOverdueTasksAtOnce(
+        user && user.id,
+        user?.isPremium ?? false,
+      );
       await fetchOverdueTasks();
     } catch (err) {
-      setScreenRequestError(
+      showSnackbar(
         'An error occurred while marking tasks as failed. Please try again.',
       );
-      setShowSnackbar(true);
     } finally {
       setBulkFailureOnGoing(false);
     }
@@ -300,6 +286,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                       item.id,
                       TaskCompletionStatusEnum.FAILED,
                       user && user.id,
+                      user?.isPremium ?? false,
                     )
                   }
                   style={styles.iconButton}
@@ -446,18 +433,6 @@ const OverdueScreen = ({ navigation }: Props) => {
           }
         />
       )}
-      <Snackbar
-        visible={showSnackbar}
-        onDismiss={handleSnackbarDismiss}
-        onIconPress={handleSnackbarDismiss}
-        duration={3000}>
-        <View style={styles.snackbarContainer}>
-          <IconButton icon="alert-circle-outline" iconColor="red" />
-          <Text variant="bodyMedium" style={styles.snackbarText}>
-            {screenRequestError}
-          </Text>
-        </View>
-      </Snackbar>
       <DatePickerModal
         locale="en"
         mode="single"
@@ -527,6 +502,7 @@ const OverdueScreen = ({ navigation }: Props) => {
                   taskToBeCompleted.id,
                   TaskCompletionStatusEnum.COMPLETE,
                   user && user.id,
+                  user?.isPremium ?? false,
                   scoreForTaskToBeCompleted + 1,
                 );
                 setTaskToBeCompleted(undefined);

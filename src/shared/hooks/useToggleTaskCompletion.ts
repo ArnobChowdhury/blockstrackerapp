@@ -14,6 +14,7 @@ export const useToggleTaskCompletionStatus = (
     id: string,
     status: TaskCompletionStatusEnum,
     userId: string | null,
+    isPremium: boolean,
     taskScore?: number | null,
   ) => {
     setRequestOnGoing(true);
@@ -22,6 +23,7 @@ export const useToggleTaskCompletionStatus = (
         id,
         status,
         userId,
+        isPremium,
         taskScore,
       );
 

@@ -39,6 +39,7 @@ export class RepetitiveTaskTemplateService {
   async createRepetitiveTaskTemplate(
     templateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
+    isPremium: boolean,
   ): Promise<string> {
     let createdTemplate: RepetitiveTaskTemplate | undefined;
     await db.transaction(async tx => {
@@ -48,7 +49,7 @@ export class RepetitiveTaskTemplateService {
         tx,
       );
 
-      if (userId) {
+      if (userId && isPremium) {
         console.log(
           '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation.',
         );
@@ -71,7 +72,7 @@ export class RepetitiveTaskTemplateService {
       );
     }
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
@@ -84,6 +85,7 @@ export class RepetitiveTaskTemplateService {
     templateId: string,
     templateData: NewRepetitiveTaskTemplateData,
     userId: string | null,
+    isPremium: boolean,
   ): Promise<void> {
     await db.transaction(async tx => {
       const updatedTemplate =
@@ -94,7 +96,7 @@ export class RepetitiveTaskTemplateService {
           tx,
         );
 
-      if (userId) {
+      if (userId && isPremium) {
         if (!updatedTemplate) {
           throw new Error(
             `[RepetitiveTaskTemplateService] Cannot update non-existent or unauthorized template with ID ${templateId}`,
@@ -114,7 +116,7 @@ export class RepetitiveTaskTemplateService {
       }
     });
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
@@ -124,6 +126,7 @@ export class RepetitiveTaskTemplateService {
   async stopRepetitiveTask(
     templateId: string,
     userId: string | null,
+    isPremium: boolean,
   ): Promise<void> {
     await db.transaction(async tx => {
       const originalTemplate = await this.rttRepo.stopRepetitiveTask(
@@ -131,7 +134,7 @@ export class RepetitiveTaskTemplateService {
         userId,
         tx,
       );
-      if (userId) {
+      if (userId && isPremium) {
         console.log(
           '[RepetitiveTaskTemplateService] Logged-in user. Enqueuing pending operation to stop template.',
         );
@@ -154,7 +157,7 @@ export class RepetitiveTaskTemplateService {
       }
     });
 
-    if (userId) {
+    if (userId && isPremium) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 
@@ -165,6 +168,7 @@ export class RepetitiveTaskTemplateService {
     templateId: string,
     lastDate: string,
     userId: string | null,
+    isPremium: boolean,
     tx: Transaction,
   ): Promise<void> {
     const updatedTemplate = await this.rttRepo.updateLastDateOfTaskGeneration(
@@ -173,7 +177,7 @@ export class RepetitiveTaskTemplateService {
       tx,
     );
 
-    if (userId) {
+    if (userId && isPremium) {
       if (!updatedTemplate) {
         throw new Error(
           `[RepetitiveTaskTemplateService] Cannot update last generation date for non-existent template with ID ${templateId}`,
@@ -200,7 +204,10 @@ export class RepetitiveTaskTemplateService {
     }
   }
 
-  async generateDueRepetitiveTasks(userId: string | null): Promise<void> {
+  async generateDueRepetitiveTasks(
+    userId: string | null,
+    isPremium: boolean,
+  ): Promise<void> {
     console.log(
       '[RepetitiveTaskTemplateService] Starting generation of due tasks...',
     );
@@ -214,8 +221,6 @@ export class RepetitiveTaskTemplateService {
       );
       return;
     }
-
-    const isPremium = !!userId;
 
     let writeOperationOccurred = false;
 
@@ -274,6 +279,7 @@ export class RepetitiveTaskTemplateService {
                 newTaskData,
                 userId,
                 tx,
+                isPremium,
               );
               latestDueDateForTemplate = targetDueDate;
               writeOperationOccurred = true;
@@ -285,6 +291,7 @@ export class RepetitiveTaskTemplateService {
               template.id,
               latestDueDateForTemplate.toISOString(),
               userId,
+              isPremium,
               tx,
             );
           }
@@ -297,7 +304,7 @@ export class RepetitiveTaskTemplateService {
         });
     }
 
-    if (isPremium && writeOperationOccurred) {
+    if (userId && isPremium && writeOperationOccurred) {
       eventManager.emit(SYNC_TRIGGER_REQUESTED);
     }
 

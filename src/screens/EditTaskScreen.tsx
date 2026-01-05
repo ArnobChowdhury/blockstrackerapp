@@ -282,6 +282,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
             spaceId: selectedSpace && selectedSpace.id,
           },
           user && user.id,
+          user?.isPremium ?? false,
         );
       } else {
         await repetitiveTaskTemplateService.updateRepetitiveTaskTemplate(
@@ -296,6 +297,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
             spaceId: selectedSpace && selectedSpace.id,
           },
           user && user.id,
+          user?.isPremium ?? false,
         );
       }
 
@@ -375,7 +377,11 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const handleAddSpace = useCallback(
     async (spaceName: string) => {
       try {
-        await spaceService.createSpace(spaceName, user && user.id);
+        await spaceService.createSpace(
+          spaceName,
+          user && user.id,
+          user?.isPremium ?? false,
+        );
         handleLoadSpace();
       } catch (error: any) {
         Alert.alert(

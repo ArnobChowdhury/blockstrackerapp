@@ -48,6 +48,7 @@ export const useTaskReschedule = (
           taskIdToBeRescheduled,
           dayjs(params.date).startOf('day').toDate(),
           user && user.id,
+          user?.isPremium ?? false,
         );
 
         if (cb) {
