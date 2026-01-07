@@ -22,13 +22,20 @@ export const backgroundTask = async (event: any) => {
     await initializeDatabase();
 
     let userId: string | null = null;
+    let isPremium: boolean = false;
+
     try {
       const credentials = await Keychain.getGenericPassword();
       if (credentials) {
         const accessToken = credentials.password;
-        const decoded = jwtDecode<{ user_id: string }>(accessToken);
+        const decoded = jwtDecode<{ user_id: string; is_premium: boolean }>(
+          accessToken,
+        );
         if (decoded.user_id) {
           userId = decoded.user_id;
+        }
+        if (decoded.is_premium) {
+          isPremium = decoded.is_premium;
         }
       }
     } catch (error) {
@@ -38,7 +45,7 @@ export const backgroundTask = async (event: any) => {
       );
     }
 
-    if (userId) {
+    if (userId && isPremium) {
       console.log(`[BackgroundFetch] Running sync for user: ${userId}`);
       try {
         await syncService.runSync(userId);
@@ -46,7 +53,9 @@ export const backgroundTask = async (event: any) => {
         console.error('[BackgroundFetch] Sync failed:', error);
       }
     } else {
-      console.log('[BackgroundFetch] No user logged in. Skipping sync.');
+      console.log(
+        '[BackgroundFetch] Sync skipped. User not logged in or not Premium.',
+      );
     }
 
     const settings = await deviceSettingsService.getSettings();
