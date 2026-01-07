@@ -8,11 +8,19 @@ export class UserService {
     this.userRepo = new UserRepository(db);
   }
 
+  async getUserById(
+    userId: string,
+  ): Promise<Pick<User, 'id' | 'email' | 'isPremium'> | null> {
+    return this.userRepo.getUserById(userId);
+  }
+
   /**
    * Saves the user's profile data to the local database after a successful login.
    * @param user The user data received from the backend.
    */
-  async saveUserLocally(user: Pick<User, 'id' | 'email'>): Promise<void> {
+  async saveUserLocally(
+    user: Pick<User, 'id' | 'email' | 'isPremium'>,
+  ): Promise<void> {
     try {
       console.log(`[UserService] Saving user ${user.id} to local database.`);
       await this.userRepo.upsertUser(user);

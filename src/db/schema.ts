@@ -10,6 +10,7 @@ export const V1_SCHEMA = `
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
+    is_premium INTEGER NOT NULL DEFAULT 0, 
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
     deleted_at TEXT -- Nullable for soft deletes

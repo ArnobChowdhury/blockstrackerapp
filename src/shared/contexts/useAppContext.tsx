@@ -79,6 +79,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const netInfo = useNetInfo();
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const userService = useMemo(() => new UserService(), []);
   const settingsRepo = useMemo(() => new SettingsRepository(db), []);
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
   const appState = useRef(AppState.currentState);
@@ -122,50 +123,6 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   const [firstSyncDone, setFirstSyncDone] = useState(true);
 
   useEffect(() => {
-    const loadToken = async () => {
-      try {
-        const credentials = await Keychain.getGenericPassword();
-        if (credentials) {
-          console.log('[AuthContext] Token found in keychain.');
-          const accessToken = credentials.password;
-          setInMemoryToken(accessToken);
-
-          const decoded = jwtDecode<{
-            email: string;
-            user_id: string;
-            is_premium?: boolean;
-          }>(accessToken);
-          if (decoded.user_id && decoded.email) {
-            setUser({
-              id: decoded.user_id,
-              email: decoded.email,
-              isPremium: decoded.is_premium,
-            });
-            if (decoded.is_premium) {
-              setFirstSyncDone(false);
-            } else {
-              setFirstSyncDone(true);
-            }
-            await notificationService.recalculateAndScheduleNotifications(
-              decoded.user_id,
-            );
-          }
-        } else {
-          console.log('[AuthContext] No token found in keychain.');
-          setFirstSyncDone(true);
-          await notificationService.recalculateAndScheduleNotifications(null);
-        }
-      } catch (error) {
-        console.error("[AuthContext] Couldn't load token from keychain", error);
-      } finally {
-        setIsSigningIn(false);
-      }
-    };
-
-    loadToken();
-  }, []);
-
-  useEffect(() => {
     setIsDarkMode(getIsDarkMode(userPreferredTheme, colorScheme));
   }, [userPreferredTheme, colorScheme]);
 
@@ -186,31 +143,41 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   );
 
   const signIn = useCallback(
-    async (accessToken: string, refreshToken: string) => {
-      setIsSigningIn(true);
+    async (accessToken: string, refreshToken: string, silent = false) => {
+      if (!silent) {
+        setIsSigningIn(true);
+      }
       try {
         const decoded = jwtDecode<{
           email: string;
           user_id: string;
-          is_premium?: boolean;
+          is_premium: boolean;
         }>(accessToken);
 
         if (!decoded.user_id || !decoded.email) {
           throw new Error('Invalid token received from server.');
         }
 
-        const userService = new UserService();
+        const oldUser = await userService.getUserById(decoded.user_id);
+
         await userService.saveUserLocally({
           id: decoded.user_id,
           email: decoded.email,
+          isPremium: decoded.is_premium,
         });
 
         await updateTokens(accessToken, refreshToken);
+
+        if (oldUser && !oldUser.isPremium && decoded.is_premium) {
+          await dataMigrationService.queueAllDataForSync(decoded.user_id);
+        }
+
         setUser({
           id: decoded.user_id,
           email: decoded.email,
           isPremium: decoded.is_premium,
         });
+
         if (decoded.is_premium) {
           setFirstSyncDone(false);
         } else {
@@ -228,11 +195,97 @@ export const AppProvider = ({ children }: AppProviderProps) => {
           `Sign-in failed: ${error.message || 'An unknown error occurred.'}`,
         );
       } finally {
-        setIsSigningIn(false);
+        if (!silent) {
+          setIsSigningIn(false);
+        }
       }
     },
-    [updateTokens],
+    [updateTokens, userService],
   );
+
+  const checkPremiumStatus = useCallback(async () => {
+    try {
+      const accessCreds = await Keychain.getGenericPassword();
+      const refreshCreds = await Keychain.getGenericPassword({
+        service: 'refreshToken',
+      });
+
+      if (accessCreds && refreshCreds) {
+        const response = await apiClient.post('/auth/refresh', {
+          accessToken: accessCreds.password,
+          refreshToken: refreshCreds.password,
+        });
+
+        if (response.data?.result?.data) {
+          const { accessToken: newAccess, refreshToken: newRefresh } =
+            response.data.result.data;
+          await signIn(newAccess, newRefresh, true);
+        }
+      }
+    } catch (error) {
+      console.log('[AppContext] checkPremiumStatus failed (silent):', error);
+    }
+  }, [signIn]);
+
+  useEffect(() => {
+    const loadToken = async () => {
+      try {
+        const credentials = await Keychain.getGenericPassword();
+        if (credentials) {
+          console.log('[AuthContext] Token found in keychain.');
+          const accessToken = credentials.password;
+          setInMemoryToken(accessToken);
+
+          const decoded = jwtDecode<{
+            email: string;
+            user_id: string;
+            is_premium: boolean;
+          }>(accessToken);
+
+          const oldUser = await userService.getUserById(decoded.user_id);
+
+          await userService.saveUserLocally({
+            id: decoded.user_id,
+            email: decoded.email,
+            isPremium: decoded.is_premium,
+          });
+
+          if (oldUser && !oldUser.isPremium && decoded.is_premium) {
+            await dataMigrationService.queueAllDataForSync(decoded.user_id);
+          }
+
+          if (decoded.user_id && decoded.email) {
+            setUser({
+              id: decoded.user_id,
+              email: decoded.email,
+              isPremium: decoded.is_premium,
+            });
+
+            if (decoded.is_premium) {
+              setFirstSyncDone(false);
+            } else {
+              setFirstSyncDone(true);
+            }
+
+            await notificationService.recalculateAndScheduleNotifications(
+              decoded.user_id,
+            );
+            checkPremiumStatus();
+          }
+        } else {
+          console.log('[AuthContext] No token found in keychain.');
+          setFirstSyncDone(true);
+          await notificationService.recalculateAndScheduleNotifications(null);
+        }
+      } catch (error) {
+        console.error("[AuthContext] Couldn't load token from keychain", error);
+      } finally {
+        setIsSigningIn(false);
+      }
+    };
+
+    loadToken();
+  }, [userService, checkPremiumStatus]);
 
   const signOut = useCallback(async () => {
     setIsSigningIn(true);
@@ -313,6 +366,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       appState.current = nextAppState;
       if (nextAppState === 'active') {
+        checkPremiumStatus();
         await notificationService.recalculateAndScheduleNotifications(
           user ? user.id : null,
         );
@@ -370,7 +424,13 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         clearTimeout(syncTimerRef.current);
       }
     };
-  }, [runAndRescheduleSync, settingsRepo, TWO_MINUTES, user]);
+  }, [
+    runAndRescheduleSync,
+    settingsRepo,
+    TWO_MINUTES,
+    user,
+    checkPremiumStatus,
+  ]);
 
   useEffect(() => {
     const unsubscribe = eventManager.on(
@@ -424,17 +484,6 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       console.log('[AppContext] Premium status updated. Refreshing tokens.');
       if (data?.accessToken && data?.refreshToken) {
         await signIn(data.accessToken, data.refreshToken);
-        try {
-          const decoded = jwtDecode<{ user_id: string }>(data.accessToken);
-          if (decoded.user_id) {
-            console.log(
-              '[AppContext] Queuing data for sync for new premium user.',
-            );
-            await dataMigrationService.queueAllDataForSync(decoded.user_id);
-          }
-        } catch (error) {
-          console.error('[AppContext] Failed to queue data for sync:', error);
-        }
       }
     };
 
