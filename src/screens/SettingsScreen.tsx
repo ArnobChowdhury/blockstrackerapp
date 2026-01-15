@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppContext } from '../shared/contexts/useAppContext';
 import { deviceSettingsService } from '../services/DeviceSettingsService';
 import { notificationService } from '../services/NotificationService';
+import { iapService } from '../services/IAPService';
 
 const SettingsScreen = () => {
   const { user, userPreferredTheme, changeTheme } = useAppContext();
@@ -57,6 +58,21 @@ const SettingsScreen = () => {
     [user],
   );
 
+  const handleRestorePurchase = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await iapService.restorePurchases();
+      Alert.alert('Success', 'Purchase restored successfully.');
+    } catch (error: any) {
+      Alert.alert(
+        'Restore Failed',
+        error.message || 'Could not find a purchase to restore.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <List.Section>
@@ -86,6 +102,17 @@ const SettingsScreen = () => {
               disabled={isLoading}
             />
           )}
+        />
+      </List.Section>
+      <Divider />
+      <List.Section>
+        <List.Subheader>Premium</List.Subheader>
+        <List.Item
+          title="Restore Purchase"
+          description="Restore your subscription if you reinstalled the app."
+          onPress={handleRestorePurchase}
+          left={props => <List.Icon {...props} icon="restore" />}
+          disabled={isLoading}
         />
       </List.Section>
       {/* <Divider />

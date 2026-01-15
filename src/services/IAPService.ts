@@ -12,6 +12,7 @@ import {
   Subscription,
   PurchaseError,
   flushFailedPurchasesCachedAsPendingAndroid,
+  getPurchaseHistory,
 } from 'react-native-iap';
 import { Platform, EmitterSubscription } from 'react-native';
 import apiClient from '../lib/apiClient';
@@ -132,6 +133,48 @@ class IAPService {
       }
     } catch (error) {
       console.error('[IAPService] Purchase request failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restores past purchases.
+   * Fetches purchase history and validates the most recent subscription receipt.
+   */
+  public async restorePurchases(): Promise<void> {
+    if (!this.isConnected) {
+      await this.initialize();
+    }
+
+    try {
+      console.log('[IAPService] Restoring purchases...');
+      const history = await getPurchaseHistory();
+      console.log('[IAPService] Purchase history fetched:', history);
+
+      const purchase = history.find(p => p.productId === PRODUCT_ID);
+
+      // MOCK LOGIC: If using test ID and no history found, simulate a restore
+      if (!purchase && PRODUCT_ID === 'android.test.purchased') {
+        console.log(
+          '[IAPService] No history found, simulating restore for test ID.',
+        );
+        await this.validateReceiptWithBackend({
+          productId: PRODUCT_ID,
+          purchaseToken: 'mock-purchase-token',
+          transactionDate: Date.now(),
+          transactionId: 'mock-restore-id',
+        } as Purchase);
+        return;
+      }
+
+      if (purchase) {
+        console.log('[IAPService] Found purchase to restore:', purchase);
+        await this.validateReceiptWithBackend(purchase);
+      } else {
+        throw new Error('No active subscription found to restore.');
+      }
+    } catch (error) {
+      console.error('[IAPService] Restore failed:', error);
       throw error;
     }
   }
