@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Drawer, Text } from 'react-native-paper';
+import { Drawer, Text, Icon, useTheme } from 'react-native-paper';
 import {
   DrawerContentScrollView,
   DrawerContentComponentProps,
@@ -16,6 +16,7 @@ export default function CustomDrawerContent(
   const activeRoute = state.routeNames[state.index];
 
   const { user, signOut } = useAppContext();
+  const theme = useTheme();
 
   const handlePurchase = async () => {
     if (!user) {
@@ -73,6 +74,19 @@ export default function CustomDrawerContent(
           {user ? (
             <View style={styles.modeContainer}>
               <Text variant="bodyMedium">{user.email}</Text>
+              {user.isPremium && (
+                <View style={styles.premiumContainer}>
+                  <Icon source="crown" size={16} color={theme.colors.primary} />
+                  <Text
+                    variant="labelSmall"
+                    style={[
+                      { color: theme.colors.primary },
+                      styles.marginLeft,
+                    ]}>
+                    Premium Active
+                  </Text>
+                </View>
+              )}
               <Drawer.Item
                 label="Sign Out"
                 onPress={signOut}
@@ -105,11 +119,19 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     paddingVertical: 20,
   },
+  premiumContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   modeHeader: {
     paddingLeft: 16,
     marginBottom: 10,
   },
   signOutButton: {
     marginLeft: 0,
+  },
+  marginLeft: {
+    marginLeft: 4,
   },
 });

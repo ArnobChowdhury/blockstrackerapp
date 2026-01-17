@@ -5,6 +5,7 @@ import {
   Switch,
   SegmentedButtons,
   Divider,
+  useTheme,
   // Button,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { iapService } from '../services/IAPService';
 
 const SettingsScreen = () => {
   const { user, userPreferredTheme, changeTheme } = useAppContext();
+  const theme = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -107,6 +109,15 @@ const SettingsScreen = () => {
       <Divider />
       <List.Section>
         <List.Subheader>Premium</List.Subheader>
+        {user?.isPremium && (
+          <List.Item
+            title="Premium Active"
+            description="Thank you for supporting BlocksTracker!"
+            left={props => (
+              <List.Icon {...props} icon="crown" color={theme.colors.primary} />
+            )}
+          />
+        )}
         <List.Item
           title="Restore Purchase"
           description="Restore your subscription if you reinstalled the app."
