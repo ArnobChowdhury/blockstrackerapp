@@ -33,6 +33,7 @@ export class TaskRepository {
       completionStatus: row.completion_status as TaskCompletionStatusEnum,
       shouldBeScored: (row.should_be_scored === 1) as boolean,
       score: row.score as number | null,
+      sortOrder: row.sort_order as number,
       createdAt: row.created_at as string,
       modifiedAt: row.modified_at as string,
       repetitiveTaskTemplateId: row.repetitive_task_template_id as
@@ -46,10 +47,14 @@ export class TaskRepository {
   async getTaskById(
     taskId: string,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<Task | null> {
-    const task = await this._getActiveTasksByCondition(userId, 'id = ?', [
-      taskId,
-    ]);
+    const task = await this._getActiveTasksByCondition(
+      userId,
+      'id = ?',
+      [taskId],
+      tx,
+    );
     if (task) {
       return task[0];
     }
@@ -506,10 +511,96 @@ export class TaskRepository {
     );
   }
 
+  async updateTaskSortOrder(
+    taskId: string,
+    sortOrder: number,
+    timeOfDay: TimeOfDay | null,
+    completionStatus: TaskCompletionStatusEnum | undefined,
+    userId: string | null,
+    tx?: Transaction,
+  ): Promise<Task | null> {
+    const now = new Date().toISOString();
+    let sql = `
+      UPDATE tasks
+      SET
+        sort_order = ?,
+        time_of_day = ?,
+        modified_at = ?
+    `;
+    const params: any[] = [sortOrder, timeOfDay, now];
+
+    if (completionStatus !== undefined) {
+      sql += ', completion_status = ?';
+      params.push(completionStatus);
+    }
+
+    sql += ' WHERE id = ?';
+    params.push(taskId);
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+    sql += ' RETURNING *;';
+
+    console.log('[DB Repo] Attempting to UPDATE task sort order:', {
+      sql,
+      params,
+    });
+
+    try {
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        if (row) {
+          return this._transformRowToTask(row);
+        }
+      }
+      return null;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to UPDATE task sort order:', error);
+      throw new Error(
+        `Failed to update task sort order: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  async bulkUpdateTaskSortOrder(
+    updates: { id: string; sortOrder: number }[],
+    userId: string | null,
+    tx?: Transaction,
+  ): Promise<void> {
+    const sql = `UPDATE tasks SET sort_order = ? WHERE id = ? ${
+      userId ? 'AND user_id = ?' : 'AND user_id IS NULL'
+    }`;
+    const dbOrTx = tx || this.db;
+
+    try {
+      for (const update of updates) {
+        const params = [update.sortOrder, update.id];
+        if (userId) {
+          params.push(userId);
+        }
+        await dbOrTx.executeAsync(sql, params);
+      }
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to bulk update task sort order:', error);
+      throw new Error(
+        `Failed to bulk update task sort order: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
   private async _getActiveTasksByCondition(
     userId: string | null,
     additionalConditionSql = '',
     additionalConditionParams: any[] = [],
+    tx?: Transaction,
   ): Promise<Task[]> {
     const baseWhereClauses = ['is_active = ?'];
     const baseParams: any[] = [1];
@@ -531,7 +622,7 @@ export class TaskRepository {
 
     const sql = `
       SELECT
-        id, title, description, schedule, time_of_day, should_be_scored, score, space_id, user_id,
+        id, title, description, schedule, time_of_day, sort_order, should_be_scored, score, space_id, user_id,
         repetitive_task_template_id, created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
       WHERE ${allWhereClauses.join(' AND ')}
@@ -544,7 +635,8 @@ export class TaskRepository {
     });
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, allParams);
+      const dbOrTx = tx || this.db;
+      const resultSet: QueryResult = await dbOrTx.executeAsync(sql, allParams);
       console.log(
         '[DB Repo] SELECT successful, rows found:',
         resultSet.rows?.length,
@@ -574,7 +666,8 @@ export class TaskRepository {
     const dateString = dayjs(date).format('YYYY-MM-DD');
     let sql = `
       SELECT
-        id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id, user_id,
+        id, title, description, schedule, due_date, time_of_day, sort_order,
+        repetitive_task_template_id, user_id,
         should_be_scored, score, created_at, modified_at, is_active, completion_status, space_id
       FROM tasks
       WHERE DATE(due_date, 'localtime') = ?
@@ -586,7 +679,8 @@ export class TaskRepository {
           WHEN '${TimeOfDay.Night}' THEN 4
           ELSE 5 -- For null or other values, they appear last or in their own 'Any Time' group
         END,
-        created_at DESC;
+        sort_order ASC,
+        created_at ASC;
     `;
     const params: any[] = [dateString];
 
