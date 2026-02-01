@@ -3,22 +3,27 @@ import dayjs from 'dayjs';
 import {
   StyleSheet,
   View,
-  SectionList,
   ActivityIndicator,
-  Animated,
+  Animated as RNAnimated,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
   Checkbox,
   List,
-  Divider,
   IconButton,
   Portal,
   Dialog,
   Button,
   useTheme,
   Banner,
+  Icon,
 } from 'react-native-paper';
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -49,6 +54,7 @@ import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { DrawerActions } from '@react-navigation/native';
 import { useAppContext } from '../shared/contexts/useAppContext';
 import { CombinedLightTheme } from '../app/theme/theme';
+import DragList, { DragListRenderItemInfo } from 'react-native-draglist';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<BottomTabParamList, 'Today'>,
@@ -78,45 +84,116 @@ const SECTION_THEMES: Record<string, { backgroundColor: string }> = {
   'Any Time': { backgroundColor: '#F5F5F5' },
 };
 
-const DEFAULT_SECTION_THEME = {
-  backgroundColor: '#E0E0E0',
+const getTaskOrder = (task: Task) => {
+  if (task.completionStatus === TaskCompletionStatusEnum.FAILED) {
+    return GROUP_ORDER.failed;
+  }
+
+  if (!task.timeOfDay) {
+    return GROUP_ORDER.unspecified;
+  }
+
+  return GROUP_ORDER[task.timeOfDay];
 };
 
-export const groupTasks = (tasks: Task[]): TaskSection[] => {
-  const grouped: Record<string, Task[]> = {};
+interface TaskHeaders {
+  type: 'header';
+  title: string;
+  key: string;
+}
 
-  tasks.forEach(task => {
-    const key =
-      task.completionStatus === TaskCompletionStatusEnum.FAILED
-        ? 'Failed'
-        : task.timeOfDay || 'Unspecified';
-    if (!grouped[key]) {
-      grouped[key] = [];
-    }
-    grouped[key].push(task);
+type TaskOrHeader = Task | TaskHeaders;
+
+const groupAndFlattenTasks = (tasks: Task[]): TaskOrHeader[] => {
+  const sortedTasks = tasks.slice().sort((a, b) => {
+    return getTaskOrder(a) - getTaskOrder(b);
   });
 
-  return Object.entries(grouped)
-    .map(([timeOfDayKey, taskItems]) => {
-      return {
-        title:
-          timeOfDayKey === 'Unspecified'
-            ? 'Any Time'
-            : capitalize(timeOfDayKey as keyof typeof GROUP_ORDER),
-        data: taskItems,
-      };
-    })
-    .sort((a, b) => {
-      const aKey =
-        a.title === 'Any Time'
-          ? 'unspecified'
-          : (a.title.toLowerCase() as keyof typeof GROUP_ORDER);
-      const bKey =
-        b.title === 'Any Time'
-          ? 'unspecified'
-          : (b.title.toLowerCase() as keyof typeof GROUP_ORDER);
-      return GROUP_ORDER[aKey] - GROUP_ORDER[bKey];
-    });
+  const taskList: TaskOrHeader[] = [];
+
+  sortedTasks.forEach((task, index) => {
+    if (task.completionStatus === TaskCompletionStatusEnum.FAILED) {
+      if (
+        sortedTasks[index - 1]?.completionStatus !==
+        TaskCompletionStatusEnum.FAILED
+      ) {
+        taskList.push({
+          type: 'header',
+          title: 'Failed',
+          key: 'Failed',
+        });
+      }
+      taskList.push(task);
+      return;
+    }
+
+    if (
+      index === 0 ||
+      (sortedTasks[index - 1] &&
+        task.timeOfDay !== sortedTasks[index - 1].timeOfDay)
+    ) {
+      const title = task.timeOfDay ? capitalize(task.timeOfDay) : 'Any Time';
+      taskList.push({
+        type: 'header',
+        title: task.timeOfDay ? capitalize(task.timeOfDay) : 'Any Time',
+        key: title,
+      });
+    }
+
+    taskList.push(task);
+  });
+
+  return taskList;
+};
+
+function keyExtractor(item: TaskOrHeader, _index: number) {
+  if ('type' in item) {
+    return item.key;
+  }
+  return item.id;
+}
+
+const SCALE_ACTIVE = 1.05;
+const DraggableRow = React.memo(
+  ({
+    isActive,
+    children,
+  }: {
+    isActive: boolean;
+    children: React.ReactNode;
+  }) => {
+    const animatedStyle = useAnimatedStyle(
+      () => ({
+        transform: [
+          {
+            scale: withSpring(isActive ? SCALE_ACTIVE : 1),
+          },
+        ],
+        shadowOpacity: withTiming(isActive ? 0.25 : 0),
+        elevation: isActive ? 6 : 0,
+      }),
+      [isActive],
+    );
+
+    return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+  },
+);
+
+const findHeader = (
+  taskIndex: number,
+  taskSections: TaskOrHeader[],
+): [TaskHeaders, number] | null => {
+  for (let i = taskIndex; i >= 0; i--) {
+    const item = taskSections[i];
+    if ('type' in item && item.type === 'header') {
+      return [item, i];
+    }
+  }
+  return null;
+};
+
+const isTask = (item: TaskOrHeader): item is Task => {
+  return !('type' in item);
 };
 
 const TodayScreen = ({ navigation }: Props) => {
@@ -139,24 +216,24 @@ const TodayScreen = ({ navigation }: Props) => {
   const [displayDate, setDisplayDate] = useState(() => dayjs().startOf('day'));
   const [newDayBannerVisible, setNewDayBannerVisible] = useState(false);
 
-  const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
+  const [taskSections, setTaskSections] = useState<TaskOrHeader[]>([]);
   const [numberOfTaskOverdue, setNumberOfTaskOverdue] = useState(0);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
 
-  const animatedValue = useMemo(() => new Animated.Value(0), []);
+  const animatedValue = useMemo(() => new RNAnimated.Value(0), []);
   useEffect(() => {
     if (isSyncing) {
-      const animation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(animatedValue, {
+      const animation = RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.timing(animatedValue, {
             toValue: 1,
             duration: 1000,
             useNativeDriver: false,
           }),
-          Animated.timing(animatedValue, {
+          RNAnimated.timing(animatedValue, {
             toValue: 0,
             duration: 1000,
             useNativeDriver: false,
@@ -170,11 +247,6 @@ const TodayScreen = ({ navigation }: Props) => {
 
   const fetchTasksForDate = useCallback(
     async (dateToFetch: dayjs.Dayjs) => {
-      console.log(
-        `[TodayScreen] Fetching tasks for ${dateToFetch.format(
-          'YYYY-MM-DD',
-        )}...`,
-      );
       setErrorLoadingTasks(null);
 
       try {
@@ -191,7 +263,7 @@ const TodayScreen = ({ navigation }: Props) => {
           dateToFetch.toDate(),
           user && user.id,
         );
-        setTaskSections(groupTasks(fetchedTasks));
+        setTaskSections(groupAndFlattenTasks(fetchedTasks));
       } catch (error: any) {
         console.error('[TodayScreen] Failed to fetch tasks:', error);
         setErrorLoadingTasks(
@@ -300,108 +372,160 @@ const TodayScreen = ({ navigation }: Props) => {
   const renderTaskItem = useCallback(
     ({
       item,
-      sectionBackgroundColor,
-    }: {
-      item: Task;
-      sectionBackgroundColor: string;
-    }) => {
+      onDragStart,
+      onDragEnd,
+      isActive,
+    }: DragListRenderItemInfo<TaskOrHeader>) => {
+      if ('type' in item) {
+        return (
+          <View
+            style={[
+              styles.sectionHeaderContainer,
+              {
+                backgroundColor: SECTION_THEMES[item.title].backgroundColor,
+              },
+            ]}>
+            <Text
+              style={[
+                { color: CombinedLightTheme.colors.onSurface },
+                styles.sectionHeaderText,
+              ]}
+              variant="titleMedium">
+              {item.title}
+            </Text>
+          </View>
+        );
+      }
+
+      let sectionBackgroundColor: string;
+
+      if (item.completionStatus === TaskCompletionStatusEnum.FAILED) {
+        sectionBackgroundColor = SECTION_THEMES.Failed.backgroundColor;
+      } else if (item.timeOfDay) {
+        sectionBackgroundColor =
+          SECTION_THEMES[capitalize(item.timeOfDay)].backgroundColor;
+      } else {
+        sectionBackgroundColor = SECTION_THEMES['Any Time'].backgroundColor;
+      }
+
       return (
-        <View
-          style={[
-            {
-              backgroundColor: sectionBackgroundColor,
-            },
-          ]}>
-          <List.Item
-            onPress={() => {
-              navigation.navigate('EditTask', { taskId: item.id });
-            }}
-            title={
-              <Text
-                variant="bodyLarge"
-                style={[
-                  { color: CombinedLightTheme.colors.onSurface },
-                  item.completionStatus === TaskCompletionStatusEnum.COMPLETE
-                    ? styles.taskCompleted
-                    : null,
-                ]}>
-                {item.title}
-              </Text>
-            }
-            style={[styles.listItem]}
-            {...(item.completionStatus !== TaskCompletionStatusEnum.FAILED
-              ? {
-                  left: props => (
-                    <View {...props} style={styles.checkboxContainer}>
-                      <Checkbox
-                        uncheckedColor={CombinedLightTheme.colors.onSurface}
-                        status={
+        <DraggableRow isActive={isActive}>
+          <View
+            key={item.id}
+            style={[
+              styles.draggableRowView,
+              // eslint-disable-next-line react-native/no-inline-styles
+              {
+                backgroundColor: isActive ? '#fff' : sectionBackgroundColor,
+                borderTopWidth: isActive ? 0.8 : 0,
+              },
+            ]}>
+            <TouchableOpacity
+              style={styles.dragHandle}
+              onPressIn={onDragStart}
+              onPressOut={onDragEnd}>
+              <Icon
+                source="drag-horizontal-variant"
+                size={16}
+                color={CombinedLightTheme.colors.onSurfaceVariant}
+              />
+            </TouchableOpacity>
+            <View style={styles.flexOne}>
+              <List.Item
+                onPress={() => {
+                  navigation.navigate('EditTask', { taskId: item.id });
+                }}
+                title={
+                  <Text
+                    variant="bodyLarge"
+                    style={[
+                      { color: CombinedLightTheme.colors.onSurface },
+                      item.completionStatus ===
+                      TaskCompletionStatusEnum.COMPLETE
+                        ? styles.taskCompleted
+                        : null,
+                    ]}>
+                    {item.title}
+                  </Text>
+                }
+                style={[styles.listItem]}
+                {...(item.completionStatus !== TaskCompletionStatusEnum.FAILED
+                  ? {
+                      left: props => (
+                        <View {...props}>
+                          <Checkbox
+                            uncheckedColor={CombinedLightTheme.colors.onSurface}
+                            status={
+                              item.completionStatus ===
+                              TaskCompletionStatusEnum.COMPLETE
+                                ? 'checked'
+                                : 'unchecked'
+                            }
+                            onPress={() => handleTaskCompletion(item)}
+                          />
+                        </View>
+                      ),
+                    }
+                  : {})}
+                right={props => (
+                  <View {...props} style={styles.iconContainer}>
+                    {item.schedule !== TaskScheduleTypeEnum.Daily && (
+                      <IconButton
+                        icon="calendar-refresh"
+                        size={20}
+                        onPress={() => handleRescheduleIconTap(item)}
+                        iconColor={theme.colors.secondary}
+                        disabled={
                           item.completionStatus ===
                           TaskCompletionStatusEnum.COMPLETE
-                            ? 'checked'
-                            : 'unchecked'
                         }
-                        onPress={() => handleTaskCompletion(item)}
+                        style={styles.iconButton}
                       />
-                    </View>
-                  ),
-                }
-              : {})}
-            right={props => (
-              <View {...props} style={styles.iconContainer}>
-                {item.schedule !== TaskScheduleTypeEnum.Daily && (
-                  <IconButton
-                    icon="calendar-refresh"
-                    size={20}
-                    onPress={() => handleRescheduleIconTap(item)}
-                    iconColor={theme.colors.secondary}
-                    disabled={
-                      item.completionStatus ===
-                      TaskCompletionStatusEnum.COMPLETE
-                    }
-                    style={styles.iconButton}
-                  />
+                    )}
+                    {item.completionStatus !==
+                      TaskCompletionStatusEnum.FAILED && (
+                      <IconButton
+                        icon="thumb-down-outline"
+                        size={20}
+                        iconColor="red"
+                        disabled={
+                          item.completionStatus ===
+                          TaskCompletionStatusEnum.COMPLETE
+                        }
+                        onPress={() =>
+                          onToggleTaskCompletionStatus(
+                            item.id,
+                            TaskCompletionStatusEnum.FAILED,
+                            user && user.id,
+                            user?.isPremium ?? false,
+                          )
+                        }
+                        style={styles.iconButton}
+                      />
+                    )}
+                    {item.completionStatus ===
+                      TaskCompletionStatusEnum.FAILED && (
+                      <IconButton
+                        icon="restart"
+                        size={20}
+                        iconColor="green"
+                        onPress={() =>
+                          onToggleTaskCompletionStatus(
+                            item.id,
+                            TaskCompletionStatusEnum.INCOMPLETE,
+                            user && user.id,
+                            user?.isPremium ?? false,
+                          )
+                        }
+                        style={styles.iconButton}
+                      />
+                    )}
+                  </View>
                 )}
-                {item.completionStatus !== TaskCompletionStatusEnum.FAILED && (
-                  <IconButton
-                    icon="thumb-down-outline"
-                    size={20}
-                    iconColor="red"
-                    disabled={
-                      item.completionStatus ===
-                      TaskCompletionStatusEnum.COMPLETE
-                    }
-                    onPress={() =>
-                      onToggleTaskCompletionStatus(
-                        item.id,
-                        TaskCompletionStatusEnum.FAILED,
-                        user && user.id,
-                        user?.isPremium ?? false,
-                      )
-                    }
-                    style={styles.iconButton}
-                  />
-                )}
-                {item.completionStatus === TaskCompletionStatusEnum.FAILED && (
-                  <IconButton
-                    icon="restart"
-                    size={20}
-                    iconColor="green"
-                    onPress={() =>
-                      onToggleTaskCompletionStatus(
-                        item.id,
-                        TaskCompletionStatusEnum.INCOMPLETE,
-                        user && user.id,
-                        user?.isPremium ?? false,
-                      )
-                    }
-                    style={styles.iconButton}
-                  />
-                )}
-              </View>
-            )}
-          />
-        </View>
+              />
+            </View>
+          </View>
+        </DraggableRow>
       );
     },
     [
@@ -414,10 +538,123 @@ const TodayScreen = ({ navigation }: Props) => {
     ],
   );
 
+  async function onReordered(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) {
+      return;
+    }
+
+    const currentList = [...taskSections];
+    const movedItem = currentList[fromIndex];
+
+    if (!isTask(movedItem)) {
+      return;
+    }
+
+    const targetIndex = toIndex === 0 ? 1 : toIndex;
+
+    currentList.splice(fromIndex, 1);
+    currentList.splice(targetIndex, 0, movedItem);
+
+    const headerInfo = findHeader(targetIndex, currentList);
+    if (!headerInfo) {
+      return;
+    }
+    const [header] = headerInfo;
+
+    let newTimeOfDay: TimeOfDay | null = movedItem.timeOfDay;
+    let newCompletionStatus = movedItem.completionStatus;
+
+    if (header.title === 'Failed') {
+      newCompletionStatus = TaskCompletionStatusEnum.FAILED;
+    } else {
+      if (movedItem.completionStatus === TaskCompletionStatusEnum.FAILED) {
+        newCompletionStatus = TaskCompletionStatusEnum.INCOMPLETE;
+      }
+
+      if (header.title === 'Any Time') {
+        newTimeOfDay = null;
+      } else if (Object.keys(TimeOfDay).includes(header.title)) {
+        newTimeOfDay = header.title.toLowerCase() as TimeOfDay;
+      }
+    }
+
+    currentList[targetIndex] = {
+      ...(currentList[targetIndex] as Task),
+      timeOfDay: newTimeOfDay,
+      completionStatus: newCompletionStatus,
+    };
+
+    const tasksOnly = currentList.filter(isTask);
+    const groupedList = groupAndFlattenTasks(tasksOnly);
+    setTaskSections(groupedList);
+
+    const newMovedIndex = groupedList.findIndex(
+      item => isTask(item) && item.id === movedItem.id,
+    );
+
+    if (newMovedIndex === -1) {
+      return;
+    }
+
+    const prevItem = groupedList[newMovedIndex - 1];
+    const nextItem = groupedList[newMovedIndex + 1];
+
+    const prevOrder = isTask(prevItem) ? prevItem.sortOrder : 0;
+    const nextOrder = isTask(nextItem) ? nextItem.sortOrder : prevOrder + 10000;
+
+    const reindexUpdates: { id: string; sortOrder: number }[] = [];
+    let newSortOrder: number;
+
+    if (nextOrder <= prevOrder + 0.001) {
+      const sectionHeaderInfo = findHeader(newMovedIndex, groupedList);
+      if (sectionHeaderInfo) {
+        const [, sectionHeaderIndex] = sectionHeaderInfo;
+        let currentSortOrder = 10000;
+
+        for (let i = sectionHeaderIndex + 1; i < groupedList.length; i++) {
+          const item = groupedList[i];
+          if (!isTask(item)) {
+            break;
+          }
+
+          reindexUpdates.push({ id: item.id, sortOrder: currentSortOrder });
+          currentSortOrder += 10000;
+        }
+      }
+
+      const update = reindexUpdates.find(u => u.id === movedItem.id);
+      newSortOrder = update ? update.sortOrder : (newMovedIndex + 1) * 10000;
+    } else {
+      newSortOrder = (prevOrder + nextOrder) / 2;
+    }
+
+    try {
+      if (reindexUpdates.length > 0) {
+        await taskService.reindexTasks(
+          reindexUpdates,
+          user && user.id,
+          user?.isPremium ?? false,
+        );
+      }
+
+      await taskService.reorderTask(
+        movedItem.id,
+        newSortOrder,
+        newTimeOfDay,
+        newCompletionStatus,
+        user && user.id,
+        user?.isPremium ?? false,
+      );
+      await refreshCurrentView();
+    } catch (error) {
+      console.error('[TodayScreen] Failed to save task order:', error);
+      showSnackbar('Failed to save task order');
+    }
+  }
+
   const [hasAnonymousData, setHasAnonymousData] = useState(false);
   useEffect(() => {
     if (checkAnonData) {
-      console.log('[TodayScreen] checking anonymous data...', checkAnonData);
       dataMigrationService.hasAnonymousData().then(setHasAnonymousData);
     }
   }, [checkAnonData, setCheckAnonData]);
@@ -487,7 +724,7 @@ const TodayScreen = ({ navigation }: Props) => {
         />
         {isSyncing && (
           <View style={styles.syncIndicatorContainer}>
-            <Animated.View
+            <RNAnimated.View
               style={[
                 {
                   backgroundColor: blinkingColor,
@@ -548,72 +785,34 @@ const TodayScreen = ({ navigation }: Props) => {
             </Text>
           </Banner>
 
-          <SectionList
-            style={styles.sectionList}
-            sections={taskSections}
-            keyExtractor={item => item.id.toString()}
-            renderItem={({ item, section }) => {
-              const sectionTheme =
-                SECTION_THEMES[section.title] || DEFAULT_SECTION_THEME;
-              return renderTaskItem({
-                item,
-                sectionBackgroundColor: sectionTheme.backgroundColor,
-              });
-            }}
-            renderSectionHeader={({ section: { title } }) => {
-              const sectionTheme =
-                SECTION_THEMES[title] || DEFAULT_SECTION_THEME;
-              return (
-                <View
-                  style={[
-                    styles.sectionHeaderContainer,
-                    { backgroundColor: sectionTheme.backgroundColor },
-                  ]}>
-                  <Text
-                    style={[
-                      { color: CombinedLightTheme.colors.onSurface },
-                      styles.sectionHeaderText,
-                    ]}
-                    variant="titleLarge">
-                    {title}
-                  </Text>
-                </View>
-              );
-            }}
-            ItemSeparatorComponent={() => <Divider />}
-            ListHeaderComponent={() => (
-              <View style={styles.paddingTop}>
-                <View style={styles.titleContainer}>
-                  <Text variant="displaySmall">
-                    {newDayBannerVisible ? 'Yesterday' : 'Today'}
-                  </Text>
-                  <IconButton
-                    icon="plus"
-                    size={20}
-                    style={styles.addTaskTodayIcon}
-                    iconColor={theme.colors.secondary}
-                    onPress={() =>
-                      navigation.navigate('AddTask', {
-                        isToday: true,
-                      })
-                    }
-                  />
-                </View>
-                <Text variant="bodyLarge" style={styles.timeAndDate}>
-                  {formatDate(displayDate)}
-                </Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={styles.centered}>
-                <Text variant={'bodyLarge'} style={styles.infoText}>
-                  No tasks scheduled for today!
-                </Text>
-              </View>
-            }
-            contentContainerStyle={
-              taskSections.length === 0 ? styles.emptyListContainer : null
-            }
+          <View style={[styles.paddingTop, styles.todayTextContainer]}>
+            <View style={styles.titleContainer}>
+              <Text variant="headlineSmall">
+                {newDayBannerVisible ? 'Yesterday' : 'Today'}
+              </Text>
+              <IconButton
+                icon="plus"
+                size={20}
+                style={styles.addTaskTodayIcon}
+                iconColor={theme.colors.secondary}
+                onPress={() =>
+                  navigation.navigate('AddTask', {
+                    isToday: true,
+                  })
+                }
+              />
+            </View>
+            <Text variant="bodyLarge" style={styles.timeAndDate}>
+              {formatDate(displayDate)}
+            </Text>
+          </View>
+
+          <DragList
+            data={taskSections}
+            renderItem={renderTaskItem}
+            keyExtractor={keyExtractor}
+            onReordered={onReordered}
+            style={styles.dragList}
           />
         </>
       )}
@@ -768,34 +967,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   timeAndDate: {
-    marginVertical: 10,
-    fontSize: 20,
+    marginVertical: 2,
+    fontSize: 16,
   },
   sectionList: {
     paddingHorizontal: 16,
   },
   sectionHeaderContainer: {
-    marginTop: 16,
-    paddingHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 8,
     paddingTop: 8,
   },
   sectionHeaderText: {
-    fontSize: 18,
+    fontSize: 14,
+  },
+  dragHandle: {
+    paddingHorizontal: 8,
   },
   listItemContainer: {
     marginHorizontal: 16,
   },
   listItem: {
-    paddingHorizontal: 16,
-    paddingLeft: 10,
+    paddingHorizontal: 4,
+    paddingLeft: 0,
   },
   taskCompleted: {
     textDecorationLine: 'line-through',
-  },
-  checkboxContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
   },
   paddingTop: {
     paddingTop: 10,
@@ -818,6 +1015,9 @@ const styles = StyleSheet.create({
     color: 'white',
     paddingRight: 10,
   },
+  todayTextContainer: {
+    paddingLeft: 8,
+  },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -837,6 +1037,19 @@ const styles = StyleSheet.create({
   },
   marginLeft: {
     marginLeft: 10,
+  },
+  dragList: {
+    marginBottom: 110,
+  },
+  draggableRowView: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomColor: '#E0E0E0',
+    borderBottomWidth: 0.8,
+    borderTopColor: '#E0E0E0',
+  },
+  flexOne: {
+    flex: 1,
   },
 });
 

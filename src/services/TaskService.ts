@@ -7,7 +7,7 @@ import {
 } from '../db/repository';
 import { getNextIterationDateForRepetitiveTask } from '../shared/utils';
 
-import type { NewTaskData, Task } from '../types';
+import type { NewTaskData, Task, TimeOfDay } from '../types';
 import { TaskCompletionStatusEnum, TaskScheduleTypeEnum } from '../types';
 import { eventManager } from './EventManager';
 import {
@@ -428,5 +428,163 @@ export class TaskService {
   async getAllActiveOnceTasks(userId: string | null): Promise<Task[]> {
     console.log("[TaskService] Getting all active 'once' tasks");
     return this.taskRepo.getAllActiveOnceTasks(userId);
+  }
+
+  async reorderTask(
+    taskId: string,
+    newSortOrder: number,
+    newTimeOfDay: TimeOfDay | null,
+    newCompletionStatus: TaskCompletionStatusEnum | undefined,
+    userId: string | null,
+    isPremium: boolean,
+  ): Promise<void> {
+    await db.transaction(async tx => {
+      const currentTask = await this.taskRepo.getTaskById(taskId, userId, tx);
+      if (!currentTask) {
+        throw new Error('Task not found');
+      }
+
+      const updatedTask = await this.taskRepo.updateTaskSortOrder(
+        taskId,
+        newSortOrder,
+        newTimeOfDay,
+        newCompletionStatus,
+        userId,
+        tx,
+      );
+
+      if (!updatedTask) {
+        throw new Error('Failed to update task sort order');
+      }
+
+      if (userId && isPremium) {
+        const remoteTaskPayload = { ...updatedTask, tags: [] };
+        await this.pendingOpRepo.enqueueOperation(
+          {
+            operation_type: 'update',
+            entity_type: 'task',
+            entity_id: updatedTask.id,
+            payload: JSON.stringify(remoteTaskPayload),
+            userId,
+          },
+          tx,
+        );
+      }
+
+      if (currentTask.repetitiveTaskTemplateId) {
+        const template = await this.rttRepo.getRepetitiveTaskTemplateById(
+          currentTask.repetitiveTaskTemplateId,
+          userId,
+          tx,
+        );
+
+        if (
+          template &&
+          newTimeOfDay === template.timeOfDay &&
+          newCompletionStatus !== TaskCompletionStatusEnum.FAILED
+        ) {
+          const updatedTemplate = await this.rttRepo.updateSortOrder(
+            template.id,
+            newSortOrder,
+            userId,
+            tx,
+          );
+
+          if (updatedTemplate && userId && isPremium) {
+            const remoteTemplatePayload = { ...updatedTemplate, tags: [] };
+            await this.pendingOpRepo.enqueueOperation(
+              {
+                operation_type: 'update',
+                entity_type: 'repetitive_task_template',
+                entity_id: updatedTemplate.id,
+                payload: JSON.stringify(remoteTemplatePayload),
+                userId,
+              },
+              tx,
+            );
+          }
+        }
+      }
+    });
+
+    if (userId && isPremium) {
+      eventManager.emit(SYNC_TRIGGER_REQUESTED);
+    }
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
+  }
+
+  async reindexTasks(
+    updates: { id: string; sortOrder: number }[],
+    userId: string | null,
+    isPremium: boolean,
+  ): Promise<void> {
+    await db.transaction(async tx => {
+      await this.taskRepo.bulkUpdateTaskSortOrder(updates, userId, tx);
+
+      for (const update of updates) {
+        const task = await this.taskRepo.getTaskById(update.id, userId, tx);
+        if (!task) {
+          continue;
+        }
+
+        if (userId && isPremium) {
+          const payloadTask = {
+            ...task,
+            sortOrder: update.sortOrder,
+            tags: [],
+          };
+          await this.pendingOpRepo.enqueueOperation(
+            {
+              userId: userId!,
+              operation_type: 'update',
+              entity_type: 'task',
+              entity_id: task.id,
+              payload: JSON.stringify(payloadTask),
+            },
+            tx,
+          );
+        }
+
+        if (task.repetitiveTaskTemplateId) {
+          const template = await this.rttRepo.getRepetitiveTaskTemplateById(
+            task.repetitiveTaskTemplateId,
+            userId,
+            tx,
+          );
+
+          if (
+            template &&
+            task.timeOfDay === template.timeOfDay &&
+            task.completionStatus !== TaskCompletionStatusEnum.FAILED
+          ) {
+            const updatedTemplate = await this.rttRepo.updateSortOrder(
+              template.id,
+              update.sortOrder,
+              userId,
+              tx,
+            );
+
+            if (updatedTemplate && userId && isPremium) {
+              const remoteTemplatePayload = { ...updatedTemplate, tags: [] };
+              await this.pendingOpRepo.enqueueOperation(
+                {
+                  operation_type: 'update',
+                  entity_type: 'repetitive_task_template',
+                  entity_id: updatedTemplate.id,
+                  payload: JSON.stringify(remoteTemplatePayload),
+                  userId,
+                },
+                tx,
+              );
+            }
+          }
+        }
+      }
+    });
+
+    if (userId && isPremium) {
+      eventManager.emit(SYNC_TRIGGER_REQUESTED);
+    }
+    eventManager.emit(WRITE_OPERATION_COMPLETED);
   }
 }

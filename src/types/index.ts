@@ -30,6 +30,7 @@ export interface Task {
   shouldBeScored: boolean;
   score: number | null;
   completionStatus: TaskCompletionStatusEnum;
+  sortOrder: number;
   createdAt: string;
   modifiedAt: string;
   repetitiveTaskTemplateId: string | null;
@@ -45,6 +46,7 @@ export interface RepetitiveTaskTemplate {
   schedule: TaskScheduleTypeEnum;
   priority: number;
   shouldBeScored: boolean;
+  sortOrder: number;
   monday: boolean | null;
   tuesday: boolean | null;
   wednesday: boolean | null;

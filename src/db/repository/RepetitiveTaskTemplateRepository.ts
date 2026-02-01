@@ -94,6 +94,7 @@ export class RepetitiveTaskTemplateRepository {
       description: row.description as string | null,
       schedule: row.schedule as TaskScheduleTypeEnum,
       priority: row.priority as number,
+      sortOrder: row.sort_order as number,
       timeOfDay: row.time_of_day as TimeOfDay | null,
       shouldBeScored: (row.should_be_scored === 1) as boolean,
       lastDateOfTaskGeneration: row.last_date_of_task_generation as
@@ -116,6 +117,7 @@ export class RepetitiveTaskTemplateRepository {
   async getRepetitiveTaskTemplateById(
     templateId: string,
     userId: string | null,
+    tx?: Transaction,
   ): Promise<RepetitiveTaskTemplate | null> {
     let sql = `
       SELECT
@@ -142,7 +144,8 @@ export class RepetitiveTaskTemplateRepository {
     );
 
     try {
-      const resultSet: QueryResult = await this.db.executeAsync(sql, params);
+      const dbOrTx = tx || this.db;
+      const resultSet: QueryResult = await dbOrTx.executeAsync(sql, params);
       console.log(
         '[DB Repo] SELECT successful, rows found:',
         resultSet.rows?.length,
@@ -316,6 +319,46 @@ export class RepetitiveTaskTemplateRepository {
       );
       throw new Error(
         `Failed to get all active repetitive task templates: ${
+          error.message || 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  async updateSortOrder(
+    templateId: string,
+    sortOrder: number,
+    userId: string | null,
+    tx?: Transaction,
+  ): Promise<RepetitiveTaskTemplate | null> {
+    const now = new Date().toISOString();
+    let sql = `
+      UPDATE repetitive_task_templates
+      SET sort_order = ?, modified_at = ?
+      WHERE id = ?
+    `;
+    const params: any[] = [sortOrder, now, templateId];
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(userId);
+    } else {
+      sql += ' AND user_id IS NULL';
+    }
+    sql += ' RETURNING *;';
+
+    try {
+      const dbOrTx = tx || this.db;
+      const resultSet = await dbOrTx.executeAsync(sql, params);
+      if (resultSet.rows && resultSet.rows.length > 0) {
+        const row = resultSet.rows.item(0);
+        return this._transformRowToTemplate(row);
+      }
+      return null;
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to update template sort order:', error);
+      throw new Error(
+        `Failed to update template sort order: ${
           error.message || 'Unknown error'
         }`,
       );

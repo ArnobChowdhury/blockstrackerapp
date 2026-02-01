@@ -40,6 +40,21 @@ adb exec-out run-as com.blockstrackerapp cat files/blockstracker.sqlite > ~/Work
 
 You can open the `blockstracker.sqlite` file with any SQLite database browser or with VS Code SQLite extension.
 
+## 🎨 Custom Fonts (Android)
+
+To copy fonts from `src/assets` to the Android application:
+
+1. Place font files (e.g., `.ttf`, `.otf`) in:
+   `android/app/src/main/assets/fonts`
+   (Create the directory if it doesn't exist).
+
+2. Rebuild the application:
+   ```bash
+   cd android && ./gradlew clean
+   cd ..
+   npx react-native run-android
+   ```
+
 ## 📦 Features
 
 - Offline-first task and habit tracking
