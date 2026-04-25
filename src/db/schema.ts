@@ -61,6 +61,7 @@ export const V1_SCHEMA = `
     saturday INTEGER DEFAULT 0,  -- Optional Boolean
     sunday INTEGER DEFAULT 0,    -- Optional Boolean
     time_of_day TEXT, -- Optional
+    sort_order REAL NOT NULL DEFAULT 0,
     last_date_of_task_generation TEXT, -- Optional DateTime (ISO String)
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
@@ -87,6 +88,7 @@ export const V1_SCHEMA = `
     should_be_scored INTEGER, -- Optional Boolean
     score INTEGER, -- Optional
     time_of_day TEXT, -- Optional
+    sort_order REAL NOT NULL DEFAULT 0,
     repetitive_task_template_id TEXT, -- Foreign key column (optional)
     created_at TEXT NOT NULL,
     modified_at TEXT NOT NULL,
