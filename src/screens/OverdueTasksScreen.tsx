@@ -89,7 +89,6 @@ const OverdueScreen = ({ navigation }: Props) => {
 
     console.log('[OverdueScreen] Fetching overdue tasks...');
     setErrorLoadingTasks(null);
-    setIsLoadingTasks(true);
     try {
       const fetchedOverdueTasks = await taskService.getAllOverdueTasks(
         user && user.id,
