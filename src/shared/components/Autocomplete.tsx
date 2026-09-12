@@ -6,7 +6,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from 'react';
-import { View, StyleSheet, FlatList, Dimensions, Keyboard } from 'react-native';
+import { View, StyleSheet, FlatList, Keyboard } from 'react-native';
 import {
   TextInput,
   List,
@@ -184,6 +184,23 @@ const AutocompleteInput = forwardRef<
     const notExactMatch =
       suggestions.findIndex(item => item.name === query) === -1;
 
+    const surfaceRef = useRef<View>(null);
+    const [suggestionsHeight, setSuggestionsHeight] = useState(0);
+
+    useEffect(() => {
+      if (inputLayout) {
+        requestAnimationFrame(() => {
+          surfaceRef.current?.measure((x, y, width, height) => {
+            if (height > 0) {
+              setSuggestionsHeight(height);
+            }
+          });
+        });
+      }
+    });
+
+    const top = (inputLayout?.y || 0) - suggestionsHeight - 8;
+
     return (
       <View>
         <View ref={textInputRef} onLayout={measureAndSetLayout}>
@@ -195,68 +212,78 @@ const AutocompleteInput = forwardRef<
             onFocus={handleFocus}
           />
         </View>
-        {showSuggestions && isFocused && inputLayout && (
-          <Portal>
-            <Surface
-              style={[
-                styles.suggestionsContainer,
-                {
-                  bottom:
-                    Dimensions.get('window').height -
-                    (inputLayout?.y + 40 || 0),
-                  left: inputLayout?.x,
-                  width: inputLayout?.width, // Match input width
-                  borderColor: theme.colors.primary,
-                },
-              ]}>
-              {loading ? (
-                <ActivityIndicator animating={true} style={styles.loader} />
-              ) : (
-                <>
-                  {notExactMatch && query && (
-                    <List.Item
-                      title={`Create "${query}"`}
-                      onPress={() => onAddOption(query)}
-                      left={props => <List.Icon {...props} icon="plus" />}
-                    />
-                  )}
-                  {suggestions.length > 0 && (
-                    <FlatList
-                      data={suggestions}
-                      keyExtractor={item => item.id.toString()}
-                      renderItem={({ item }) => (
-                        <List.Item
-                          title={<Text variant="bodyMedium">{item.name}</Text>}
-                          onPress={() => handleSelectSuggestion(item)}
-                          style={[
-                            selectedOption?.id === item.id
-                              ? {
-                                  backgroundColor: theme.colors.secondary,
-                                }
-                              : null,
-                          ]}
-                          left={() => (
-                            <View style={styles.marginLeft}>
-                              <Checkbox
-                                status={
-                                  selectedOption?.id === item.id
-                                    ? 'checked'
-                                    : 'unchecked'
-                                }
-                                onPress={() => handleSelectSuggestion(item)}
-                              />
-                            </View>
-                          )}
-                        />
-                      )}
-                      keyboardShouldPersistTaps="handled"
-                    />
-                  )}
-                </>
-              )}
-            </Surface>
-          </Portal>
-        )}
+        {showSuggestions &&
+          isFocused &&
+          inputLayout &&
+          (suggestions.length > 0 || query.length > 0) && (
+            <Portal>
+              <Surface
+                ref={surfaceRef}
+                onLayout={e => {
+                  console.log(
+                    '[AutocompleteInput] onLayout:',
+                    e.nativeEvent.layout,
+                  );
+                }}
+                style={[
+                  styles.suggestionsContainer,
+                  {
+                    top,
+                    left: inputLayout?.x,
+                    width: inputLayout?.width, // Match input width
+                    borderColor: theme.colors.primary,
+                  },
+                ]}>
+                {loading ? (
+                  <ActivityIndicator animating={true} style={styles.loader} />
+                ) : (
+                  <>
+                    {notExactMatch && query && (
+                      <List.Item
+                        title={`Create "${query}"`}
+                        onPress={() => onAddOption(query)}
+                        left={props => <List.Icon {...props} icon="plus" />}
+                      />
+                    )}
+                    {suggestions.length > 0 && (
+                      <FlatList
+                        data={suggestions}
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({ item }) => (
+                          <List.Item
+                            title={
+                              <Text variant="bodyMedium">{item.name}</Text>
+                            }
+                            onPress={() => handleSelectSuggestion(item)}
+                            style={[
+                              selectedOption?.id === item.id
+                                ? {
+                                    backgroundColor: theme.colors.secondary,
+                                  }
+                                : null,
+                            ]}
+                            left={() => (
+                              <View style={styles.marginLeft}>
+                                <Checkbox
+                                  status={
+                                    selectedOption?.id === item.id
+                                      ? 'checked'
+                                      : 'unchecked'
+                                  }
+                                  onPress={() => handleSelectSuggestion(item)}
+                                />
+                              </View>
+                            )}
+                          />
+                        )}
+                        keyboardShouldPersistTaps="handled"
+                      />
+                    )}
+                  </>
+                )}
+              </Surface>
+            </Portal>
+          )}
       </View>
     );
   },
