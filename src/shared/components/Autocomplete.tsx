@@ -6,7 +6,14 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from 'react';
-import { View, StyleSheet, FlatList, Keyboard } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  Keyboard,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import {
   TextInput,
   List,
@@ -188,18 +195,31 @@ const AutocompleteInput = forwardRef<
     const [suggestionsHeight, setSuggestionsHeight] = useState(0);
 
     useEffect(() => {
-      if (inputLayout) {
-        requestAnimationFrame(() => {
-          surfaceRef.current?.measure((x, y, width, height) => {
+      if (inputLayout && showSuggestions && isFocused) {
+        const animationFrameId = requestAnimationFrame(() => {
+          surfaceRef.current?.measure((_x, _y, _width, height) => {
             if (height > 0) {
               setSuggestionsHeight(height);
             }
           });
         });
-      }
-    });
 
-    const top = (inputLayout?.y || 0) - suggestionsHeight - 8;
+        return () => cancelAnimationFrame(animationFrameId);
+      }
+    }, [inputLayout, showSuggestions, isFocused]);
+
+    const apiLevel =
+      typeof Platform.Version === 'string'
+        ? parseInt(Platform.Version, 10)
+        : Platform.Version;
+
+    // Android 15+ edge-to-edge shifts coordinates down by the status bar height
+    const statusBarOffset =
+      Platform.OS === 'android' && apiLevel >= 35
+        ? StatusBar.currentHeight || 0
+        : 0;
+
+    const top = (inputLayout?.y || 0) - suggestionsHeight - 8 + statusBarOffset;
 
     return (
       <View>

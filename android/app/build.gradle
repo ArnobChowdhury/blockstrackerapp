@@ -112,9 +112,13 @@ android {
     }
     buildTypes {
         debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+            resValue "string", "app_name", "(Debug) Blockstracker"
             signingConfig signingConfigs.debug
         }
         release {
+            resValue "string", "app_name", "Blockstracker"
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.release
