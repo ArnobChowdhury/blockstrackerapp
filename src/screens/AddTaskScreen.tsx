@@ -15,6 +15,8 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TaskService } from '../services/TaskService';
@@ -367,6 +369,11 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     (selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
       selectedDays.length === 0);
 
+  const handleBackgroundBlur = () => {
+    Keyboard.dismiss();
+    autocompleteInputRef.current?.close();
+  };
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -382,151 +389,154 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
           }}
           scrollEventThrottle={16} // Optional: Adjust for performance
         >
-          <TextInput
-            label="Task Name*"
-            value={taskName}
-            onChangeText={setTaskName}
-            style={styles.textInput}
-            disabled={isSaving}
-          />
-
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('TaskDescription', {
-                initialHTML: taskDescription,
-                source: 'AddTask',
-              })
-            }>
-            <View
-              style={[
-                {
-                  borderColor: theme.colors.onSurfaceVariant,
-                  borderBottomColor: theme.colors.primary,
-                  backgroundColor: theme.colors.surfaceVariant,
-                },
-                styles.descriptionContainer,
-              ]}>
-              <RenderHtml
-                baseStyle={descriptionInputFieldBaseStyles}
-                contentWidth={width}
-                source={descriptionSource}
-                systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
-                ignoredDomTags={['br']}
+          <TouchableWithoutFeedback onPress={handleBackgroundBlur}>
+            <View style={styles.formWrapper}>
+              <TextInput
+                label="Task Name*"
+                value={taskName}
+                onChangeText={setTaskName}
+                style={styles.textInput}
+                disabled={isSaving}
               />
-            </View>
-          </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('TaskDescription', {
+                    initialHTML: taskDescription,
+                    source: 'AddTask',
+                  })
+                }>
+                <View
+                  style={[
+                    {
+                      borderColor: theme.colors.onSurfaceVariant,
+                      borderBottomColor: theme.colors.primary,
+                      backgroundColor: theme.colors.surfaceVariant,
+                    },
+                    styles.descriptionContainer,
+                  ]}>
+                  <RenderHtml
+                    baseStyle={descriptionInputFieldBaseStyles}
+                    contentWidth={width}
+                    source={descriptionSource}
+                    systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
+                    ignoredDomTags={['br']}
+                  />
+                </View>
+              </TouchableOpacity>
 
-          <Text variant="titleMedium" style={styles.inputHeader}>
-            Schedule*
-          </Text>
-          <View style={styles.chipContainer}>
-            {Object.values(TaskScheduleTypeEnum).map((option, index) => (
-              <Chip
-                key={index}
-                mode="outlined"
-                style={styles.chip}
-                selected={option === selectedScheduleType}
-                showSelectedOverlay={true}
-                onPress={() => handleFrequencySelect(option)}
-                disabled={isSaving}>
-                {option}
-              </Chip>
-            ))}
-          </View>
-
-          {selectedScheduleType === TaskScheduleTypeEnum.Once &&
-            selectedDate && (
-              <>
-                <Chip icon={'calendar-outline'} style={styles.marginBottom}>
-                  {sDate}
-                </Chip>
-                <Divider style={styles.marginTop} />
-              </>
-            )}
-
-          {selectedScheduleType ===
-            TaskScheduleTypeEnum.SpecificDaysInAWeek && (
-            <>
               <Text variant="titleMedium" style={styles.inputHeader}>
-                Select Days*
+                Schedule*
               </Text>
               <View style={styles.chipContainer}>
-                {Object.values(DaysInAWeek).map((day, index) => (
+                {Object.values(TaskScheduleTypeEnum).map((option, index) => (
                   <Chip
                     key={index}
                     mode="outlined"
                     style={styles.chip}
-                    selected={selectedDays.includes(day)}
+                    selected={option === selectedScheduleType}
                     showSelectedOverlay={true}
-                    onPress={() => handleDayToggle(day)}
+                    onPress={() => handleFrequencySelect(option)}
                     disabled={isSaving}>
-                    {capitalize(day)}
+                    {option}
                   </Chip>
                 ))}
               </View>
-            </>
-          )}
 
-          {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
-            selectedScheduleType ===
-              TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
-            <View style={styles.checkboxContainer}>
-              <Checkbox
-                status={shouldBeScored ? 'checked' : 'unchecked'}
-                onPress={handleShouldBeScored}
-                disabled={isSaving}
-              />
-              <Text
-                variant="bodyMedium"
-                onPress={isSaving ? undefined : handleShouldBeScored}
-                style={isSaving ? styles.disabledText : null}>
-                Should be scored
+              {selectedScheduleType === TaskScheduleTypeEnum.Once &&
+                selectedDate && (
+                  <>
+                    <Chip icon={'calendar-outline'} style={styles.marginBottom}>
+                      {sDate}
+                    </Chip>
+                    <Divider style={styles.marginTop} />
+                  </>
+                )}
+
+              {selectedScheduleType ===
+                TaskScheduleTypeEnum.SpecificDaysInAWeek && (
+                <>
+                  <Text variant="titleMedium" style={styles.inputHeader}>
+                    Select Days*
+                  </Text>
+                  <View style={styles.chipContainer}>
+                    {Object.values(DaysInAWeek).map((day, index) => (
+                      <Chip
+                        key={index}
+                        mode="outlined"
+                        style={styles.chip}
+                        selected={selectedDays.includes(day)}
+                        showSelectedOverlay={true}
+                        onPress={() => handleDayToggle(day)}
+                        disabled={isSaving}>
+                        {capitalize(day)}
+                      </Chip>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
+                selectedScheduleType ===
+                  TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
+                <View style={styles.checkboxContainer}>
+                  <Checkbox
+                    status={shouldBeScored ? 'checked' : 'unchecked'}
+                    onPress={handleShouldBeScored}
+                    disabled={isSaving}
+                  />
+                  <Text
+                    variant="bodyMedium"
+                    onPress={isSaving ? undefined : handleShouldBeScored}
+                    style={isSaving ? styles.disabledText : null}>
+                    Should be scored
+                  </Text>
+                </View>
+              )}
+
+              <Text variant="titleMedium" style={styles.inputHeader}>
+                Time of day
               </Text>
+              <View style={styles.chipContainer}>
+                {Object.values(TimeOfDay).map((time, index) => (
+                  <Chip
+                    key={index}
+                    mode="outlined"
+                    style={styles.chip}
+                    selected={time === selectedTimeOfDay}
+                    showSelectedOverlay={true}
+                    onPress={() => handleTimeToggle(time)}
+                    disabled={isSaving}>
+                    {capitalize(time)}
+                  </Chip>
+                ))}
+              </View>
+
+              <AutocompleteInput
+                ref={autocompleteInputRef}
+                label="Select or Create a space for the task (Optional)"
+                query={spaceQuery}
+                setQuery={setSpaceQuery}
+                onSelect={handleSpaceSelect}
+                options={allSpaces}
+                loading={isLoadingSpaces}
+                onLoadSuggestions={handleLoadSpace}
+                onAddOption={handleAddSpace}
+                selectedOption={selectedSpace}
+                onFocus={handleSpaceOnFocus}
+                onBlur={handleSpaceOnBlur}
+              />
+              <Button
+                mode="contained"
+                onPress={handleAddTask}
+                style={styles.addButton}
+                labelStyle={{ color: theme.colors.onPrimaryContainer }}
+                loading={isSaving}
+                disabled={isSaving || isDbLoading || addTaskDisabled}
+                icon="plus-circle-outline">
+                {isSaving ? 'Adding Task...' : 'Add Task'}
+              </Button>
             </View>
-          )}
-
-          <Text variant="titleMedium" style={styles.inputHeader}>
-            Time of day
-          </Text>
-          <View style={styles.chipContainer}>
-            {Object.values(TimeOfDay).map((time, index) => (
-              <Chip
-                key={index}
-                mode="outlined"
-                style={styles.chip}
-                selected={time === selectedTimeOfDay}
-                showSelectedOverlay={true}
-                onPress={() => handleTimeToggle(time)}
-                disabled={isSaving}>
-                {capitalize(time)}
-              </Chip>
-            ))}
-          </View>
-
-          <AutocompleteInput
-            ref={autocompleteInputRef}
-            label="Select or Create a space for the task (Optional)"
-            query={spaceQuery}
-            setQuery={setSpaceQuery}
-            onSelect={handleSpaceSelect}
-            options={allSpaces}
-            loading={isLoadingSpaces}
-            onLoadSuggestions={handleLoadSpace}
-            onAddOption={handleAddSpace}
-            selectedOption={selectedSpace}
-            onFocus={handleSpaceOnFocus}
-            onBlur={handleSpaceOnBlur}
-          />
-          <Button
-            mode="contained"
-            onPress={handleAddTask}
-            style={styles.addButton}
-            labelStyle={{ color: theme.colors.onPrimaryContainer }}
-            loading={isSaving}
-            disabled={isSaving || isDbLoading || addTaskDisabled}
-            icon="plus-circle-outline">
-            {isSaving ? 'Adding Task...' : 'Add Task'}
-          </Button>
+          </TouchableWithoutFeedback>
         </ScrollView>
       </KeyboardAvoidingView>
       <Snackbar
@@ -564,8 +574,14 @@ const styles = StyleSheet.create({
   },
   KeyboardAvoidingView: {
     flex: 1,
+    flexGrow: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+  },
+  formWrapper: {
+    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 15,
     paddingBottom: 80,

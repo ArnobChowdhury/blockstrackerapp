@@ -53,6 +53,7 @@ interface AutocompleteInputProps {
 
 export interface AutocompleteInputHandles {
   remeasure: () => void;
+  close: () => void;
 }
 
 const AutocompleteInput = forwardRef<
@@ -107,6 +108,9 @@ const AutocompleteInput = forwardRef<
       ref,
       () => ({
         remeasure: measureAndSetLayout,
+        close: () => {
+          setShowSuggestions(false);
+        },
       }),
       [measureAndSetLayout],
     );
