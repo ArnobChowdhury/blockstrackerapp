@@ -445,7 +445,12 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
               {selectedScheduleType === TaskScheduleTypeEnum.Once &&
                 selectedDate && (
                   <>
-                    <Chip icon={'calendar-outline'} style={styles.marginBottom}>
+                    <Chip
+                      icon={'calendar-outline'}
+                      style={styles.marginBottom}
+                      onPress={() => {
+                        setSelectedDateVisible(true);
+                      }}>
                       {sDate}
                     </Chip>
                     <Divider style={styles.marginTop} />
