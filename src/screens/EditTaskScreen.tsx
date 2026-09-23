@@ -17,6 +17,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TaskService } from '../services/TaskService';
@@ -474,6 +476,11 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
       selectedDays.length === 0);
 
+  const handleBackgroundBlur = () => {
+    Keyboard.dismiss();
+    autocompleteInputRef.current?.close();
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       {isLoadingTask ? (
@@ -498,187 +505,193 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
               autocompleteInputRef.current?.remeasure();
             }}
             scrollEventThrottle={16}>
-            {isRepetitiveTask && (
-              <View style={styles.disclaimer}>
-                <Icon source="information-outline" size={20} />
-                <Text
-                  variant="bodyMedium"
-                  style={[
-                    { color: theme.colors.primary },
-                    styles.disclaimerText,
-                  ]}>
-                  Editing this form will not affect the underlying template of
-                  this repetitive task. Would you like to edit the template
-                  instead?{' '}
-                  <Pressable
-                    style={[isYesPressed && styles.disclaimerPressable]}
-                    onPressIn={() => setIsYesPressed(true)}
-                    onPressOut={() => {
-                      setIsYesPressed(false);
-                      handleEditingRepetitiveTaskTemplateInsteadOfTask();
-                    }}>
+            <TouchableWithoutFeedback onPress={handleBackgroundBlur}>
+              <View style={styles.formWrapper}>
+                {isRepetitiveTask && (
+                  <View style={styles.disclaimer}>
+                    <Icon source="information-outline" size={20} />
                     <Text
                       variant="bodyMedium"
                       style={[
-                        styles.disclaimerLink,
-                        {
-                          color: theme.colors.secondary,
-                        },
+                        { color: theme.colors.primary },
+                        styles.disclaimerText,
                       ]}>
-                      Yes
+                      Editing this form will not affect the underlying template
+                      of this repetitive task. Would you like to edit the
+                      template instead?{' '}
+                      <Pressable
+                        style={[isYesPressed && styles.disclaimerPressable]}
+                        onPressIn={() => setIsYesPressed(true)}
+                        onPressOut={() => {
+                          setIsYesPressed(false);
+                          handleEditingRepetitiveTaskTemplateInsteadOfTask();
+                        }}>
+                        <Text
+                          variant="bodyMedium"
+                          style={[
+                            styles.disclaimerLink,
+                            {
+                              color: theme.colors.secondary,
+                            },
+                          ]}>
+                          Yes
+                        </Text>
+                      </Pressable>
                     </Text>
-                  </Pressable>
-                </Text>
-              </View>
-            )}
-            <TextInput
-              label="Task Name*"
-              value={taskName}
-              onChangeText={setTaskName}
-              style={styles.textInput}
-              disabled={isSaving}
-            />
-
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('TaskDescription', {
-                  source: 'EditTask',
-                  initialHTML: taskDescription || '',
-                })
-              }>
-              <View
-                style={[
-                  {
-                    borderColor: theme.colors.onSurfaceVariant,
-                    borderBottomColor: theme.colors.primary,
-                    backgroundColor: theme.colors.surfaceVariant,
-                  },
-                  styles.descriptionContainer,
-                ]}>
-                <RenderHtml
-                  baseStyle={descriptionInputFieldBaseStyles}
-                  contentWidth={width}
-                  source={descriptionSource}
-                  systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
-                />
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.scheduleContainer}>
-              <Text variant="titleMedium" style={styles.inputHeader}>
-                Schedule:
-              </Text>
-              <Text variant="bodyLarge" style={styles.inputHeader}>
-                {' '}
-                {selectedScheduleType}
-              </Text>
-            </View>
-
-            {selectedDate && (
-              <>
-                <Chip
-                  icon={'calendar-outline'}
-                  style={styles.marginBottom}
-                  onPress={() => {
-                    if (selectedScheduleType !== TaskScheduleTypeEnum.Daily) {
-                      setSelectedDateVisible(true);
-                    } else {
-                      setSnackbarMessage(
-                        'Daily tasks cannot change their due date.',
-                      );
-                      setSnackbarVisible(true);
-                    }
-                  }}>
-                  {sDate}
-                </Chip>
-                <Divider style={styles.marginTop} />
-              </>
-            )}
-
-            {isRepetitiveTaskTemplate &&
-              selectedScheduleType ===
-                TaskScheduleTypeEnum.SpecificDaysInAWeek && (
-                <>
-                  <Text variant="titleMedium" style={styles.inputHeader}>
-                    Select Days*
-                  </Text>
-                  <View style={styles.chipContainer}>
-                    {Object.values(DaysInAWeek).map((day, index) => (
-                      <Chip
-                        key={index}
-                        mode="outlined"
-                        style={styles.chip}
-                        selected={selectedDays.includes(day)}
-                        showSelectedOverlay={true}
-                        onPress={() => handleDayToggle(day)}
-                        disabled={isSaving}>
-                        {capitalize(day)}
-                      </Chip>
-                    ))}
                   </View>
-                </>
-              )}
-
-            {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
-              selectedScheduleType ===
-                TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
-              <View style={styles.checkboxContainer}>
-                <Checkbox
-                  status={shouldBeScored ? 'checked' : 'unchecked'}
-                  onPress={handleShouldBeScored}
+                )}
+                <TextInput
+                  label="Task Name*"
+                  value={taskName}
+                  onChangeText={setTaskName}
+                  style={styles.textInput}
                   disabled={isSaving}
                 />
-                <Text
-                  variant="bodyMedium"
-                  onPress={isSaving ? undefined : handleShouldBeScored}
-                  style={isSaving ? styles.disabledText : null}>
-                  Should be scored
+
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('TaskDescription', {
+                      source: 'EditTask',
+                      initialHTML: taskDescription || '',
+                    })
+                  }>
+                  <View
+                    style={[
+                      {
+                        borderColor: theme.colors.onSurfaceVariant,
+                        borderBottomColor: theme.colors.primary,
+                        backgroundColor: theme.colors.surfaceVariant,
+                      },
+                      styles.descriptionContainer,
+                    ]}>
+                    <RenderHtml
+                      baseStyle={descriptionInputFieldBaseStyles}
+                      contentWidth={width}
+                      source={descriptionSource}
+                      systemFonts={['HankenGrotesk-Regular', 'sans-serif']}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.scheduleContainer}>
+                  <Text variant="titleMedium" style={styles.inputHeader}>
+                    Schedule:
+                  </Text>
+                  <Text variant="bodyLarge" style={styles.inputHeader}>
+                    {' '}
+                    {selectedScheduleType}
+                  </Text>
+                </View>
+
+                {selectedDate && (
+                  <>
+                    <Chip
+                      icon={'calendar-outline'}
+                      style={styles.marginBottom}
+                      onPress={() => {
+                        if (
+                          selectedScheduleType !== TaskScheduleTypeEnum.Daily
+                        ) {
+                          setSelectedDateVisible(true);
+                        } else {
+                          setSnackbarMessage(
+                            'Daily tasks cannot change their due date.',
+                          );
+                          setSnackbarVisible(true);
+                        }
+                      }}>
+                      {sDate}
+                    </Chip>
+                    <Divider style={styles.marginTop} />
+                  </>
+                )}
+
+                {isRepetitiveTaskTemplate &&
+                  selectedScheduleType ===
+                    TaskScheduleTypeEnum.SpecificDaysInAWeek && (
+                    <>
+                      <Text variant="titleMedium" style={styles.inputHeader}>
+                        Select Days*
+                      </Text>
+                      <View style={styles.chipContainer}>
+                        {Object.values(DaysInAWeek).map((day, index) => (
+                          <Chip
+                            key={index}
+                            mode="outlined"
+                            style={styles.chip}
+                            selected={selectedDays.includes(day)}
+                            showSelectedOverlay={true}
+                            onPress={() => handleDayToggle(day)}
+                            disabled={isSaving}>
+                            {capitalize(day)}
+                          </Chip>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                {(selectedScheduleType === TaskScheduleTypeEnum.Daily ||
+                  selectedScheduleType ===
+                    TaskScheduleTypeEnum.SpecificDaysInAWeek) && (
+                  <View style={styles.checkboxContainer}>
+                    <Checkbox
+                      status={shouldBeScored ? 'checked' : 'unchecked'}
+                      onPress={handleShouldBeScored}
+                      disabled={isSaving}
+                    />
+                    <Text
+                      variant="bodyMedium"
+                      onPress={isSaving ? undefined : handleShouldBeScored}
+                      style={isSaving ? styles.disabledText : null}>
+                      Should be scored
+                    </Text>
+                  </View>
+                )}
+
+                <Text variant="titleMedium" style={styles.inputHeader}>
+                  Time of day
                 </Text>
+                <View style={styles.chipContainer}>
+                  {Object.values(TimeOfDay).map((time, index) => (
+                    <Chip
+                      key={index}
+                      mode="outlined"
+                      style={styles.chip}
+                      selected={time === selectedTimeOfDay}
+                      showSelectedOverlay={true}
+                      onPress={() => handleTimeToggle(time)}
+                      disabled={isSaving}>
+                      {capitalize(time)}
+                    </Chip>
+                  ))}
+                </View>
+
+                <AutocompleteInput
+                  ref={autocompleteInputRef}
+                  label="Select or Create a space for the task (Optional)"
+                  query={spaceQuery}
+                  setQuery={setSpaceQuery}
+                  onSelect={handleSpaceSelect}
+                  options={allSpaces}
+                  loading={isLoadingSpaces}
+                  onLoadSuggestions={handleLoadSpace}
+                  onAddOption={handleAddSpace}
+                  selectedOption={selectedSpace}
+                  onFocus={handleSpaceOnFocus}
+                  onBlur={handleSpaceOnBlur}
+                />
+                <Button
+                  mode="contained"
+                  onPress={handleTaskUpdate}
+                  style={styles.addButton}
+                  labelStyle={{ color: theme.colors.onPrimaryContainer }}
+                  loading={isSaving}
+                  disabled={isSaving || isDbLoading || addTaskDisabled}
+                  icon="plus-circle-outline">
+                  {isSaving ? 'Saving Task...' : 'Save Task'}
+                </Button>
               </View>
-            )}
-
-            <Text variant="titleMedium" style={styles.inputHeader}>
-              Time of day
-            </Text>
-            <View style={styles.chipContainer}>
-              {Object.values(TimeOfDay).map((time, index) => (
-                <Chip
-                  key={index}
-                  mode="outlined"
-                  style={styles.chip}
-                  selected={time === selectedTimeOfDay}
-                  showSelectedOverlay={true}
-                  onPress={() => handleTimeToggle(time)}
-                  disabled={isSaving}>
-                  {capitalize(time)}
-                </Chip>
-              ))}
-            </View>
-
-            <AutocompleteInput
-              ref={autocompleteInputRef}
-              label="Select or Create a space for the task (Optional)"
-              query={spaceQuery}
-              setQuery={setSpaceQuery}
-              onSelect={handleSpaceSelect}
-              options={allSpaces}
-              loading={isLoadingSpaces}
-              onLoadSuggestions={handleLoadSpace}
-              onAddOption={handleAddSpace}
-              selectedOption={selectedSpace}
-              onFocus={handleSpaceOnFocus}
-              onBlur={handleSpaceOnBlur}
-            />
-            <Button
-              mode="contained"
-              onPress={handleTaskUpdate}
-              style={styles.addButton}
-              labelStyle={{ color: theme.colors.onPrimaryContainer }}
-              loading={isSaving}
-              disabled={isSaving || isDbLoading || addTaskDisabled}
-              icon="plus-circle-outline">
-              {isSaving ? 'Saving Task...' : 'Save Task'}
-            </Button>
+            </TouchableWithoutFeedback>
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -720,8 +733,14 @@ const styles = StyleSheet.create({
   },
   KeyboardAvoidingView: {
     flex: 1,
+    flexGrow: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+  },
+  formWrapper: {
+    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 15,
     paddingBottom: 80,
