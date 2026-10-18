@@ -80,16 +80,25 @@ export enum DaysInAWeek {
   Saturday = 'saturday',
 }
 
-export interface NewTaskData {
+interface BaseNewTaskData {
   title: string;
   description?: string;
   schedule: TaskScheduleTypeEnum;
   dueDate?: Date;
   timeOfDay: TimeOfDay | null;
-  repetitiveTaskTemplateId?: string;
   shouldBeScored: number;
   spaceId: string | null;
 }
+
+export type NewTaskData =
+  | (BaseNewTaskData & {
+      repetitiveTaskTemplateId?: undefined;
+      sortOrder?: number;
+    })
+  | (BaseNewTaskData & {
+      repetitiveTaskTemplateId: string;
+      sortOrder: number;
+    });
 
 export interface NewRepetitiveTaskTemplateData {
   title: string;

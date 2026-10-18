@@ -77,8 +77,8 @@ export class TaskRepository {
     const sql = `
       INSERT INTO tasks (
         id, title, description, schedule, due_date, time_of_day, repetitive_task_template_id,
-        should_be_scored, created_at, modified_at, space_id, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+        should_be_scored, sort_order, created_at, modified_at, space_id, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
     `;
 
     const params = [
@@ -90,6 +90,7 @@ export class TaskRepository {
       taskData.timeOfDay,
       taskData.repetitiveTaskTemplateId,
       taskData.shouldBeScored,
+      taskData.sortOrder ?? 0,
       now,
       now,
       taskData.spaceId,
@@ -856,7 +857,7 @@ export class TaskRepository {
         UPDATE tasks
         SET
           due_date = ?,
-          completion_status = ?, 
+          completion_status = ?,
           schedule = CASE
                        WHEN schedule = '${TaskScheduleTypeEnum.Unscheduled}' THEN '${TaskScheduleTypeEnum.Once}'
                        ELSE schedule

@@ -273,6 +273,7 @@ export class RepetitiveTaskTemplateService {
                 repetitiveTaskTemplateId: template.id,
                 shouldBeScored: template.shouldBeScored ? 1 : 0,
                 spaceId: template.spaceId,
+                sortOrder: template.sortOrder,
               };
 
               await this.taskService._createTaskInternal(
