@@ -79,7 +79,7 @@ class DataMigrationService {
           }
 
           for (const space of spaces) {
-            await this.pendingOpRepo.enqueueOperation(
+            this.pendingOpRepo.enqueueOperationSynchronous(
               {
                 userId,
                 operation_type: 'create',
@@ -106,7 +106,7 @@ class DataMigrationService {
           }
 
           for (const template of repetitiveTaskTemplates) {
-            await this.pendingOpRepo.enqueueOperation(
+            this.pendingOpRepo.enqueueOperationSynchronous(
               {
                 userId,
                 operation_type: 'create',
@@ -132,7 +132,7 @@ class DataMigrationService {
           }
 
           for (const task of tasks) {
-            await this.pendingOpRepo.enqueueOperation(
+            this.pendingOpRepo.enqueueOperationSynchronous(
               {
                 userId,
                 operation_type: 'create',

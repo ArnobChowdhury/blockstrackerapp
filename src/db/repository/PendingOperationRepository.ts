@@ -30,10 +30,7 @@ export class PendingOperationRepository {
     this.db = database;
   }
 
-  async enqueueOperation(
-    opData: PendingOperationData,
-    tx?: Transaction,
-  ): Promise<QueryResult> {
+  private _getEnqueueStatement(opData: PendingOperationData) {
     const now = new Date().toISOString();
     const sql = `
       INSERT INTO pending_operations (
@@ -48,14 +45,44 @@ export class PendingOperationRepository {
       now,
       opData.userId,
     ];
+    return { sql, params };
+  }
 
-    console.log('[DB Repo] Enqueuing pending operation:', { sql, params });
+  async enqueueOperation(
+    opData: PendingOperationData,
+    tx?: Transaction,
+  ): Promise<QueryResult> {
+    const { sql, params } = this._getEnqueueStatement(opData);
+    console.log('[DB Repo] Enqueuing pending operation (Async):', {
+      sql,
+      params,
+    });
 
     try {
       const dbOrTx = tx || this.db;
       return await dbOrTx.executeAsync(sql, params);
     } catch (error: any) {
       console.error('[DB Repo] Failed to enqueue operation:', error);
+      throw new Error(
+        `Failed to enqueue operation: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  enqueueOperationSynchronous(
+    opData: PendingOperationData,
+    tx: Transaction,
+  ): QueryResult {
+    const { sql, params } = this._getEnqueueStatement(opData);
+    console.log('[DB Repo] Enqueuing pending operation (Sync):', {
+      sql,
+      params,
+    });
+
+    try {
+      return tx.execute(sql, params);
+    } catch (error: any) {
+      console.error('[DB Repo] Failed to enqueue operation (Sync):', error);
       throw new Error(
         `Failed to enqueue operation: ${error.message || 'Unknown error'}`,
       );
