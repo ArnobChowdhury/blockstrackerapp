@@ -408,6 +408,10 @@ const TodayScreen = ({ navigation }: Props) => {
         sectionBackgroundColor = SECTION_THEMES['Any Time'].backgroundColor;
       }
 
+      const lastItem = taskSections[taskSections.length - 1];
+      const isLastTask =
+        isTask(item) && isTask(lastItem) && lastItem.id === item.id;
+
       return (
         <DraggableRow isActive={isActive}>
           <View
@@ -418,6 +422,7 @@ const TodayScreen = ({ navigation }: Props) => {
               {
                 backgroundColor: isActive ? '#fff' : sectionBackgroundColor,
                 borderTopWidth: isActive ? 0.8 : 0,
+                marginBottom: isLastTask ? 4 : undefined,
               },
             ]}>
             <TouchableOpacity
@@ -535,6 +540,7 @@ const TodayScreen = ({ navigation }: Props) => {
       onToggleTaskCompletionStatus,
       theme.colors.secondary,
       user,
+      taskSections,
     ],
   );
 
@@ -806,14 +812,14 @@ const TodayScreen = ({ navigation }: Props) => {
               {formatDate(displayDate)}
             </Text>
           </View>
-
-          <DragList
-            data={taskSections}
-            renderItem={renderTaskItem}
-            keyExtractor={keyExtractor}
-            onReordered={onReordered}
-            style={styles.dragList}
-          />
+          <View style={styles.dragListContainer}>
+            <DragList
+              data={taskSections}
+              renderItem={renderTaskItem}
+              keyExtractor={keyExtractor}
+              onReordered={onReordered}
+            />
+          </View>
         </>
       )}
       <DatePickerModal
@@ -1038,8 +1044,8 @@ const styles = StyleSheet.create({
   marginLeft: {
     marginLeft: 10,
   },
-  dragList: {
-    marginBottom: 110,
+  dragListContainer: {
+    flex: 1,
   },
   draggableRowView: {
     flexDirection: 'row',
