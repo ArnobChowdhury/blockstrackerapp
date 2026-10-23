@@ -374,6 +374,14 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
     autocompleteInputRef.current?.close();
   };
 
+  const taskType =
+    selectedScheduleType === TaskScheduleTypeEnum.Unscheduled ||
+    selectedScheduleType === TaskScheduleTypeEnum.Once
+      ? 'Task'
+      : 'Recurring Task Template';
+
+  const addButonText = `${isSaving ? 'Adding' : 'Add'} ${taskType}`;
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -538,7 +546,7 @@ const AddTaskScreen = ({ navigation, route }: Props) => {
                 loading={isSaving}
                 disabled={isSaving || isDbLoading || addTaskDisabled}
                 icon="plus-circle-outline">
-                {isSaving ? 'Adding Task...' : 'Add Task'}
+                {addButonText}
               </Button>
             </View>
           </TouchableWithoutFeedback>
