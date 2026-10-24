@@ -222,6 +222,8 @@ const TodayScreen = ({ navigation }: Props) => {
   const [errorLoadingTasks, setErrorLoadingTasks] = useState<string | null>(
     null,
   );
+  const [recurringTaskToBeEdited, setRecurringTaskToBeEdited] =
+    useState<Task>();
 
   const animatedValue = useMemo(() => new RNAnimated.Value(0), []);
   useEffect(() => {
@@ -411,6 +413,7 @@ const TodayScreen = ({ navigation }: Props) => {
       const lastItem = taskSections[taskSections.length - 1];
       const isLastTask =
         isTask(item) && isTask(lastItem) && lastItem.id === item.id;
+      const isRecurringTask = item.repetitiveTaskTemplateId;
 
       return (
         <DraggableRow isActive={isActive}>
@@ -438,7 +441,11 @@ const TodayScreen = ({ navigation }: Props) => {
             <View style={styles.flexOne}>
               <List.Item
                 onPress={() => {
-                  navigation.navigate('EditTask', { taskId: item.id });
+                  if (isRecurringTask) {
+                    setRecurringTaskToBeEdited(item);
+                  } else {
+                    navigation.navigate('EditTask', { taskId: item.id });
+                  }
                 }}
                 title={
                   <Text
@@ -916,6 +923,103 @@ const TodayScreen = ({ navigation }: Props) => {
             </Button>
           </Dialog.Actions>
         </Dialog>
+        <Dialog
+          dismissable
+          dismissableBackButton={true}
+          visible={Boolean(recurringTaskToBeEdited)}
+          onDismiss={() => {
+            setRecurringTaskToBeEdited(undefined);
+          }}>
+          <Dialog.Title>
+            <View style={styles.dialogTitle}>
+              <Text variant="titleMedium" style={styles.boldFonts}>
+                Edit Recurring Item
+              </Text>
+            </View>
+          </Dialog.Title>
+          <Dialog.Content>
+            <Text
+              variant="titleMedium"
+              style={styles.recurringTaskEditDescriptor}>
+              This item is generated from a template. What would you like to
+              edit?
+            </Text>
+            <List.Item
+              title={
+                <Text
+                  variant="titleSmall"
+                  style={{ color: theme.colors.onTertiary }}>
+                  This Task Only
+                </Text>
+              }
+              description={
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: theme.colors.onTertiary }}>
+                  Modify today's entry only
+                </Text>
+              }
+              left={props => (
+                <List.Icon
+                  {...props}
+                  icon="calendar-today"
+                  color={theme.colors.onTertiary}
+                />
+              )}
+              onPress={() => {
+                navigation.navigate('EditTask', {
+                  taskId: recurringTaskToBeEdited?.id,
+                });
+                setRecurringTaskToBeEdited(undefined);
+              }}
+              style={[
+                { backgroundColor: theme.colors.tertiary },
+                styles.recurringTaskEditListItem,
+              ]}
+            />
+            <List.Item
+              title={
+                <Text
+                  variant="titleSmall"
+                  style={{ color: theme.colors.onTertiary }}>
+                  Recurring Template
+                </Text>
+              }
+              description={
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: theme.colors.onTertiary }}>
+                  Update future tasks
+                </Text>
+              }
+              left={props => (
+                <List.Icon
+                  {...props}
+                  icon="repeat"
+                  color={theme.colors.onTertiary}
+                />
+              )}
+              onPress={() => {
+                navigation.navigate('EditTask', {
+                  taskId: recurringTaskToBeEdited?.repetitiveTaskTemplateId!,
+                  isRepetitiveTaskTemplate: true,
+                });
+                setRecurringTaskToBeEdited(undefined);
+              }}
+              style={[
+                { backgroundColor: theme.colors.tertiary },
+                styles.recurringTaskEditListItem,
+              ]}
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => setRecurringTaskToBeEdited(undefined)}
+              disabled={false}>
+              Cancel
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </SafeAreaView>
   );
@@ -1054,6 +1158,13 @@ const styles = StyleSheet.create({
   },
   flexOne: {
     flex: 1,
+  },
+  recurringTaskEditDescriptor: {
+    marginBottom: 20,
+  },
+  recurringTaskEditListItem: {
+    borderRadius: 4,
+    marginBottom: 8,
   },
 });
 

@@ -305,6 +305,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
       setSnackbarMessage('Task updated successfully!');
       setSnackbarVisible(true);
+      setTimeout(() => {
+        navigation.goBack();
+      }, 500);
     } catch (error: any) {
       console.error('[DB] Failed to INSERT task:', error);
       Alert.alert(
