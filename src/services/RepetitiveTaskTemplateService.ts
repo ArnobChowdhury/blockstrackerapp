@@ -18,6 +18,8 @@ import {
   WRITE_OPERATION_COMPLETED,
 } from '../shared/constants';
 
+const CUT_OFF_DAYS_FOR_REPETITIVE_TASK_GENERATION = 14;
+
 export class RepetitiveTaskTemplateService {
   private rttRepo: RepetitiveTaskTemplateRepository;
   private pendingOpRepo: PendingOperationRepository;
@@ -237,6 +239,21 @@ export class RepetitiveTaskTemplateService {
             lastGenDate = templateCreationDate.isSame(todayStart)
               ? todayStart.subtract(1, 'day').toISOString()
               : template.createdAt;
+          }
+
+          if (
+            dayjs(lastGenDate)
+              .startOf('day')
+              .isBefore(
+                todayStart.subtract(
+                  CUT_OFF_DAYS_FOR_REPETITIVE_TASK_GENERATION,
+                  'day',
+                ),
+              )
+          ) {
+            lastGenDate = todayStart
+              .subtract(CUT_OFF_DAYS_FOR_REPETITIVE_TASK_GENERATION, 'day')
+              .toISOString();
           }
 
           const daysToGenerate = todayStart.diff(
