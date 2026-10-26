@@ -217,7 +217,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         const days = getScheduledWeekDaysFromRepetitiveTask(
           repetitiveTaskTemplate,
         );
-        console.log(days);
         setSelectedDays(days);
         initialDataRef.current.days = days;
 
