@@ -113,3 +113,31 @@ export const getNextIterationDateForRepetitiveTask = (
       .startOf('day');
   }
 };
+
+export const areSameArrays = <T>(
+  daysOne: readonly T[],
+  daysTwo: readonly T[],
+) => {
+  if (daysOne.length !== daysTwo.length) {
+    return false;
+  }
+  return daysOne.every(item => daysTwo.includes(item));
+};
+
+export const cleanEmptyDescription = (html: string): string => {
+  if (!html) {
+    return '';
+  }
+
+  const trimmed = html.trim();
+  if (
+    trimmed === '<br>' ||
+    trimmed === '<p><br></p>' ||
+    trimmed === '<div><br></div>' ||
+    trimmed === '<p><br/></p>'
+  ) {
+    return '';
+  }
+
+  return html;
+};

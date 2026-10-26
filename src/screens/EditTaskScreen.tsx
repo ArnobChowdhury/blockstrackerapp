@@ -46,6 +46,8 @@ import {
   capitalize,
   getScheduledWeekDaysFromRepetitiveTask,
   getNextIterationDateForRepetitiveTask,
+  areSameArrays,
+  cleanEmptyDescription,
 } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useAppContext } from '../shared/contexts/useAppContext';
@@ -54,6 +56,17 @@ import RenderHtml from 'react-native-render-html';
 import dayjs from 'dayjs';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditTask'>;
+
+interface InitialTaskProps {
+  name: string;
+  description: string | null;
+  dueDate?: Date;
+  days: DaysInAWeek[];
+  schedule: TaskScheduleTypeEnum;
+  timeOfDay: TimeOfDay | null;
+  shouldBeScored: boolean;
+  space: Space | null;
+}
 
 const EditTaskScreen = ({ navigation, route }: Props) => {
   const isRepetitiveTaskTemplate =
@@ -102,6 +115,17 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   );
   const spaceService = useMemo(() => new SpaceService(), []);
 
+  const initialDataRef = useRef<InitialTaskProps>({
+    name: '',
+    description: null,
+    dueDate: undefined,
+    days: [],
+    schedule: TaskScheduleTypeEnum.Unscheduled,
+    timeOfDay: null,
+    shouldBeScored: false,
+    space: null,
+  });
+
   const fetchSpace = useCallback(
     async (spaceId: string) => {
       try {
@@ -110,6 +134,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
           throw new Error(`Space with ID ${spaceId} not found.`);
         }
         setSelectedSpace(space);
+        if (initialDataRef.current) {
+          initialDataRef.current.space = space;
+        }
       } catch (error: any) {
         console.error('[EditTaskScreen] Failed to fetch space');
       }
@@ -140,7 +167,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         }
 
         if (task.dueDate) {
-          setSelectedDate(dayjs(task.dueDate).toDate());
+          const dueDate = dayjs(task.dueDate).toDate();
+          initialDataRef.current.dueDate = dueDate;
+          setSelectedDate(dueDate);
         }
 
         if (
@@ -190,6 +219,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         );
         console.log(days);
         setSelectedDays(days);
+        initialDataRef.current.days = days;
 
         fetchedTaskOrTemplate = repetitiveTaskTemplate;
       }
@@ -200,6 +230,15 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
       setSelectedScheduleType(fetchedTaskOrTemplate.schedule);
       setSelectedTimeOfDay(fetchedTaskOrTemplate.timeOfDay);
       setShouldBeScored(fetchedTaskOrTemplate.shouldBeScored);
+
+      initialDataRef.current = {
+        ...initialDataRef.current,
+        name: fetchedTaskOrTemplate.title,
+        description: fetchedTaskOrTemplate.description,
+        schedule: fetchedTaskOrTemplate.schedule,
+        timeOfDay: fetchedTaskOrTemplate.timeOfDay,
+        shouldBeScored: fetchedTaskOrTemplate.shouldBeScored,
+      };
 
       if (fetchedTaskOrTemplate.spaceId) {
         await fetchSpace(fetchedTaskOrTemplate.spaceId);
@@ -227,7 +266,9 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
   useEffect(() => {
     if (route.params?.updatedDescription) {
-      setTaskDescription(route.params.updatedDescription);
+      setTaskDescription(
+        cleanEmptyDescription(route.params.updatedDescription),
+      );
       navigation.setParams({ updatedDescription: undefined });
     }
   }, [route.params?.updatedDescription, navigation]);
@@ -447,13 +488,24 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     );
   }
 
+  const hasNotChanged =
+    initialDataRef.current?.name === taskName &&
+    (initialDataRef.current.description || '') === (taskDescription || '') &&
+    areSameArrays(initialDataRef.current.days, selectedDays) &&
+    initialDataRef.current.dueDate?.getDate() === selectedDate?.getDate() &&
+    initialDataRef.current?.shouldBeScored === shouldBeScored &&
+    initialDataRef.current?.space?.id === selectedSpace?.id &&
+    initialDataRef.current?.timeOfDay === selectedTimeOfDay &&
+    initialDataRef.current?.schedule === selectedScheduleType;
+
   const addTaskDisabled =
     !taskName ||
     !selectedScheduleType ||
     isSpaceOnFocus ||
     (isRepetitiveTaskTemplate &&
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek &&
-      selectedDays.length === 0);
+      selectedDays.length === 0) ||
+    hasNotChanged;
 
   const handleBackgroundBlur = () => {
     Keyboard.dismiss();
