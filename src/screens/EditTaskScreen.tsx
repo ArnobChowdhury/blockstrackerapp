@@ -16,7 +16,6 @@ import {
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
@@ -40,7 +39,6 @@ import {
   Divider,
   useTheme,
   IconButton,
-  Icon,
 } from 'react-native-paper';
 import { TaskScheduleTypeEnum, TimeOfDay, DaysInAWeek } from '../types';
 import type { RepetitiveTaskTemplate, Task, Space } from '../types';
@@ -70,8 +68,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
   const theme = useTheme();
   const { user } = useAppContext();
   const { isLoading: isDbLoading, error: dbError } = useDatabase();
-  const [isRepetitiveTask, setIsRepetitiveTask] = useState<boolean>(false);
-  const [taskTemplateId, setTaskTemplateId] = useState<string | null>(null);
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState<string | null>('');
   const [selectedScheduleType, setSelectedScheduleType] =
@@ -141,13 +137,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
         );
         if (!task) {
           throw new Error(`Task with ID ${route.params.taskId} not found.`);
-        }
-        if (
-          task.schedule === TaskScheduleTypeEnum.Daily ||
-          task.schedule === TaskScheduleTypeEnum.SpecificDaysInAWeek
-        ) {
-          setIsRepetitiveTask(true);
-          setTaskTemplateId(task.repetitiveTaskTemplateId);
         }
 
         if (task.dueDate) {
@@ -319,17 +308,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     }
   };
 
-  const handleEditingRepetitiveTaskTemplateInsteadOfTask = useCallback(() => {
-    if (!taskTemplateId) {
-      return;
-    }
-
-    navigation.replace('EditTask', {
-      taskId: taskTemplateId,
-      isRepetitiveTaskTemplate: true,
-    });
-  }, [taskTemplateId, navigation]);
-
   const onConfirmSelectedDate = useCallback(
     (params: { date: Date | undefined }) => {
       setSelectedDateVisible(false);
@@ -450,8 +428,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     };
   }, [theme.colors.onSurface]);
 
-  const [isYesPressed, setIsYesPressed] = useState(false);
-
   if (isDbLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -510,39 +486,6 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
             scrollEventThrottle={16}>
             <TouchableWithoutFeedback onPress={handleBackgroundBlur}>
               <View style={styles.formWrapper}>
-                {isRepetitiveTask && (
-                  <View style={styles.disclaimer}>
-                    <Icon source="information-outline" size={20} />
-                    <Text
-                      variant="bodyMedium"
-                      style={[
-                        { color: theme.colors.primary },
-                        styles.disclaimerText,
-                      ]}>
-                      Editing this form will not affect the underlying template
-                      of this repetitive task. Would you like to edit the
-                      template instead?{' '}
-                      <Pressable
-                        style={[isYesPressed && styles.disclaimerPressable]}
-                        onPressIn={() => setIsYesPressed(true)}
-                        onPressOut={() => {
-                          setIsYesPressed(false);
-                          handleEditingRepetitiveTaskTemplateInsteadOfTask();
-                        }}>
-                        <Text
-                          variant="bodyMedium"
-                          style={[
-                            styles.disclaimerLink,
-                            {
-                              color: theme.colors.secondary,
-                            },
-                          ]}>
-                          Yes
-                        </Text>
-                      </Pressable>
-                    </Text>
-                  </View>
-                )}
                 <TextInput
                   label="Task Name*"
                   value={taskName}
