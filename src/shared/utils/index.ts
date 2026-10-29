@@ -1,6 +1,7 @@
 import { Dayjs } from 'dayjs';
 import { DaysInAWeek, RepetitiveTaskTemplate } from '../../types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import dayjs from 'dayjs';
 
 export const capitalize = (s: string) => {
   if (typeof s !== 'string') {
@@ -140,4 +141,18 @@ export const cleanEmptyDescription = (html: string): string => {
   }
 
   return html;
+};
+
+export const areDatesEqual = (
+  d1: dayjs.Dayjs | null | undefined,
+  d2: dayjs.Dayjs | null | undefined,
+): boolean => {
+  if (!d1 && !d2) {
+    return true;
+  }
+  if (!d1 || !d2) {
+    return false;
+  }
+
+  return d1.isSame(d2, 'day');
 };

@@ -48,6 +48,7 @@ import {
   getNextIterationDateForRepetitiveTask,
   areSameArrays,
   cleanEmptyDescription,
+  areDatesEqual,
 } from '../shared/utils';
 import { useDatabase } from '../shared/hooks/useDatabase';
 import { useAppContext } from '../shared/contexts/useAppContext';
@@ -489,9 +490,14 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
 
   const hasNotChanged =
     initialDataRef.current?.name === taskName &&
-    (initialDataRef.current.description || '') === (taskDescription || '') &&
-    areSameArrays(initialDataRef.current.days, selectedDays) &&
-    initialDataRef.current.dueDate?.getDate() === selectedDate?.getDate() &&
+    (initialDataRef.current?.description || '') === (taskDescription || '') &&
+    areSameArrays(initialDataRef.current?.days, selectedDays) &&
+    areDatesEqual(
+      initialDataRef.current?.dueDate
+        ? dayjs(initialDataRef.current.dueDate)
+        : null,
+      selectedDate ? dayjs(selectedDate) : null,
+    ) &&
     initialDataRef.current?.shouldBeScored === shouldBeScored &&
     initialDataRef.current?.space?.id === selectedSpace?.id &&
     initialDataRef.current?.timeOfDay === selectedTimeOfDay &&
@@ -510,6 +516,11 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     Keyboard.dismiss();
     autocompleteInputRef.current?.close();
   };
+
+  const isRepetitiveTaskButNotTemplate =
+    !isRepetitiveTaskTemplate &&
+    (selectedScheduleType === TaskScheduleTypeEnum.Daily ||
+      selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
@@ -662,21 +673,35 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
                     </Chip>
                   ))}
                 </View>
+                {!isRepetitiveTaskButNotTemplate && (
+                  <AutocompleteInput
+                    ref={autocompleteInputRef}
+                    label="Select or Create a space for the task (Optional)"
+                    query={spaceQuery}
+                    setQuery={setSpaceQuery}
+                    onSelect={handleSpaceSelect}
+                    options={allSpaces}
+                    loading={isLoadingSpaces}
+                    onLoadSuggestions={handleLoadSpace}
+                    onAddOption={handleAddSpace}
+                    selectedOption={selectedSpace}
+                    onFocus={handleSpaceOnFocus}
+                    onBlur={handleSpaceOnBlur}
+                  />
+                )}
+                {isRepetitiveTaskButNotTemplate && (
+                  <View style={styles.scheduleContainer}>
+                    <Text variant="titleMedium" style={styles.inputHeader}>
+                      Space:
+                    </Text>
+                    <Text variant="bodyLarge" style={styles.inputHeader}>
+                      {selectedSpace
+                        ? ` ${selectedSpace.name}`
+                        : ' No space selected for this recurring item'}
+                    </Text>
+                  </View>
+                )}
 
-                <AutocompleteInput
-                  ref={autocompleteInputRef}
-                  label="Select or Create a space for the task (Optional)"
-                  query={spaceQuery}
-                  setQuery={setSpaceQuery}
-                  onSelect={handleSpaceSelect}
-                  options={allSpaces}
-                  loading={isLoadingSpaces}
-                  onLoadSuggestions={handleLoadSpace}
-                  onAddOption={handleAddSpace}
-                  selectedOption={selectedSpace}
-                  onFocus={handleSpaceOnFocus}
-                  onBlur={handleSpaceOnBlur}
-                />
                 <Button
                   mode="contained"
                   onPress={handleTaskUpdate}
