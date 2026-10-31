@@ -522,6 +522,10 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
     (selectedScheduleType === TaskScheduleTypeEnum.Daily ||
       selectedScheduleType === TaskScheduleTypeEnum.SpecificDaysInAWeek);
 
+  const buttonText = `${isSaving ? 'Saving' : 'Save'} ${
+    isRepetitiveTaskTemplate ? 'Recurring Task Template' : 'Task'
+  }`;
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       {isLoadingTask ? (
@@ -710,7 +714,7 @@ const EditTaskScreen = ({ navigation, route }: Props) => {
                   loading={isSaving}
                   disabled={isSaving || isDbLoading || addTaskDisabled}
                   icon="plus-circle-outline">
-                  {isSaving ? 'Saving Task...' : 'Save Task'}
+                  {buttonText}
                 </Button>
               </View>
             </TouchableWithoutFeedback>
