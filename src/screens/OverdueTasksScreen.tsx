@@ -31,7 +31,7 @@ import {
   useTaskReschedule,
   useRefreshScreenAfterSync,
 } from '../shared/hooks';
-import { formatDate, truncateString } from '../shared/utils';
+import { formatDate, getTaskOrder, truncateString } from '../shared/utils';
 import { TaskService } from '../services/TaskService';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import TaskScoring from '../shared/components/TaskScoring';
@@ -56,10 +56,20 @@ export const groupTasksByDate = (tasks: Task[]): TaskSection[] => {
     grouped[key].push(task);
   });
   return Object.entries(grouped)
-    .map(([dateKey, taskItems]) => ({
-      title: formatDate(dayjs(dateKey, 'YYYY-MM-DD')),
-      data: taskItems,
-    }))
+    .map(([dateKey, taskItems]) => {
+      const sortedTask = taskItems.slice().sort((a, b) => {
+        const orderForA = getTaskOrder(a);
+        const orderForB = getTaskOrder(b);
+        if (orderForA !== orderForB) {
+          return orderForA - orderForB;
+        }
+        return a.sortOrder - b.sortOrder;
+      });
+      return {
+        title: formatDate(dayjs(dateKey, 'YYYY-MM-DD')),
+        data: sortedTask,
+      };
+    })
     .sort((a, b) => dayjs(a.title).diff(dayjs(b.title)));
 };
 

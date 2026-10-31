@@ -1,5 +1,11 @@
 import { Dayjs } from 'dayjs';
-import { DaysInAWeek, RepetitiveTaskTemplate } from '../../types';
+import {
+  DaysInAWeek,
+  RepetitiveTaskTemplate,
+  TaskCompletionStatusEnum,
+  TimeOfDay,
+  Task,
+} from '../../types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
 
@@ -155,4 +161,25 @@ export const areDatesEqual = (
   }
 
   return d1.isSame(d2, 'day');
+};
+
+const GROUP_ORDER: Record<TimeOfDay | 'unspecified' | 'failed', number> = {
+  [TimeOfDay.Morning]: 1,
+  [TimeOfDay.Afternoon]: 2,
+  [TimeOfDay.Evening]: 3,
+  [TimeOfDay.Night]: 4,
+  unspecified: 5,
+  failed: 6,
+};
+
+export const getTaskOrder = (task: Task) => {
+  if (task.completionStatus === TaskCompletionStatusEnum.FAILED) {
+    return GROUP_ORDER.failed;
+  }
+
+  if (!task.timeOfDay) {
+    return GROUP_ORDER.unspecified;
+  }
+
+  return GROUP_ORDER[task.timeOfDay];
 };

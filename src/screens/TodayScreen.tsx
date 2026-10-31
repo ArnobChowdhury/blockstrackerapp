@@ -37,7 +37,12 @@ import {
   useTaskReschedule,
   useRefreshScreenAfterSync,
 } from '../shared/hooks';
-import { formatDate, capitalize, truncateString } from '../shared/utils';
+import {
+  formatDate,
+  capitalize,
+  truncateString,
+  getTaskOrder,
+} from '../shared/utils';
 import { TaskService } from '../services/TaskService';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { dataMigrationService } from '../services/DataMigrationService';
@@ -66,15 +71,6 @@ export interface TaskSection {
   data: Task[];
 }
 
-const GROUP_ORDER: Record<TimeOfDay | 'unspecified' | 'failed', number> = {
-  [TimeOfDay.Morning]: 1,
-  [TimeOfDay.Afternoon]: 2,
-  [TimeOfDay.Evening]: 3,
-  [TimeOfDay.Night]: 4,
-  unspecified: 5,
-  failed: 6,
-};
-
 const SECTION_THEMES: Record<string, { backgroundColor: string }> = {
   Morning: { backgroundColor: '#E4F8FC' },
   Afternoon: { backgroundColor: '#FEEED4' },
@@ -82,18 +78,6 @@ const SECTION_THEMES: Record<string, { backgroundColor: string }> = {
   Failed: { backgroundColor: '#FFDFDC' },
   Night: { backgroundColor: '#CDD2E9' },
   'Any Time': { backgroundColor: '#F5F5F5' },
-};
-
-const getTaskOrder = (task: Task) => {
-  if (task.completionStatus === TaskCompletionStatusEnum.FAILED) {
-    return GROUP_ORDER.failed;
-  }
-
-  if (!task.timeOfDay) {
-    return GROUP_ORDER.unspecified;
-  }
-
-  return GROUP_ORDER[task.timeOfDay];
 };
 
 interface TaskHeaders {
