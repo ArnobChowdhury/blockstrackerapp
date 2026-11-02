@@ -659,7 +659,8 @@ export class RepetitiveTaskTemplateRepository {
           tasks.repetitive_task_template_id = repetitive_task_templates.id
           AND tasks.due_date >= ?
           AND tasks.due_date <= ?
-      );
+      )
+      ORDER BY title ASC;
     `;
 
     params.push(startDate, endDate);
