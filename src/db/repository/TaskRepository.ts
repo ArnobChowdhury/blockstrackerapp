@@ -627,7 +627,7 @@ export class TaskRepository {
         repetitive_task_template_id, created_at, modified_at, is_active, due_date, completion_status
       FROM tasks
       WHERE ${allWhereClauses.join(' AND ')}
-      ORDER BY created_at DESC;
+      ORDER BY created_at ASC;
     `;
 
     console.log('[DB Repo] Attempting to SELECT tasks:', {
