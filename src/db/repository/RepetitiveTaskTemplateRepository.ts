@@ -284,7 +284,7 @@ export class RepetitiveTaskTemplateRepository {
         created_at, modified_at, is_active, should_be_scored, last_date_of_task_generation, space_id, user_id
       FROM repetitive_task_templates
       WHERE ${allWhereClauses.join(' AND ')}
-      ORDER BY created_at DESC;
+      ORDER BY title ASC;
     `;
 
     console.log(
