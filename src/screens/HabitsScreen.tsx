@@ -42,6 +42,7 @@ const calculatedCardWidth =
   flatListAvailableContentWidth / numColumns - cardMarginVal * 2;
 
 const FETCH_TASKS_LIMIT = 50;
+const MAX_INACTIVE_TASK_AGE_DAYS = 30;
 type Props = NativeStackScreenProps<TrackerStackParamList, 'HabitsList'>;
 
 export interface HabitsSection {
@@ -142,13 +143,13 @@ const HabitsScreen = ({ navigation }: Props) => {
         await repetitiveTaskTemplateService.findTemplatesWithRecentTasks(
           user && user.id,
           TaskScheduleTypeEnum.Daily,
-          FETCH_TASKS_LIMIT,
+          MAX_INACTIVE_TASK_AGE_DAYS,
         );
       const weeklies =
         await repetitiveTaskTemplateService.findTemplatesWithRecentTasks(
           user && user.id,
           TaskScheduleTypeEnum.SpecificDaysInAWeek,
-          FETCH_TASKS_LIMIT,
+          MAX_INACTIVE_TASK_AGE_DAYS,
         );
 
       console.log('[Habits] Fetched daily tasks count:', dailies.length);
