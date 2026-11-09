@@ -46,7 +46,13 @@ import {
 import { TaskService } from '../services/TaskService';
 import { RepetitiveTaskTemplateService } from '../services/RepetitiveTaskTemplateService';
 import { dataMigrationService } from '../services/DataMigrationService';
-import { Logo } from '../shared/components/icons';
+import {
+  Logo,
+  MorningIcon,
+  AfternoonIcon,
+  EveningIcon,
+  NightIcon,
+} from '../shared/components/icons';
 import TaskScoring from '../shared/components/TaskScoring';
 import {
   Task,
@@ -66,18 +72,44 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+const ScheduleIcon = () => (
+  <View style={styles.sectionIconContainer}>
+    <Icon
+      source="clock-outline"
+      size={22}
+      color={CombinedLightTheme.colors.onSurfaceVariant}
+    />
+  </View>
+);
+
+const FailedIcon = () => (
+  <View style={styles.sectionIconContainer}>
+    <Icon
+      source="thumb-down"
+      size={20}
+      color={CombinedLightTheme.colors.error}
+    />
+  </View>
+);
+
 export interface TaskSection {
   title: string;
   data: Task[];
 }
 
-const SECTION_THEMES: Record<string, { backgroundColor: string }> = {
-  Morning: { backgroundColor: '#E4F8FC' },
-  Afternoon: { backgroundColor: '#FEEED4' },
-  Evening: { backgroundColor: '#FFE5D9' },
-  Failed: { backgroundColor: '#FFDFDC' },
-  Night: { backgroundColor: '#CDD2E9' },
-  'Any Time': { backgroundColor: '#F5F5F5' },
+const SECTION_THEMES: Record<
+  string,
+  {
+    backgroundColor: string;
+    icon: (props: any) => React.JSX.Element;
+  }
+> = {
+  Morning: { backgroundColor: '#E4F8FC', icon: MorningIcon },
+  Afternoon: { backgroundColor: '#FEEED4', icon: AfternoonIcon },
+  Evening: { backgroundColor: '#FFE5D9', icon: EveningIcon },
+  Failed: { backgroundColor: '#FFDFDC', icon: FailedIcon },
+  Night: { backgroundColor: '#CDD2E9', icon: NightIcon },
+  'Any Time': { backgroundColor: '#F5F5F5', icon: ScheduleIcon },
 };
 
 interface TaskHeaders {
@@ -363,14 +395,18 @@ const TodayScreen = ({ navigation }: Props) => {
       isActive,
     }: DragListRenderItemInfo<TaskOrHeader>) => {
       if ('type' in item) {
+        const sectionTheme = SECTION_THEMES[item.title];
+        const IconComponent = sectionTheme?.icon;
+
         return (
           <View
             style={[
               styles.sectionHeaderContainer,
               {
-                backgroundColor: SECTION_THEMES[item.title].backgroundColor,
+                backgroundColor: sectionTheme.backgroundColor,
               },
             ]}>
+            {IconComponent && <IconComponent width={32} height={32} />}
             <Text
               style={[
                 { color: CombinedLightTheme.colors.onSurface },
@@ -1069,6 +1105,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 8,
     paddingTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionHeaderText: {
     fontSize: 14,
@@ -1149,6 +1188,12 @@ const styles = StyleSheet.create({
   recurringTaskEditListItem: {
     borderRadius: 4,
     marginBottom: 8,
+  },
+  sectionIconContainer: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
