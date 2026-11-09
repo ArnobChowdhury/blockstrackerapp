@@ -87,7 +87,7 @@ const FailedIcon = () => (
     <Icon
       source="thumb-down"
       size={20}
-      color={CombinedLightTheme.colors.error}
+      color={CombinedLightTheme.colors.tertiary}
     />
   </View>
 );
