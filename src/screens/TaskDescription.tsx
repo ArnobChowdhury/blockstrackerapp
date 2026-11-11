@@ -5,6 +5,7 @@ import {
   View,
   StyleSheet,
   ColorValue,
+  ScrollView,
 } from 'react-native';
 
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -62,10 +63,22 @@ const TaskDescription = ({ navigation, route }: Props) => {
     }
   };
 
+  const androidApiLevel =
+    typeof Platform.Version === 'number'
+      ? Platform.Version
+      : parseInt(Platform.Version, 10);
+
+  const keyboardBehavior =
+    Platform.OS === 'ios'
+      ? 'padding'
+      : androidApiLevel >= 35
+      ? 'height'
+      : undefined;
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={keyboardBehavior}
         style={styles.keyboardAvoidingView}>
         <View style={styles.navigationIconContainer}>
           <IconButton
@@ -80,22 +93,52 @@ const TaskDescription = ({ navigation, route }: Props) => {
             onPress={handleDescriptionAccept}
           />
         </View>
-        <View style={styles.editorContainer}>
-          <RichEditor
-            editorStyle={{
-              backgroundColor: theme.colors.surface,
-              color: theme.colors.onSurface,
-            }}
-            initialFocus={true}
-            initialContentHTML={initialHTML || ''}
-            ref={richText}
-            style={styles.editor}
-            placeholder={'Task description...'}
-            onChange={descriptionText => {
-              setDescriptionHTML(descriptionText);
-            }}
-          />
-        </View>
+        <ScrollView
+          style={styles.scrollViewStyle}
+          contentContainerStyle={styles.scrollContentContainer}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.editorContainer}>
+            <RichEditor
+              editorStyle={{
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.onSurface,
+                cssText: `
+                      /* Import or reference your custom font */
+                      @font-face {
+                        font-family: 'Hanken Grotesk';
+                        src: local('Hanken Grotesk');
+                      }
+
+                      body {
+                        font-family: 'Hanken Grotesk', -apple-system, Roboto, Helvetica, Arial, sans-serif;
+                        font-size: 16px;
+                        background-color: ${theme.colors.surface};
+                        color: ${theme.colors.onSurface};
+                        overflow-y: auto;
+                        -webkit-overflow-scrolling: touch;
+                        height: 100%;
+                        margin: 16px; /* optional padding inside the editor */
+                      }
+
+                      /* Ensure headings and paragraphs inherit the font */
+                      h1, h2, h3, h4, h5, h6, p, span, div {
+                        font-family: 'Hanken Grotesk', -apple-system, Roboto, Helvetica, Arial, sans-serif;
+                      }
+                    `,
+              }}
+              initialFocus={true}
+              initialContentHTML={initialHTML || ''}
+              ref={richText}
+              style={styles.editor}
+              placeholder={'Task description...'}
+              onChange={descriptionText => {
+                setDescriptionHTML(descriptionText);
+              }}
+            />
+          </View>
+        </ScrollView>
+
         <RichToolbar
           editor={richText}
           actions={[
@@ -126,18 +169,25 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
-  editorContainer: {
-    flex: 1,
-    // borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  editor: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
   navigationIconContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  scrollViewStyle: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+  },
+  editorContainer: {
+    flex: 1,
+    minHeight: 300, // Gives the editor enough initial vertical breathing room
+  },
+  editor: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
 });
 
